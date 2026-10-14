@@ -1,0 +1,17 @@
+/* สั่งพิมพ์: แสดงเฉพาะแผ่นรายงาน A4 */
+@media print {
+  @page { size: A4 portrait; margin: 0; }
+  @page land { size: A4 landscape; margin: 0; }
+  body { background: #fff !important; }
+  .side, .demo-bar, .page-head, .no-print, .toast, .tabs, .card:not(.print-area) { display: none !important; }
+  .shell { display: block; }
+  .main { padding: 0 !important; }
+  .main-inner { max-width: none; gap: 0; }
+  .print-area { border: 0 !important; padding: 0 !important; background: none !important; }
+  .a4-scroll { overflow: visible; padding: 0; }
+  html, body { height: auto !important; }
+  .a4 { box-shadow: none; margin: 0; page-break-after: always; min-height: 0 !important; }
+  .a4:last-child { page-break-after: auto; }
+  .a4.land { page: land; }
+  .a4 tr.risk td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
