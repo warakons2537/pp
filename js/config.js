@@ -8,5 +8,5 @@
 //  ห้ามใส่ Secret key (sb_secret_...) ที่นี่เด็ดขาด
 //  Publishable key เปิดเผยในหน้าเว็บได้ตามปกติ เพราะสิทธิ์ถูกคุมด้วย RLS ในฐานข้อมูล
 // =====================================================================
-export const SUPABASE_URL = 'https://fvfdyskidcxxhzpsnanp.supabase.co/rest/v1';
+export const SUPABASE_URL = 'https://fvfdyskidcxxhzpsnanp.supabase.co';
 export const SUPABASE_KEY = 'sb_publishable_ReEEMSeH1iBJ2rzXlAqhVw_vX2xvqtz';
