@@ -1,6 +1,7 @@
-import { esc, $, toast, modal, options, fullName, confirmBox } from '../util.js';
+import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js';
 import { getRoster } from '../data.js';
 import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js';
+import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js';
 
 const pref = { course: null, tab: 'scores' };
 const KIND = { score: 'คะแนนเก็บระหว่างภาค', final: 'สอบปลายภาค', indicator: 'ตัวชี้วัด (ผ/มผ)' };
@@ -27,7 +28,8 @@ export async function render(el, ctx) {
       <div><h1>คะแนนรายวิชา (ปพ.5)</h1>
         <p>${esc(ctx.courseLabel(course))} · ${esc(course.subject?.credits ? `${course.subject.credits} หน่วยกิต` : course.subject?.hours_per_year ? `${course.subject.hours_per_year} ชม./ปี` : '')}
           · ระหว่างภาค:ปลายภาค ${course.midterm_ratio}:${course.final_ratio} · <span class="live">อัปเดตทันที</span></p></div>
-      <div class="row"><label class="field">วิชา<select id="course">${options(list, course.id, ctx.courseLabel)}</select></label></div>
+      <div class="row"><label class="field">วิชา<select id="course">${options(list, course.id, ctx.courseLabel)}</select></label>
+        <button class="btn" id="xls" ${items.length ? '' : 'disabled'} title="ไฟล์ Excel แบบบันทึกผลสัมฤทธิ์ (แผ่นงานผลสัมฤทธิ์) มีสูตรคำนวณ แก้ต่อใน Excel ได้">ส่งออก Excel</button></div>
     </div>
     <div class="tabs">
       <button data-tab="scores" class="${pref.tab === 'scores' ? 'on' : ''}" ${items.length ? '' : 'disabled'}>คะแนนและเกรด</button>
@@ -39,6 +41,7 @@ export async function render(el, ctx) {
   $('#course', el).addEventListener('change', (e) => { pref.course = e.target.value; render(el, ctx); });
   const pane = $('#pane', el);
   const again = () => render(el, ctx);
+  $('#xls', el).addEventListener('click', () => exportDialog(ctx, course));
 
   if (pref.tab === 'items') return itemsTab(pane, ctx, course, items, canEdit, again);
   if (!roster.length) { pane.innerHTML = '<div class="empty">ห้องนี้ยังไม่มีนักเรียน</div>'; return; }
@@ -301,6 +304,10 @@ function itemsTab(pane, ctx, course, items, canEdit, again) {
     </div>`;
 
   pane.innerHTML = `
+    ${canEdit ? `<div class="card"><div class="row" style="align-items:center;justify-content:space-between">
+      <div><h3>นำเข้าจากไฟล์ผลสัมฤทธิ์เดิม</h3>
+        <p class="small muted" style="margin:0">ไฟล์ Excel ที่มีแผ่นงาน "ผลสัมฤทธิ์" (.xlsb / .xlsx) ระบบจะสร้างช่องคะแนนตามไฟล์และใส่คะแนนให้ทุกคน · ตรวจผลก่อนบันทึกได้</p></div>
+      <label class="btn btn-sm">เลือกไฟล์…<input type="file" id="imp" accept=".xlsb,.xlsx,.xls,.xlsm" hidden></label></div></div>` : ''}
     ${!items.length && canEdit ? `<div class="card"><h3>เริ่มต้นวิชานี้</h3>
       <p class="small">ยังไม่มีช่องคะแนน เลือกวิธีเริ่มได้เลย แล้วแก้ไขต่อภายหลังได้</p>
       <div class="row"><button class="btn btn-primary" id="tpl">สร้างแบบตัวอย่าง (งาน 1–4 · กลางภาค · ปลายภาค)</button>
@@ -370,6 +377,11 @@ function itemsTab(pane, ctx, course, items, canEdit, again) {
     { course_id: course.id, kind: 'score', title: 'สอบกลางภาค', max_score: 20, sort_order: 5 },
     { course_id: course.id, kind: 'final', title: 'สอบปลายภาค', max_score: course.final_ratio, sort_order: 6 },
   ]), 'สร้างช่องคะแนนแล้ว'));
+  $('#imp', pane)?.addEventListener('change', async (e) => {
+    const file = e.target.files[0]; e.target.value = ''; if (!file) return;
+    try { await importDialog(ctx, course, items, file); again(); }
+    catch (err) { toast(err.message, 'err'); }
+  });
   $('#copy-src', pane)?.addEventListener('change', async (e) => {
     if (!e.target.value) return;
     const src = await ctx.db.select('assessment_items', { eq: { course_id: e.target.value } });
@@ -377,4 +389,58 @@ function itemsTab(pane, ctx, course, items, canEdit, again) {
     run(() => ctx.db.insert('assessment_items', src.map(({ kind, code, title, max_score, sort_order }) => ({ course_id: course.id, kind, code, title, max_score, sort_order }))),
       `คัดลอกแล้ว ${src.length} ช่อง`);
   });
+}
+
+// =====================================================================
+//  ส่งออก / นำเข้า ไฟล์ Excel แบบบันทึกผลสัมฤทธิ์
+// =====================================================================
+async function exportDialog(ctx, course) {
+  const room = ctx.courses.filter((k) => k.classroom_id === course.classroom_id);
+  let list = [course];
+  if (room.length > 1) {
+    const r = await modal('ส่งออก Excel (แบบบันทึกผลสัมฤทธิ์)', `
+      <p class="small">ได้ไฟล์ .xlsx แผ่นงาน "ผลสัมฤทธิ์" เหมือนไฟล์เดิมของโรงเรียน มีสูตรคำนวณครบ เปิดใน Excel แล้วพิมพ์หรือแก้คะแนนต่อได้</p>
+      <label>ส่งออก<select name="scope">
+        <option value="one">เฉพาะวิชานี้ (${esc(course.subject?.name ?? '')})</option>
+        <option value="room">ทุกวิชาของห้อง ${esc(course.classroom ? `${course.classroom.level}/${course.classroom.room}` : '')} (${room.length} วิชา · 1 วิชา = 1 แผ่นงาน)</option>
+      </select></label>`, { okText: 'ดาวน์โหลด' });
+    if (!r) return;
+    if (r.scope === 'room') list = room;
+  }
+  try { const name = await exportAchievement(ctx, list); toast(`ดาวน์โหลดแล้ว: ${name}`); }
+  catch (err) { toast(err.message, 'err'); }
+}
+
+async function importDialog(ctx, course, items, file) {
+  const parsed = await readAchievementFile(file);
+  const roster = await getRoster(ctx.db, course.classroom_id);
+  const plan = planImport(parsed, roster, fullName);
+  const old = items.filter((i) => i.kind === 'score' || i.kind === 'final');
+  const oldScores = old.length ? (await ctx.db.select('item_scores', { in: { item_id: old.map((i) => i.id) } })).filter((x) => x.score !== null).length : 0;
+  if (!plan.matched.length) throw new Error(`ไม่พบนักเรียนในไฟล์ที่ตรงกับรายชื่อห้องนี้ (ไฟล์มี ${parsed.students.length} คน)`);
+  const li = (arr) => arr.map((x) => `<li>${esc(x)}</li>`).join('');
+  // เตือนเมื่อชื่อวิชา/ระดับชั้นในไฟล์ไม่ตรงกับวิชาที่กำลังนำเข้า
+  const flat = (t) => String(t ?? '').replace(/\s+/g, '');
+  const subjOk = !parsed.line2 || [course.subject?.name, course.subject?.code].filter(Boolean).some((t) => flat(parsed.line2).includes(flat(t)));
+  const lv = course.classroom ? levelName(course.classroom.level) : '';
+  const levelOk = !parsed.line1 || !lv || flat(parsed.line1).includes(flat(lv));
+  const ok = await modal(`นำเข้า: ${file.name}`, `
+    <div class="small">
+      <p><b>${esc(parsed.line2 || 'ไม่ระบุวิชา')}</b> · ${esc(parsed.line1)}</p>
+      ${!subjOk || !levelOk ? `<p class="chip chip-bad" style="display:block;white-space:normal">${!subjOk ? `ชื่อวิชาในไฟล์ไม่ตรงกับวิชา ${esc(course.subject?.name ?? '')} ` : ''}${!levelOk ? `ระดับชั้นในไฟล์ไม่ตรงกับ ${esc(lv)}` : ''} — ตรวจว่าเลือกไฟล์ถูกก่อนนำเข้า</p>` : ''}
+      <p>สัดส่วน ระหว่างภาค:ปลายภาค <b>${parsed.midRatio}:${parsed.finalRatio}</b>${course.midterm_ratio !== parsed.midRatio ? ` (เดิมในระบบ ${course.midterm_ratio}:${course.final_ratio} จะเปลี่ยนตามไฟล์)` : ''}</p>
+      <p>ช่องคะแนนเก็บ ${parsed.items.length} ช่อง: ${esc(parsed.items.map((i) => `${i.title} (${i.max})`).join(', '))} + สอบปลายภาค (${parsed.finalRatio})</p>
+      <p>จับคู่นักเรียนได้ <b>${plan.matched.length}</b> จาก ${parsed.students.length} คนในไฟล์${plan.matched.some((r) => r.how === 'number') ? ` (จับคู่ด้วยเลขที่ ${plan.matched.filter((r) => r.how === 'number').length} คน เพราะชื่อสะกดต่างกัน — โปรดตรวจ)` : ''}</p>
+      ${plan.matched.some((r) => r.how === 'number') ? `<ul>${li(plan.matched.filter((r) => r.how === 'number').map((r) => `ในไฟล์ "${r.p.name}" → ในระบบ "${fullName(r.s)}"`))}</ul>` : ''}
+      ${plan.unmatched.length ? `<p style="color:var(--red)">ไม่พบในห้องนี้ ${plan.unmatched.length} คน (จะข้าม):</p><ul>${li(plan.unmatched.map((r) => r.p.name))}</ul>` : ''}
+      ${plan.missing.length ? `<p>นักเรียนในห้องที่ไม่มีในไฟล์ ${plan.missing.length} คน: ${esc(plan.missing.map(fullName).join(', '))}</p>` : ''}
+      ${plan.overs.length ? `<p style="color:var(--red)">คะแนนเกินคะแนนเต็ม ${plan.overs.length} ช่อง จะบันทึกเท่าคะแนนเต็ม:</p><ul>${li(plan.overs)}</ul>` : ''}
+      ${parsed.warnings.length ? `<ul>${li(parsed.warnings)}</ul>` : ''}
+      ${old.length ? `<p class="chip chip-warn" style="display:block;white-space:normal">ช่องคะแนนเก็บและปลายภาคเดิมของวิชานี้ ${old.length} ช่อง${oldScores ? ` พร้อมคะแนนที่กรอกไว้ ${oldScores} ช่อง` : ''} จะถูกแทนที่ด้วยข้อมูลจากไฟล์ (ตัวชี้วัดไม่เปลี่ยน)</p>` : ''}
+    </div>`, { okText: 'นำเข้า', wide: true });
+  if (!ok) return;
+  const r = await applyImport(ctx, course, plan, items);
+  if (course.midterm_ratio !== parsed.midRatio) await ctx.refresh();
+  toast(`นำเข้าแล้ว: ${r.items} ช่องคะแนน · ${r.students} คน · ${r.scores} คะแนน`);
+  pref.tab = 'scores';
 }
