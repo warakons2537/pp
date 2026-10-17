@@ -1,0 +1,12 @@
+{
+  "name": "WL Admin (ปพ.) บ้านวังลึก",
+  "short_name": "WL Admin",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0a4a26",
+  "theme_color": "#0a4a26",
+  "icons": [
+    { "src": "img/logo-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "img/logo-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

@@ -1,6 +1,7 @@
 import { db } from './db.js';
 import { esc, $, $$, toast, indexBy, roomName } from './util.js';
 import { icon } from './icons.js';
+import { BRAND } from './brand.js';
 import * as home from './views/home.js';
 import * as students from './views/students.js';
 import * as daily from './views/daily.js';
@@ -55,8 +56,6 @@ async function loadContext(userId) {
   ctx.courseById = indexBy(ctx.courses);
   ctx.myCourses = ctx.isAdmin ? ctx.courses : ctx.courses.filter((k) => k.teachers.some((t) => t.id === me.id));
   ctx.courseLabel = (k) => `${k.subject?.code ?? ''} ${k.subject?.name ?? ''} — ${roomName(k.classroom)}`;
-  ctx.refresh = async () => { Object.assign(ctx, await loadContext(userId)); };
-  ctx.go = (view, params = {}) => { ctx.params = params; location.hash = view; };
   return ctx;
 }
 
@@ -65,7 +64,7 @@ async function loadContext(userId) {
 // ---------------------------------------------------------------------
 function loginCover(sub) {
   return `<div class="login-cover">
-    <div class="plate"><b>สมุดประจำชั้น</b><span>ธุรการชั้นเรียน และ ปพ.5 / ปพ.6</span></div>
+    <div class="plate"><img class="logo" src="${BRAND.logo}" alt=""><div><b>${esc(BRAND.name)}</b><span>${esc(BRAND.tagline)}</span></div></div>
     <ul><li>เช็กชื่อรายวันและรายคาบ เห็นพร้อมกันทุกเครื่อง</li><li>กรอกคะแนน ตัดเกรด คิด มส ให้อัตโนมัติ</li>
       <li>น้ำหนัก-ส่วนสูงตามเกณฑ์กรมอนามัย</li><li>พิมพ์ ปพ.6 ทั้งห้องในครั้งเดียว</li></ul>
     <small style="opacity:.75">${sub}</small></div>`;
@@ -124,15 +123,18 @@ function renderLogin() {
 // ---------------------------------------------------------------------
 // โครงหน้าหลัก (ปกสมุด + หน้ากระดาษ)
 // ---------------------------------------------------------------------
+const schoolLine = (ctx) => (ctx.settings.school_name ? `โรงเรียน${ctx.settings.school_name}` : 'ยังไม่ได้ตั้งชื่อโรงเรียน');
+const termLine = (ctx) => (ctx.term ? `ภาคเรียนที่ ${ctx.term.term} ปีการศึกษา ${ctx.term.academic_year}` : 'ยังไม่ได้ตั้งภาคเรียน');
+
 function renderShell(ctx) {
   const item = (v, label) => `<a href="#${v}" data-v="${v}">${icon(v)}<span>${label}</span></a>`;
   const name = ctx.me.full_name || ctx.me.email || '';
   root.innerHTML = `
     <div class="shell">
       <aside class="side no-print">
-        <div class="brand"><span class="mark">ปพ.</span><b>สมุดประจำชั้น</b>
-          <small>${ctx.settings.school_name ? `โรงเรียน${esc(ctx.settings.school_name)}` : 'ยังไม่ได้ตั้งชื่อโรงเรียน'}</small>
-          <small>${ctx.term ? `ภาคเรียนที่ ${ctx.term.term} ปีการศึกษา ${ctx.term.academic_year}` : 'ยังไม่ได้ตั้งภาคเรียน'}</small></div>
+        <div class="brand"><img class="mark" src="${BRAND.logo}" alt=""><b>${esc(BRAND.name)}</b>
+          <small id="brand-school">${esc(schoolLine(ctx))}</small>
+          <small id="brand-term">${esc(termLine(ctx))}</small></div>
         <nav class="nav">
           ${item('home', 'วันนี้')}
           <div class="sec">ธุรการชั้นเรียน</div>
@@ -169,9 +171,39 @@ async function route(ctx) {
   window.scrollTo(0, 0);
 }
 
+// ตารางโครงสร้าง (ภาคเรียน ห้อง วิชา ครู ผู้ใช้ ข้อมูลโรงเรียน) — มีการเปลี่ยนแปลงจากเครื่องใดก็โหลดข้อมูลชุดนี้ใหม่
+const STRUCTURE = ['terms', 'classrooms', 'classroom_teachers', 'subjects', 'courses', 'course_teachers', 'profiles', 'school_settings'];
+const KEEP = new Set(['refresh', 'go', 'params']);
 let hashHandler = null;
+let structureOffs = [];
+
+// ให้ ctx เป็นออบเจ็กต์เดียวตลอดการใช้งาน: refresh() เขียนข้อมูลใหม่ทับลงออบเจ็กต์เดิมทุกครั้ง
+// (เดิม refresh ครั้งที่ 2 เป็นต้นไปไปเขียนลงสำเนาที่ไม่มีหน้าจอใช้ ข้อมูลที่เพิ่งบันทึกจึงไม่ขึ้นจนกว่าจะรีเฟรช)
+function makeLive(ctx, userId) {
+  // ทำทีละครั้งตามลำดับ: เรียกหลังบันทึกเสร็จจะได้ข้อมูลที่รวมการบันทึกนั้นแน่นอน
+  let chain = Promise.resolve();
+  const load = async () => {
+    const fresh = await loadContext(userId);
+    for (const k of Object.keys(ctx)) if (!KEEP.has(k) && !(k in fresh)) delete ctx[k];
+    Object.assign(ctx, fresh);
+    const sc = document.getElementById('brand-school'); if (sc) sc.textContent = schoolLine(ctx);
+    const tm = document.getElementById('brand-term'); if (tm) tm.textContent = termLine(ctx);
+  };
+  ctx.refresh = () => { const p = chain.then(load, load); chain = p.catch(() => {}); return p; };
+  ctx.go = (view, params = {}) => { ctx.params = params; location.hash = view; };
+  return ctx;
+}
+
+function watchStructure(ctx) {
+  structureOffs.forEach((f) => { try { f(); } catch { /* */ } });
+  let t = null;
+  const later = () => { clearTimeout(t); t = setTimeout(() => ctx.refresh().catch(() => {}), 400); };
+  structureOffs = STRUCTURE.map((table) => db.subscribe(table, null, later));
+}
+
 async function boot() {
   if (hashHandler) window.removeEventListener('hashchange', hashHandler);
+  structureOffs.forEach((f) => { try { f(); } catch { /* */ } }); structureOffs = [];
   const s = await db.auth.session();
   if (!s) return renderLogin();
   let ctx;
@@ -184,7 +216,9 @@ async function boot() {
     $('#logout').addEventListener('click', async () => { await db.auth.signOut(); boot(); });
     return;
   }
+  makeLive(ctx, s.user.id);
   renderShell(ctx);
+  watchStructure(ctx);
   hashHandler = () => route(ctx);
   window.addEventListener('hashchange', hashHandler);
   route(ctx);

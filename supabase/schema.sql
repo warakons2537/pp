@@ -611,7 +611,9 @@ do $$ declare t text; begin
   if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
     foreach t in array array['daily_attendance','period_attendance','behavior_notes',
                              'item_scores','assessment_items','homeroom_comments','course_results','trait_scores','activity_results',
-                             'health_measurements','enrollments','students'] loop
+                             'health_measurements','enrollments','students',
+                             'terms','classrooms','classroom_teachers','subjects','courses','course_teachers',
+                             'profiles','school_settings'] loop
       begin
         execute format('alter publication supabase_realtime add table public.%I', t);
       exception when duplicate_object then null; end;

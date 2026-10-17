@@ -11,6 +11,7 @@ const thaiError = (e) => {
   if (/duplicate key/i.test(m)) return new Error('ข้อมูลซ้ำกับที่มีอยู่แล้ว');
   if (/Invalid login credentials/i.test(m)) return new Error('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
   if (/Email not confirmed/i.test(m)) return new Error('ยังไม่ได้ยืนยันอีเมล กรุณาเปิดลิงก์ในอีเมลก่อน');
+  if (/Invalid path specified/i.test(m)) return new Error(`ที่อยู่ฐานข้อมูลไม่ถูกต้อง (แอปกำลังใช้ ${String(SUPABASE_URL).trim() || '(ว่าง)'}) ต้องเป็น https://xxxx.supabase.co เท่านั้น ถ้าแก้ config.js แล้ว ให้รอ 10 นาทีแล้วกด Ctrl+F5`);
   return e instanceof Error ? e : new Error(m);
 };
 
@@ -20,7 +21,11 @@ const thaiError = (e) => {
 function supabaseDb() {
   if (/^sb_secret_/.test(SUPABASE_KEY)) throw new Error('js/config.js ใส่ Secret key ผิดช่อง ต้องใช้ Publishable key (sb_publishable_...) เท่านั้น');
   if (!window.supabase) throw new Error('โหลดไลบรารี supabase-js ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต แล้วรีเฟรชหน้า');
-  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  // ใช้เฉพาะ https://xxxx.supabase.co — ตัด /rest/v1/ หรือ / ท้ายที่มักติดมาตอนคัดลอก
+  let base;
+  try { base = new URL(SUPABASE_URL.trim()).origin; } catch { throw new Error('SUPABASE_URL ใน js/config.js ไม่ใช่ที่อยู่เว็บที่ถูกต้อง ต้องเป็นแบบ https://xxxx.supabase.co'); }
+  if (/(^|\.)supabase\.com$/.test(new URL(base).hostname)) throw new Error('SUPABASE_URL ใน js/config.js เป็นลิงก์หน้า Dashboard ต้องใช้ Project URL แบบ https://xxxx.supabase.co (ดูที่ Project Settings → Data API)');
+  const client = window.supabase.createClient(base, SUPABASE_KEY.trim());
   const run = async (p) => { const { data, error } = await p; if (error) throw thaiError(error); return data; };
   const applyMatch = (q, match) => { for (const [k, v] of Object.entries(match)) q = q.eq(k, v); return q; };
 

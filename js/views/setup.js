@@ -166,9 +166,14 @@ function subjects(pane, ctx, run) {
   };
   $('#add-course', pane).addEventListener('click', async () => {
     const r = await courseForm(); if (!r) return;
-    const cids = Object.keys(r).filter((x) => x.startsWith('c_')).map((x) => x.slice(2));
+    let cids = Object.keys(r).filter((x) => x.startsWith('c_')).map((x) => x.slice(2));
     if (!cids.length) { toast('กรุณาเลือกห้องอย่างน้อย 1 ห้อง', 'err'); return; }
     if (Number(r.midterm_ratio) + Number(r.final_ratio) !== 100) { toast('สัดส่วนคะแนนต้องรวมกันได้ 100', 'err'); return; }
+    // ห้องที่เปิดสอนวิชานี้ไปแล้ว ข้ามไป (กันข้อมูลซ้ำ)
+    const dup = cids.filter((cid) => ctx.courses.some((k) => k.subject_id === r.subject_id && k.classroom_id === cid));
+    cids = cids.filter((cid) => !dup.includes(cid));
+    if (dup.length) toast(`ห้อง ${dup.map((cid) => roomName(ctx.classroomById[cid])).join(', ')} เปิดสอนวิชานี้แล้ว จึงข้ามไป`, cids.length ? 'ok' : 'err');
+    if (!cids.length) return;
     run(async () => {
       const made = await ctx.db.insert('courses', cids.map((cid, i) => ({ subject_id: r.subject_id, classroom_id: cid, term_id: ctx.term.id,
         midterm_ratio: Number(r.midterm_ratio), final_ratio: Number(r.final_ratio), sort_order: ctx.courses.length + i + 1 })));

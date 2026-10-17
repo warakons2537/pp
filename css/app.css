@@ -77,8 +77,7 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
 }
 .brand { margin-right: 16px; background: var(--plate); color: var(--ink); border-radius: 4px; padding: 10px 12px;
   outline: 1px solid rgba(255,255,255,.25); outline-offset: 3px; display: grid; grid-template-columns: auto minmax(0,1fr); gap: 2px 10px; align-items: center; }
-.brand .mark { grid-row: span 3; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--pen); color: var(--pen);
-  display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: .95rem; letter-spacing: -.02em; }
+.brand .mark { grid-row: span 3; width: 44px; height: 44px; object-fit: contain; display: block; }
 .brand b { font-family: var(--font-display); font-size: 1.02rem; line-height: 1.25; }
 .brand small { font-size: .76rem; color: var(--ink-soft); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav { display: flex; flex-direction: column; gap: 1px; }
@@ -254,6 +253,8 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
 .login-cover { background: repeating-linear-gradient(135deg, rgba(255,255,255,.02) 0 2px, transparent 2px 5px), linear-gradient(160deg, var(--cover), var(--cover-deep));
   color: var(--cover-ink); padding: 36px 30px; display: flex; flex-direction: column; gap: 18px; justify-content: space-between; }
 .login-cover .plate { background: var(--plate); color: var(--ink); border-radius: 4px; padding: 16px 18px; outline: 1px solid rgba(255,255,255,.3); outline-offset: 4px; }
+.login-cover .plate { display: flex; gap: 14px; align-items: center; }
+.login-cover .plate .logo { width: 64px; height: 64px; flex: none; object-fit: contain; }
 .login-cover .plate b { font-family: var(--font-display); font-size: 1.45rem; display: block; line-height: 1.3; }
 .login-cover .plate span { color: var(--ink-soft); font-size: .88rem; }
 .login-cover ul { margin: 0; padding-left: 18px; font-size: .9rem; line-height: 1.9; opacity: .9; }
