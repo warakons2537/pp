@@ -270,6 +270,19 @@ create table if not exists public.trait_scores (
   primary key (term_id, student_id, kind, item_no)
 );
 
+-- แบบประเมินละเอียด: คะแนนรายพฤติกรรม (คุณลักษณะ 0–3) / รายข้อ (สมรรถนะ 1–3)
+-- ผลสรุปรายข้อถูกเขียนลง trait_scores ด้วย จึงใช้กับ ปพ.6 ได้ทันที
+create table if not exists public.assess_detail (
+  term_id      uuid not null references public.terms(id) on delete cascade,
+  student_id   uuid not null references public.students(id) on delete cascade,
+  form         text not null check (form in ('trait8','competency5')),
+  code         text not null,            -- เช่น 1.1.2 (คุณลักษณะ) หรือ 3.4 (สมรรถนะ)
+  score        smallint check (score between 0 and 3),
+  assessed_by  uuid default auth.uid(),
+  updated_at   timestamptz not null default now(),
+  primary key (term_id, student_id, form, code)
+);
+
 create table if not exists public.activity_results (
   term_id     uuid not null references public.terms(id) on delete cascade,
   student_id  uuid not null references public.students(id) on delete cascade,
@@ -421,7 +434,7 @@ language plpgsql as $$ begin new.updated_at = now(); return new; end $$;
 do $$ declare t text; begin
   foreach t in array array['students','student_private','daily_attendance','period_attendance',
                            'item_scores','course_results','trait_scores','activity_results',
-                           'homeroom_comments','health_measurements','school_settings'] loop
+                           'homeroom_comments','health_measurements','school_settings','assess_detail'] loop
     execute format('drop trigger if exists %I_touch on public.%I', t, t);
     execute format('create trigger %I_touch before update on public.%I
                     for each row execute function public.touch_updated_at()', t, t);
@@ -449,7 +462,7 @@ do $$ declare t text; begin
     'students','student_private','enrollments','subjects','courses','course_teachers',
     'daily_attendance','period_attendance','behavior_notes','assessment_items','item_scores',
     'course_results','trait_scores','activity_results','homeroom_comments',
-    'health_measurements','growth_reference'] loop
+    'health_measurements','growth_reference','assess_detail'] loop
     execute format('alter table public.%I enable row level security', t);
   end loop;
 end $$;
@@ -546,7 +559,7 @@ create trigger courses_guard before update on public.courses
 
 -- คุณลักษณะ/กิจกรรม/ความเห็น/สุขภาพ: ครูประจำชั้นของนักเรียนคนนั้น
 do $$ declare t text; begin
-  foreach t in array array['trait_scores','activity_results','homeroom_comments','health_measurements'] loop
+  foreach t in array array['trait_scores','activity_results','homeroom_comments','health_measurements','assess_detail'] loop
     execute format('create policy %I_read on public.%I for select using (public.is_staff())', t, t);
     execute format('create policy %I_write on public.%I for all
       using (public.is_admin() or public.is_homeroom_of_student(student_id))
@@ -611,7 +624,7 @@ do $$ declare t text; begin
   if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
     foreach t in array array['daily_attendance','period_attendance','behavior_notes',
                              'item_scores','assessment_items','homeroom_comments','course_results','trait_scores','activity_results',
-                             'health_measurements','enrollments','students',
+                             'health_measurements','enrollments','students','assess_detail',
                              'terms','classrooms','classroom_teachers','subjects','courses','course_teachers',
                              'profiles','school_settings'] loop
       begin

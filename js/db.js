@@ -108,7 +108,7 @@ function demoDb() {
     course_teachers: ['course_id', 'teacher_id'], student_private: ['student_id'],
     item_scores: ['item_id', 'student_id'], course_results: ['course_id', 'student_id'],
     trait_scores: ['term_id', 'student_id', 'kind', 'item_no'], activity_results: ['term_id', 'student_id', 'activity'],
-    homeroom_comments: ['term_id', 'student_id'], growth_reference: ['ref_set', 'sex', 'basis', 'key', 'measure'],
+    homeroom_comments: ['term_id', 'student_id'], assess_detail: ['term_id', 'student_id', 'form', 'code'], growth_reference: ['ref_set', 'sex', 'basis', 'key', 'measure'],
   };
   const pk = (t) => PK[t] || ['id'];
   const sameRow = (t, a, b) => pk(t).every((k) => a[k] === b[k]);

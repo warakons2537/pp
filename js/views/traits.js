@@ -2,9 +2,12 @@ import { esc, $, toast, modal, options, roomName, fullName } from '../util.js';
 import { getRoster } from '../data.js';
 import { attachGrid } from '../grid.js';
 import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js';
+import { detailPane } from './assess-detail.js';
+import { FORMS } from '../assess-forms.js';
 
 const pref = { room: null, tab: 'trait8' };
-const TABS = { ...Object.fromEntries(Object.entries(TRAIT_KINDS).map(([k, v]) => [k, v.short])), activities: 'กิจกรรมพัฒนาผู้เรียน', comments: 'ความเห็นครูประจำชั้น' };
+const TABS = { ...Object.fromEntries(Object.entries(TRAIT_KINDS).map(([k, v]) => [k, v.short])),
+  ...Object.fromEntries(Object.entries(FORMS).map(([k, v]) => [`d_${k}`, v.short])), activities: 'กิจกรรมพัฒนาผู้เรียน', comments: 'ความเห็นครูประจำชั้น' };
 
 export async function render(el, ctx) {
   const rooms = ctx.isAdmin ? ctx.classrooms : [...ctx.myClassrooms, ...ctx.classrooms.filter((c) => !ctx.myClassrooms.includes(c))];
@@ -26,6 +29,7 @@ export async function render(el, ctx) {
   const pane = $('#pane', el);
   if (!roster.length) { pane.innerHTML = '<div class="empty">ห้องนี้ยังไม่มีนักเรียน</div>'; return; }
   const ids = roster.map((s) => s.id);
+  if (pref.tab.startsWith('d_')) return detailPane(pane, ctx, room, roster, ids, canEdit, pref.tab.slice(2));
   if (pref.tab === 'activities') return activities(pane, ctx, roster, ids, canEdit);
   if (pref.tab === 'comments') return comments(pane, ctx, roster, ids, canEdit);
   return traitGrid(pane, ctx, roster, ids, canEdit, pref.tab);
