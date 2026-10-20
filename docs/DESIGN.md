@@ -26,6 +26,8 @@
 | คุณลักษณะอันพึงประสงค์, สมรรถนะ | `trait_scores` (trait8, rtw, values12, competency5) · หน้าคุณลักษณะ/กิจกรรม | 3 ✅ |
 | กิจกรรมพัฒนาผู้เรียน | `activity_results` + `homeroom_comments` | 3 ✅ |
 | ปก ปพ.5 รายชั้น/รายวิชา, ปพ.6, เล่ม ปพ.6, ใบรับรอง | หน้า "พิมพ์ ปพ." (`js/views/print.js` + `js/yeardata.js`) | 4 ✅ |
+| เล่ม ปพ. เหมือนไฟล์ต้นฉบับ (เติมแม่แบบของโรงเรียน เลือก/เรียงแผ่น/แนวกระดาษ) | `js/xlsx-template.js` + `js/pp-book.js` + `js/views/pp-book-view.js` · แม่แบบเก็บใน Storage `pp-files` | 5 ✅ (ระยะ 1) |
+| เล่ม ปพ. ดูตัวอย่าง/พิมพ์/PDF ในแอป (คำนวณสูตร + จัดหน้าแบบ Excel) · แผ่นรายคน | `js/xl-model.js` + `js/xl-formula.js` + `js/xl-numfmt.js` + `js/xl-render.js` | 5 ✅ (ระยะ 2) |
 
 ## 3. กติกาการคำนวณที่ถอดได้ (ระบบใหม่ต้องให้ผลตรงกับ Excel)
 

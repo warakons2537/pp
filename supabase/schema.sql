@@ -327,6 +327,7 @@ create table if not exists public.growth_reference (
 );
 
 -- ระยะที่ 3: น้ำหนัก-ส่วนสูงเก็บตาม "ครั้งที่ชั่งวัด" (1–4 ต่อปีการศึกษา) และตารางอ้างอิงมีได้หลายชุด
+alter table public.school_settings add column if not exists pp_template_name text;   -- ชื่อไฟล์ต้นฉบับ ปพ.5-6 ที่อัปโหลดไว้
 alter table public.health_measurements add column if not exists academic_year int;
 alter table public.health_measurements add column if not exists round smallint;
 alter table public.health_measurements drop constraint if exists health_measurements_student_id_measured_on_key;
@@ -631,5 +632,24 @@ do $$ declare t text; begin
         execute format('alter publication supabase_realtime add table public.%I', t);
       exception when duplicate_object then null; end;
     end loop;
+  end if;
+end $$;
+
+
+-- =====================================================================
+-- ที่เก็บไฟล์ของโรงเรียน (ไม่สาธารณะ) เช่น ไฟล์ต้นฉบับโปรแกรม ปพ.5-6
+-- อ่านได้: ครู/ผู้ดูแลที่อนุมัติแล้ว · อัปโหลด/ลบ: ผู้ดูแลระบบ
+-- =====================================================================
+do $$ begin
+  if exists (select 1 from information_schema.schemata where schema_name = 'storage') then
+    insert into storage.buckets (id, name, public) values ('pp-files', 'pp-files', false) on conflict (id) do nothing;
+    drop policy if exists pp_files_read on storage.objects;
+    drop policy if exists pp_files_write on storage.objects;
+    drop policy if exists pp_files_update on storage.objects;
+    drop policy if exists pp_files_delete on storage.objects;
+    create policy pp_files_read on storage.objects for select using (bucket_id = 'pp-files' and public.is_staff());
+    create policy pp_files_write on storage.objects for insert with check (bucket_id = 'pp-files' and public.is_admin());
+    create policy pp_files_update on storage.objects for update using (bucket_id = 'pp-files' and public.is_admin()) with check (bucket_id = 'pp-files' and public.is_admin());
+    create policy pp_files_delete on storage.objects for delete using (bucket_id = 'pp-files' and public.is_admin());
   end if;
 end $$;

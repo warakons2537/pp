@@ -3,9 +3,10 @@ import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toa
 import { loadRoomYear, personName } from '../yeardata.js';
 import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js';
 import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js';
+import { bookView } from './pp-book-view.js';
 
-const DOCS = { pp6: 'ปพ.6 รายบุคคล', coverClass: 'ปก ปพ.5 รายชั้น', coverCourse: 'ปก ปพ.5 รายวิชา', cert: 'ใบรับรองผลการศึกษา' };
-const pref = { doc: 'pp6', room: null, from: 1, to: 99, scope: 'term', page2: true, course: null,
+const DOCS = { book: 'เล่ม ปพ. (เหมือนไฟล์ต้นฉบับ)', pp6: 'ปพ.6 รายบุคคล', coverClass: 'ปก ปพ.5 รายชั้น', coverCourse: 'ปก ปพ.5 รายวิชา', cert: 'ใบรับรองผลการศึกษา' };
+const pref = { doc: 'book', room: null, from: 1, to: 99, scope: 'term', page2: true, course: null,
   certDate: null, certNo: '', certText: '', certGpa: true };
 let cache = { key: null, data: null };
 
@@ -34,8 +35,8 @@ export async function render(el, ctx) {
         <option value="year" ${pref.scope === 'year' ? 'selected' : ''}>ทั้งปีการศึกษา ${room.academic_year}</option></select></label>
         <label class="field" style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="page2" ${pref.page2 ? 'checked' : ''}> พิมพ์หน้า 2 (สุขภาพ ความเห็น เกณฑ์)</label>` : ''}
       ${pref.doc === 'coverCourse' ? '<label class="field">วิชา<select id="course"></select></label>' : ''}
-      <button class="btn btn-primary" id="print">พิมพ์ / บันทึก PDF</button>
-      ${inFrame ? '<span class="print-note muted">หน้าทดลองนี้เปิดหน้าต่างพิมพ์ไม่ได้ เมื่อติดตั้งแอปจริงจะพิมพ์ได้ทันที</span>' : ''}
+      ${pref.doc === 'book' ? '' : '<button class="btn btn-primary" id="print">พิมพ์ / บันทึก PDF</button>'}
+      ${inFrame && pref.doc !== 'book' ? '<span class="print-note muted">หน้าทดลองนี้เปิดหน้าต่างพิมพ์ไม่ได้ เมื่อติดตั้งแอปจริงจะพิมพ์ได้ทันที</span>' : ''}
     </div>
     ${pref.doc === 'cert' ? `<div class="card no-print"><div class="row">
       <label class="field">ออกให้ ณ วันที่<input type="date" id="c-date" value="${pref.certDate}"></label>
@@ -56,9 +57,10 @@ export async function render(el, ctx) {
   $('#c-no', el)?.addEventListener('change', (e) => { pref.certNo = e.target.value.trim(); again(); });
   $('#c-text', el)?.addEventListener('change', (e) => { pref.certText = e.target.value.trim(); again(); });
   $('#c-gpa', el)?.addEventListener('change', (e) => { pref.certGpa = e.target.checked; again(); });
-  $('#print', el).addEventListener('click', () => window.print());
+  $('#print', el)?.addEventListener('click', () => window.print());
 
   const paper = $('#paper', el);
+  if (pref.doc === 'book') { paper.closest('.card').classList.remove('print-area'); paper.classList.remove('a4-scroll'); paper.closest('.card').style.background = ''; return bookView(paper, ctx, room); }
   try {
     const key = `${room.id}|${ctx.term.id}`;
     if (cache.key !== key) cache = { key, data: await loadRoomYear(ctx, room) };

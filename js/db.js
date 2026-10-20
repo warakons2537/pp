@@ -59,6 +59,18 @@ function supabaseDb() {
     update: (t, match, patch) => run(applyMatch(client.from(t).update(patch), match).select()),
     remove: (t, match) => run(applyMatch(client.from(t).delete(), match)),
     rpc: (name, args) => run(client.rpc(name, args)),
+    // ไฟล์ส่วนตัวของโรงเรียน (เช่น ไฟล์ต้นฉบับ ปพ.) ในที่เก็บแบบไม่สาธารณะ
+    files: {
+      async upload(path, blob) { const { error } = await client.storage.from(FILE_BUCKET).upload(path, blob, { upsert: true, contentType: blob.type || 'application/octet-stream' }); if (error) throw thaiError(error); },
+      async download(path) { const { data, error } = await client.storage.from(FILE_BUCKET).download(path); if (error) { if (/not found|404|Object not found/i.test(error.message || '')) return null; throw thaiError(error); } return new Uint8Array(await data.arrayBuffer()); },
+      async info(path) {
+        const dir = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''; const name = path.slice(path.lastIndexOf('/') + 1);
+        const { data, error } = await client.storage.from(FILE_BUCKET).list(dir, { search: name });
+        if (error) throw thaiError(error);
+        const f = (data || []).find((x) => x.name === name); return f ? { size: f.metadata?.size ?? null, updated_at: f.updated_at || f.created_at } : null;
+      },
+      async remove(path) { const { error } = await client.storage.from(FILE_BUCKET).remove([path]); if (error) throw thaiError(error); },
+    },
     subscribe(table, filter, cb) {
       const ch = client.channel(`rt-${table}-${Math.random().toString(36).slice(2)}`)
         .on('postgres_changes',
@@ -76,6 +88,19 @@ function supabaseDb() {
 //  โหมดทดลอง: ข้อมูลอยู่ในเบราว์เซอร์นี้ + ส่งการเปลี่ยนแปลงข้ามแท็บแบบเรียลไทม์
 // ---------------------------------------------------------------------
 const DEMO_KEY = 'pp-demo-v4';
+export const FILE_BUCKET = 'pp-files';
+
+// โหมดทดลอง: เก็บไฟล์ใน IndexedDB ของเบราว์เซอร์
+function demoFiles() {
+  const open = () => new Promise((res, rej) => { const r = indexedDB.open('pp-demo-files', 1); r.onupgradeneeded = () => r.result.createObjectStore('f'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  const tx = async (mode, fn) => { const d = await open(); return new Promise((res, rej) => { const t = d.transaction('f', mode); const q = fn(t.objectStore('f')); t.oncomplete = () => res(q?.result); t.onerror = () => rej(t.error); }); };
+  return {
+    async upload(path, blob) { const bytes = new Uint8Array(await blob.arrayBuffer()); await tx('readwrite', (s) => s.put({ bytes, updated_at: new Date().toISOString() }, path)); },
+    async download(path) { const v = await tx('readonly', (s) => s.get(path)); return v ? v.bytes : null; },
+    async info(path) { const v = await tx('readonly', (s) => s.get(path)); return v ? { size: v.bytes.length, updated_at: v.updated_at } : null; },
+    async remove(path) { await tx('readwrite', (s) => s.delete(path)); },
+  };
+}
 
 function demoDb() {
   let state;
@@ -193,6 +218,7 @@ function demoDb() {
       gone.forEach((r) => emit(t, 'DELETE', r)); save();
     },
     async rpc(name, args) { return clone(RPC[name](args)); },
+    files: demoFiles(),
     subscribe(table, filter, cb) {
       const l = { table, fn: ({ type, row }) => {
         if (filter && type !== 'DELETE' && String(row[filter.col]) !== String(filter.val)) return;
