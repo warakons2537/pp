@@ -46,12 +46,20 @@ export async function render(el, ctx) {
       <span>นักเรียน ${riskAll.length} คน มาเรียนต่ำกว่าร้อยละ 80 ในภาคนี้</span></a>`] : []),
   ];
 
+  const initial = esc(((ctx.me.full_name || '').replace(/^(ครู|นาย|นางสาว|นาง)\s*/, '').replace(/^[เแโใไ]/, '')[0]) || '?');
+  const APPS = [['daily', 'เช็กชื่อประจำวัน'], ['period', 'เช็กชื่อรายคาบ'], ['students', 'นักเรียน'], ['scores', 'คะแนนรายวิชา'],
+    ['health', 'น้ำหนัก-ส่วนสูง'], ['traits', 'คุณลักษณะ/กิจกรรม'], ['print', 'พิมพ์ ปพ.6 / ปพ.5'], ['reports', 'รายงาน A4'],
+    ...(ctx.isAdmin ? [['setup', 'ตั้งค่าระบบ']] : [])];
+
   el.innerHTML = `
-    <section class="today">
-      <div><h1 class="date">${['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'][d.getDay()]}ที่ ${esc(thaiDate(today))}
-        <small>${greet} — ภาคเรียนที่ ${ctx.term.term} ปีการศึกษา ${ctx.term.academic_year}</small></h1></div>
-      ${rooms.length ? '<a class="btn btn-primary" href="#daily">เช็กชื่อวันนี้</a>' : ''}
+    <section class="welcome">
+      <div class="av" aria-hidden="true">${initial}</div>
+      <div><h1>${greet}</h1>
+        <p>${['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'][d.getDay()]}ที่ ${esc(thaiDate(today))} · ภาคเรียนที่ ${ctx.term.term} ปีการศึกษา ${ctx.term.academic_year}</p></div>
+      ${rooms.length ? '<a class="btn" href="#daily">เช็กชื่อวันนี้</a>' : ''}
     </section>
+    <div class="card"><div class="card-title">${icon('home')}เมนูลัด</div>
+      <nav class="apps">${APPS.map(([v, label]) => `<a href="#${v}" data-v="${v}"><span class="tile">${icon(v)}</span><span>${label}</span></a>`).join('')}</nav></div>
     ${rooms.length ? `<div class="todo">${todo.length ? todo.join('') : `<a href="#daily"><span class="dot" style="background:var(--green)"></span><span>เช็กชื่อวันนี้ครบทุกห้องแล้ว</span></a>`}</div>` : ''}
 
     ${rooms.length ? `<h2>ห้องที่ดูแล</h2>

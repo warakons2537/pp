@@ -1,5 +1,5 @@
 import { db } from './db.js';
-import { esc, $, $$, toast, indexBy, roomName } from './util.js';
+import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js';
 import { icon } from './icons.js';
 import { BRAND } from './brand.js';
 import * as home from './views/home.js';
@@ -126,8 +126,25 @@ function renderLogin() {
 const schoolLine = (ctx) => (ctx.settings.school_name ? `โรงเรียน${ctx.settings.school_name}` : 'ยังไม่ได้ตั้งชื่อโรงเรียน');
 const termLine = (ctx) => (ctx.term ? `ภาคเรียนที่ ${ctx.term.term} ปีการศึกษา ${ctx.term.academic_year}` : 'ยังไม่ได้ตั้งภาคเรียน');
 
+const NAV = { home: 'วันนี้', students: 'นักเรียน', daily: 'เช็กชื่อประจำวัน', period: 'เช็กชื่อรายคาบ', reports: 'รายงาน A4',
+  scores: 'คะแนนรายวิชา', health: 'น้ำหนัก-ส่วนสูง', traits: 'คุณลักษณะ/กิจกรรม', print: 'พิมพ์ ปพ.6 / ปพ.5', setup: 'ตั้งค่าระบบ' };
+let clockTimer = null;
+const THAI_DAYS = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+function tickClock() {
+  const d = new Date(); const dt = $('#tb-date span'); const tm = $('#tb-time span');
+  if (!dt || !tm) { clearInterval(clockTimer); clockTimer = null; return; }
+  dt.textContent = `วัน${THAI_DAYS[d.getDay()]}ที่ ${thaiDate(iso(d))}`;
+  tm.textContent = `${d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })} น.`;
+}
+function showNet() {
+  const el = $('#tb-net'); if (!el) return;
+  el.classList.toggle('off', !navigator.onLine); el.textContent = navigator.onLine ? 'ออนไลน์' : 'ออฟไลน์';
+}
+window.addEventListener('online', showNet);
+window.addEventListener('offline', showNet);
+
 function renderShell(ctx) {
-  const item = (v, label) => `<a href="#${v}" data-v="${v}">${icon(v)}<span>${label}</span></a>`;
+  const item = (v) => `<a href="#${v}" data-v="${v}">${icon(v)}<span>${NAV[v]}</span></a>`;
   const name = ctx.me.full_name || ctx.me.email || '';
   root.innerHTML = `
     <div class="shell">
@@ -136,33 +153,43 @@ function renderShell(ctx) {
           <small id="brand-school">${esc(schoolLine(ctx))}</small>
           <small id="brand-term">${esc(termLine(ctx))}</small></div>
         <nav class="nav">
-          ${item('home', 'วันนี้')}
+          ${item('home')}
           <div class="sec">ธุรการชั้นเรียน</div>
-          ${item('students', 'นักเรียน')}
-          ${item('daily', 'เช็กชื่อประจำวัน')}
-          ${item('period', 'เช็กชื่อรายคาบ')}
-          ${item('reports', 'รายงาน A4')}
+          ${item('students')}
+          ${item('daily')}
+          ${item('period')}
+          ${item('reports')}
           <div class="sec">ปพ.</div>
-          ${item('scores', 'คะแนนรายวิชา')}
-          ${item('health', 'น้ำหนัก-ส่วนสูง')}
-          ${item('traits', 'คุณลักษณะ/กิจกรรม')}
-          ${item('print', 'พิมพ์ ปพ.6 / ปพ.5')}
-          ${ctx.isAdmin ? `<div class="sec">ผู้ดูแล</div>${item('setup', 'ตั้งค่าระบบ')}` : ''}
+          ${item('scores')}
+          ${item('health')}
+          ${item('traits')}
+          ${item('print')}
+          ${ctx.isAdmin ? `<div class="sec">ผู้ดูแล</div>${item('setup')}` : ''}
         </nav>
-        <div class="who"><span class="avatar" aria-hidden="true">${esc((name.replace(/^(ครู|นาย|นางสาว|นาง)\s*/, '').replace(/^[เแโใไ]/, '')[0]) || '?')}</span><span title="${esc(name)}">${esc(name)}</span>
-          <button class="btn btn-sm" id="logout" title="ออกจากระบบ" aria-label="ออกจากระบบ">${icon('logout')}</button></div>
       </aside>
-      <main class="main">${db.mode === 'demo' ? `<div class="demo-bar no-print"><span><b>โหมดทดลอง</b> ข้อมูลตัวอย่าง (ชื่อสมมติ) เก็บในเบราว์เซอร์นี้เท่านั้น</span>
-        <button class="btn btn-sm" id="demo-reset">ล้างข้อมูลทดลอง</button></div>` : ''}<div class="main-inner" id="view"></div></main>
+      <main class="main">
+        <header class="topbar no-print">
+          <div class="tb-title" id="tb-title"></div>
+          <div class="tb-clock"><span id="tb-date">${icon('daily')}<span></span></span><i class="sep"></i><span id="tb-time">${icon('period')}<span></span></span></div>
+          <span class="live tb-net" id="tb-net"></span>
+          <div class="tb-user"><span class="avatar" aria-hidden="true">${esc((name.replace(/^(ครู|นาย|นางสาว|นาง)\s*/, '').replace(/^[เแโใไ]/, '')[0]) || '?')}</span>
+            <span class="nm"><b title="${esc(name)}">${esc(name)}</b><small>${ctx.isAdmin ? 'ผู้ดูแลระบบ' : 'ครู'}</small></span>
+            <button class="btn btn-sm" id="logout" title="ออกจากระบบ" aria-label="ออกจากระบบ">${icon('logout')}</button></div>
+        </header>
+        <div class="main-pad">${db.mode === 'demo' ? `<div class="demo-bar no-print"><span><b>โหมดทดลอง</b> ข้อมูลตัวอย่าง (ชื่อสมมติ) เก็บในเบราว์เซอร์นี้เท่านั้น</span>
+        <button class="btn btn-sm" id="demo-reset">ล้างข้อมูลทดลอง</button></div>` : ''}<div class="main-inner" id="view"></div></div></main>
     </div>`;
   $('#logout').addEventListener('click', async () => { await db.auth.signOut(); boot(); });
   $('#demo-reset')?.addEventListener('click', async () => { db.resetDemo(); await db.auth.signOut(); boot(); });
+  clearInterval(clockTimer); tickClock(); clockTimer = setInterval(tickClock, 1000);
+  showNet();
 }
 
 async function route(ctx) {
   const v = (location.hash.replace('#', '') || 'home').split('?')[0];
   const view = VIEWS[v] && (v !== 'setup' || ctx.isAdmin) ? v : 'home';
   $$('.nav a[data-v]').forEach((a) => a.classList.toggle('on', a.dataset.v === view));
+  const tt = $('#tb-title'); if (tt) tt.textContent = NAV[view] || '';
   if (cleanup) { try { cleanup(); } catch { /* */ } cleanup = null; }
   const el = $('#view');
   el.innerHTML = '<p class="muted">กำลังโหลด…</p>';

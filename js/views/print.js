@@ -2,11 +2,13 @@
 import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js';
 import { loadRoomYear, personName } from '../yeardata.js';
 import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js';
+import { icon } from '../icons.js';
 import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js';
 import { bookView } from './pp-book-view.js';
+import { listView, studentView, missingOf, termsOf } from './pp6-hub.js';
 
 const DOCS = { book: 'เล่ม ปพ. (เหมือนไฟล์ต้นฉบับ)', pp6: 'ปพ.6 รายบุคคล', coverClass: 'ปก ปพ.5 รายชั้น', coverCourse: 'ปก ปพ.5 รายวิชา', cert: 'ใบรับรองผลการศึกษา' };
-const pref = { doc: 'book', room: null, from: 1, to: 99, scope: 'term', page2: true, course: null,
+const pref = { doc: 'book', room: null, from: 1, to: 99, scope: 'term', page2: true, course: null, pp6View: 'list', stu: null,
   certDate: null, certNo: '', certText: '', certGpa: true };
 let cache = { key: null, data: null };
 
@@ -23,11 +25,13 @@ export async function render(el, ctx) {
   pref.certDate ??= todayIso();
   const room = ctx.classroomById[pref.room];
   const inFrame = window.self !== window.top;
+  if (pref.doc === 'pp6' && pref.pp6View !== 'paper') return hub(el, ctx, rooms, room);
 
   el.innerHTML = `
     <div class="page-head"><div><h1>พิมพ์เอกสาร ปพ.</h1><p>ดูตัวอย่างทุกหน้าก่อนพิมพ์ แต่ละคนขึ้นหน้าใหม่ให้อัตโนมัติ</p></div></div>
-    <div class="tabs no-print">${Object.entries(DOCS).map(([k, v]) => `<button data-doc="${k}" class="${pref.doc === k ? 'on' : ''}">${v}</button>`).join('')}</div>
+    ${tabsHtml()}
     <div class="row no-print">
+      ${pref.doc === 'pp6' ? `<button class="btn btn-pill" id="pp6-back">${icon('back')}กลับไปรายชื่อ</button>` : ''}
       <label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label>
       ${['pp6', 'cert'].includes(pref.doc) ? `<label class="field">เลขที่<span class="row" style="gap:4px;align-items:center">
         <input type="number" id="from" min="1" value="${pref.from}" style="width:70px"> ถึง <input type="number" id="to" min="1" value="${pref.to}" style="width:70px"></span></label>` : ''}
@@ -47,8 +51,9 @@ export async function render(el, ctx) {
     <div class="card print-area" style="background:var(--paper)"><div class="a4-scroll" id="paper"><p class="muted">กำลังรวบรวมข้อมูลทั้งปี…</p></div></div>`;
 
   const again = () => render(el, ctx);
-  el.querySelectorAll('[data-doc]').forEach((b) => b.addEventListener('click', () => { pref.doc = b.dataset.doc; again(); }));
-  $('#room', el).addEventListener('change', (e) => { pref.room = e.target.value; pref.from = 1; pref.to = 99; again(); });
+  wireTabs(el, again);
+  $('#pp6-back', el)?.addEventListener('click', () => { pref.pp6View = 'list'; again(); });
+  $('#room', el).addEventListener('change', (e) => { pref.room = e.target.value; pref.from = 1; pref.to = 99; pref.pp6View = 'list'; again(); });
   $('#from', el)?.addEventListener('change', (e) => { pref.from = Number(e.target.value) || 1; again(); });
   $('#to', el)?.addEventListener('change', (e) => { pref.to = Number(e.target.value) || 99; again(); });
   $('#scope', el)?.addEventListener('change', (e) => { pref.scope = e.target.value; again(); });
@@ -62,9 +67,7 @@ export async function render(el, ctx) {
   const paper = $('#paper', el);
   if (pref.doc === 'book') { paper.closest('.card').classList.remove('print-area'); paper.classList.remove('a4-scroll'); paper.closest('.card').style.background = ''; return bookView(paper, ctx, room); }
   try {
-    const key = `${room.id}|${ctx.term.id}`;
-    if (cache.key !== key) cache = { key, data: await loadRoomYear(ctx, room) };
-    const d = cache.data;
+    const d = await getData(ctx, room);
     const pt = d.perTerm[ctx.term.id];
     if (pref.doc === 'coverCourse') {
       const sel = $('#course', el);
@@ -74,11 +77,59 @@ export async function render(el, ctx) {
       sel.addEventListener('change', (e) => { pref.course = e.target.value; again(); });
     }
     const pick = d.roster.filter((s) => (s.number ?? 0) >= pref.from && (s.number ?? 0) <= pref.to);
-    if (pref.doc === 'pp6') paper.innerHTML = pick.length ? pick.map((s) => pp6(ctx, d, s)).join('') : '<div class="empty">ไม่มีนักเรียนในช่วงเลขที่ที่เลือก</div>';
+    if (pref.doc === 'pp6') {
+      // ล็อกการพิมพ์: ไม่แสดงคนที่ยังมีวิชาไม่มีเกรดหรือคะแนนไม่ครบ
+      const ok = pick.filter((s) => !missingOf(d, termsOf(ctx, d, pref.scope), s).length);
+      const skip = pick.length - ok.length;
+      paper.innerHTML = (skip ? `<div class="empty no-print">ไม่แสดง ${skip} คนที่ยังมีวิชาไม่มีเกรดหรือคะแนนไม่ครบ (ดูได้ที่ "กลับไปรายชื่อ")</div>` : '')
+        + (ok.length ? ok.map((s) => pp6(ctx, d, s)).join('') : (skip ? '' : '<div class="empty">ไม่มีนักเรียนในช่วงเลขที่ที่เลือก</div>'));
+    }
     else if (pref.doc === 'coverClass') paper.innerHTML = coverClass(ctx, d, pt);
     else if (pref.doc === 'coverCourse') paper.innerHTML = pref.course ? coverCourse(ctx, d, pt, pt.results.find((r) => r.course.id === pref.course)) : '<div class="empty">ห้องนี้ยังไม่มีรายวิชาในภาคเรียนนี้</div>';
     else paper.innerHTML = pick.length ? pick.map((s, i) => cert(ctx, d, s, i)).join('') : '<div class="empty">ไม่มีนักเรียนในช่วงเลขที่ที่เลือก</div>';
   } catch (err) { console.error(err); paper.innerHTML = `<div class="empty">จัดหน้าไม่สำเร็จ: ${esc(err.message)}</div>`; toast(err.message, 'err'); }
+  return () => { cache = { key: null, data: null }; };
+}
+
+// ---------------------------------------------------------------------
+//  ปพ.6: ตารางรายชื่อ / หน้าเกรดรายคน (ดู js/views/pp6-hub.js)
+// ---------------------------------------------------------------------
+const tabsHtml = () => `<div class="tabs no-print">${Object.entries(DOCS).map(([k, v]) => `<button data-doc="${k}" class="${pref.doc === k ? 'on' : ''}">${v}</button>`).join('')}</div>`;
+const wireTabs = (el, again) => el.querySelectorAll('[data-doc]').forEach((b) => b.addEventListener('click', () => {
+  if (b.dataset.doc === 'pp6' && pref.doc !== 'pp6') pref.pp6View = 'list';
+  pref.doc = b.dataset.doc; again(); }));
+async function getData(ctx, room) {
+  const key = `${room.id}|${ctx.term.id}`;
+  if (cache.key !== key) cache = { key, data: await loadRoomYear(ctx, room) };
+  return cache.data;
+}
+
+async function hub(el, ctx, rooms, room) {
+  const again = () => render(el, ctx);
+  el.innerHTML = `
+    <div class="page-head"><div><h1>พิมพ์เอกสาร ปพ.</h1><p>ตรวจเกรดรายคนก่อนพิมพ์ ปพ.6 · คนที่ยังมีวิชาไม่มีเกรดหรือคะแนนไม่ครบจะพิมพ์ไม่ได้</p></div></div>
+    ${tabsHtml()}
+    <div class="card no-print"><div class="row">
+      <label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label>
+      <label class="field">ช่วงข้อมูล<select id="scope"><option value="term" ${pref.scope === 'term' ? 'selected' : ''}>ภาคเรียนที่ ${ctx.term.term} (ภาคปัจจุบัน)</option>
+        <option value="year" ${pref.scope === 'year' ? 'selected' : ''}>ทั้งปีการศึกษา ${room.academic_year}</option></select></label>
+    </div></div>
+    <div id="hub" style="display:flex;flex-direction:column;gap:16px"><p class="muted">กำลังรวบรวมข้อมูลทั้งปี…</p></div>`;
+  wireTabs(el, again);
+  $('#room', el).addEventListener('change', (e) => { pref.room = e.target.value; pref.pp6View = 'list'; pref.stu = null; again(); });
+  $('#scope', el).addEventListener('change', (e) => { pref.scope = e.target.value; again(); });
+  const box = $('#hub', el);
+  const toPaper = (from, to) => { pref.from = from; pref.to = to; pref.pp6View = 'paper'; again(); };
+  try {
+    const d = await getData(ctx, room);
+    const common = { scope: pref.scope, onPrint: (s) => toPaper(s.number ?? 0, s.number ?? 0) };
+    if (pref.pp6View === 'student' && pref.stu) {
+      studentView(box, ctx, d, pref.stu, { ...common, onBack: () => { pref.pp6View = 'list'; again(); } });
+    } else {
+      pref.pp6View = 'list';
+      listView(box, ctx, d, { ...common, onView: (id) => { pref.stu = id; pref.pp6View = 'student'; again(); }, onPrintAll: () => toPaper(1, 999) });
+    }
+  } catch (err) { console.error(err); box.innerHTML = `<div class="empty">โหลดข้อมูลไม่สำเร็จ: ${esc(err.message)}</div>`; toast(err.message, 'err'); }
   return () => { cache = { key: null, data: null }; };
 }
 
