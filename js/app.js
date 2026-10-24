@@ -1,7 +1,7 @@
 import { db } from './db.js';
 import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js';
 import { icon } from './icons.js';
-import { BRAND } from './brand.js';
+import { BRAND, VERSION } from './brand.js';
 import * as home from './views/home.js';
 import * as students from './views/students.js';
 import * as daily from './views/daily.js';
@@ -67,7 +67,8 @@ function loginCover(sub) {
     <div class="plate"><img class="logo" src="${BRAND.logo}" alt=""><div><b>${esc(BRAND.name)}</b><span>${esc(BRAND.tagline)}</span></div></div>
     <ul><li>เช็กชื่อรายวันและรายคาบ เห็นพร้อมกันทุกเครื่อง</li><li>กรอกคะแนน ตัดเกรด คิด มส ให้อัตโนมัติ</li>
       <li>น้ำหนัก-ส่วนสูงตามเกณฑ์กรมอนามัย</li><li>พิมพ์ ปพ.6 ทั้งห้องในครั้งเดียว</li></ul>
-    <small style="opacity:.75">${sub}</small></div>`;
+    <small style="opacity:.75">${sub}</small>
+    <small style="opacity:.6">เวอร์ชัน ${VERSION}</small></div>`;
 }
 
 function renderLogin() {
@@ -151,7 +152,8 @@ function renderShell(ctx) {
       <aside class="side no-print">
         <div class="brand"><img class="mark" src="${BRAND.logo}" alt=""><b>${esc(BRAND.name)}</b>
           <small id="brand-school">${esc(schoolLine(ctx))}</small>
-          <small id="brand-term">${esc(termLine(ctx))}</small></div>
+          <small id="brand-term">${esc(termLine(ctx))}</small>
+          <small class="ver" title="ถ้าไม่ใช่เลขล่าสุด ให้กด Ctrl+F5">เวอร์ชัน ${VERSION}</small></div>
         <nav class="nav">
           ${item('home')}
           <div class="sec">ธุรการชั้นเรียน</div>

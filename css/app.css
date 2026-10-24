@@ -86,7 +86,7 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
 }
 .brand { color: #fff; padding: 4px 6px 14px; border-bottom: 1px solid rgba(255,255,255,.08);
   display: grid; grid-template-columns: auto minmax(0,1fr); gap: 1px 10px; align-items: center; }
-.brand .mark { grid-row: span 3; width: 44px; height: 44px; object-fit: contain; display: block; background: var(--plate); border-radius: 10px; padding: 3px; }
+.brand .mark { grid-row: span 4; width: 44px; height: 44px; object-fit: contain; display: block; background: var(--plate); border-radius: 10px; padding: 3px; }
 .brand b { font-family: var(--font-display); font-size: 1rem; line-height: 1.25; }
 .brand small { font-size: .74rem; color: var(--cover-ink); opacity: .75; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav { display: flex; flex-direction: column; gap: 2px; }
