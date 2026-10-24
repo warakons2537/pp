@@ -75,6 +75,7 @@ export async function buildBookData(ctx, room) {
           scores: sc.slice(0, 48).map((i) => { const v = data.scoreMap.get(`${i.id}|${s.id}`)?.score; return v === null || v === undefined ? null : Number(v); }),
           final: fin.some((i) => data.scoreMap.get(`${i.id}|${s.id}`)?.score != null) ? x.final : null,
           special: res.special || (x.grade === 'มส' ? 'มส' : null),
+          calc: { mid: x.mid ?? null, final: x.final ?? null, total: x.total ?? null, grade: x.grade ?? null },   // ผลที่แอปคำนวณ (แบบฟอร์มในตัว)
         };
       }),
     });
@@ -113,7 +114,7 @@ export async function buildBookData(ctx, room) {
 
   return {
     level: levelName(room.level), levelShort: room.level, room: room.room, term: term.term, year: term.academic_year,
-    school: ctx.settings, students, subjects, rounds: rounds.map((r) => r.date), warnings,
+    school: ctx.settings, students, subjects, rounds: rounds.map((r) => r.date), warnings, approveDate: term.approve_date || null,
     homeroom: (ctx.homeroomTeachers?.(room.id) || []).map((x) => x.full_name).filter(Boolean),
   };
 }

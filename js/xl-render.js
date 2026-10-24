@@ -12,6 +12,7 @@ import { shiftFormula } from './xlsx-template.js';
 
 export const PAPER = { 9: [595.28, 841.89], 1: [612, 792], 5: [612, 1008], 8: [841.89, 1190.55], 11: [419.53, 595.28] };
 const PT_PER_PX = 0.75; const EMU_PER_PT = 12700;
+const BLEED = 1.5;   // pt
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const f2 = (x) => Math.round(x * 100) / 100;
 
@@ -20,8 +21,15 @@ const THAI_LEGACY = /^(TH ?Sarabun|THSarabun|TH ?Niramit|TH ?Kodchasal|TH ?Krub|
 // ความกว้างตัวเลขเฉลี่ยต่อ em (ใช้หา MDW ของฟอนต์มาตรฐาน)
 const DIGIT_EM = { arial: 0.556, calibri: 0.507, tahoma: 0.546, 'times new roman': 0.5, cambria: 0.556, 'th sarabunpsk': 0.38, 'th sarabun new': 0.38, 'angsana new': 0.34, cordiaupc: 0.34, 'cordia new': 0.34 };
 
+// ฟอนต์ราชการที่ฝังในแอป (js/thai-fonts.js): ใช้แทน TH Sarabun ทุกแบบในแบบพิมพ์
+let THAI_FACE = null;
+const SARABUN = /^(TH ?Sarabun|THSarabun)/i;
+export function setThaiFace(family) { THAI_FACE = family || null; }
+const embedded = (name) => !!THAI_FACE && SARABUN.test(name || '');
+
 export function fontStack(name) {
   const n = name || 'Calibri';
+  if (embedded(n)) return `'${THAI_FACE}','${n}','TH SarabunPSK','Sarabun',sans-serif`;
   if (THAI_LEGACY.test(n)) return `'${n}','TH SarabunPSK','TH Sarabun New','THSarabunNew','XL Thai Fallback','Sarabun',sans-serif`;
   if (/^Arial Black$/i.test(n)) return "'Arial Black','Arial',sans-serif";
   if (/^(Arial|Helvetica|FreeSans|Liberation Sans)$/i.test(n)) return `'${n}','Arial','Liberation Sans','Helvetica',sans-serif`;
@@ -41,7 +49,7 @@ export function makeMeasurer({ legacyAvailable = () => true } = {}) {
   }
   return (text, font) => {
     if (!canvasCtx) canvasCtx = document.createElement('canvas').getContext('2d');
-    const sz = (font.sz || 11) * (THAI_LEGACY.test(font.name || '') && !legacyAvailable(font.name) ? THAI_ADJ : 1);
+    const sz = (font.sz || 11) * (THAI_LEGACY.test(font.name || '') && !embedded(font.name) && !legacyAvailable(font.name) ? THAI_ADJ : 1);
     canvasCtx.font = `${font.i ? 'italic ' : ''}${font.b ? 'bold ' : ''}${sz}pt ${fontStack(font.name)}`;
     return canvasCtx.measureText(String(text)).width * PT_PER_PX * (96 / 72) * (72 / 96);
   };
@@ -77,7 +85,8 @@ export class Renderer {
    */
   constructor(wb, eng, opts = {}) {
     this.wb = wb; this.eng = eng; this.st = wb.styles;
-    this.legacyAvailable = opts.legacyAvailable || (() => true);
+    const la = opts.legacyAvailable || (() => true);
+    this.legacyAvailable = (n) => embedded(n) || la(n);
     this.measure = opts.measure || makeMeasurer({ legacyAvailable: this.legacyAvailable });
     this.imageUrl = opts.imageUrl || (() => null);
     const nf = this.st.normalFont || { name: 'Calibri', sz: 11 };
@@ -204,7 +213,8 @@ export class Renderer {
         const ar = areas[0];
         const W = sumW(ar.c1, ar.c2); const H = sumH(ar.r1, ar.r2);
         const cand = [];
-        if (fw > 0) cand.push(availW * fw / W); if (fh > 0) cand.push(availH * fh / H);
+        // เผื่อเส้นขอบนอกสุด (BLEED) ไม่ให้ชนขอบกระดาษ
+        if (fw > 0) cand.push((availW - 2 * BLEED) * fw / W); if (fh > 0) cand.push((availH - 2 * BLEED) * fh / H);
         if (cand.length) p = Math.min(100, Math.floor(Math.min(...cand) * 100 + 1e-9));
       }
       p = Math.max(10, p);
@@ -364,7 +374,8 @@ export class Renderer {
     // รูปวาด
     const draws = this.drawingsHtml(sh, g, rb, cb, X, Y);
     const fillHtml = fills.map((f) => `<div class="xl-f" style="left:${f2(f.x0)}pt;top:${f2(f.y0)}pt;width:${f2(f.w)}pt;height:${f2(f.h)}pt;background:${f.bg}"></div>`).join('');
-    return `<div class="xl-blk" style="left:${f2(cb.off)}pt;top:${f2(rb.off)}pt;width:${f2(cb.size)}pt;height:${f2(rb.size)}pt">${fillHtml}${lines.join('')}${texts.join('')}${draws}</div>`;
+    // เผื่อขอบ BLEED รอบบล็อก ให้เส้นขอบด้านนอกสุดของตารางไม่ถูกตัดครึ่ง
+    return `<div class="xl-blk" style="left:${f2(cb.off - BLEED)}pt;top:${f2(rb.off - BLEED)}pt;width:${f2(cb.size + 2 * BLEED)}pt;height:${f2(rb.size + 2 * BLEED)}pt"><div class="xl-in">${fillHtml}${lines.join('')}${texts.join('')}${draws}</div></div>`;
   }
 
   collectBorders(sh, g, r, c, mm, hEdges, vEdges) {
@@ -618,6 +629,7 @@ export const XL_CSS = `
 .xl-page{position:relative;overflow:hidden;contain:strict;background:#fff;color:#000;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .xl-content{position:absolute;transform-origin:0 0}
 .xl-blk{position:absolute;overflow:hidden}
+.xl-in{position:absolute;left:1.5pt;top:1.5pt}
 .xl-f,.xl-b,.xl-t,.xl-s,.xl-d{position:absolute;box-sizing:border-box}
 .xl-b{width:0;height:0}
 .xl-t{display:flex;padding:0 1.5pt;white-space:pre;overflow:hidden;line-height:1.15;font-kerning:normal}

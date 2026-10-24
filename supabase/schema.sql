@@ -328,6 +328,7 @@ create table if not exists public.growth_reference (
 
 -- ระยะที่ 3: น้ำหนัก-ส่วนสูงเก็บตาม "ครั้งที่ชั่งวัด" (1–4 ต่อปีการศึกษา) และตารางอ้างอิงมีได้หลายชุด
 alter table public.school_settings add column if not exists pp_template_name text;   -- ชื่อไฟล์ต้นฉบับ ปพ.5-6 ที่อัปโหลดไว้
+alter table public.terms add column if not exists approve_date date;                   -- วันที่อนุมัติผลการเรียน (ลงในแบบพิมพ์ ปพ.)
 alter table public.health_measurements add column if not exists academic_year int;
 alter table public.health_measurements add column if not exists round smallint;
 alter table public.health_measurements drop constraint if exists health_measurements_student_id_measured_on_key;

@@ -11,6 +11,7 @@ import { downloadBytes } from '../xlsx-write.js';
 import { Workbook } from '../xl-model.js';
 import { Engine } from '../xl-formula.js';
 import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js';
+import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js';
 
 const PATH = 'pp/template';
 let cache = { at: null, bytes: null, t: null };          // ไฟล์ต้นฉบับที่โหลดแล้ว (อยู่ในหน่วยความจำ)
@@ -164,6 +165,7 @@ export async function bookView(paper, ctx, room) {
   }
   function renderer() {
     if (book.R) return book.R;
+    // ฟอนต์ที่ฝังในแอปต้องโหลดเสร็จก่อนวัดข้อความ (เรียก useThaiFont ก่อนแล้วใน pagesOfNow)
     const legacy = (n) => legacyThaiAvailable(n);
     book.R = new Renderer(book.wb, book.eng, {
       dpi: layout.dpi, legacyAvailable: legacy,
@@ -185,9 +187,10 @@ export async function bookView(paper, ctx, room) {
     return pr;
   }
   async function pagesOfNow(n, progress) {
+    if (book.font !== getThaiFont()) { await useThaiFont(); book.font = getThaiFont(); book.R = null; book.pages.clear(); }
     const p = per.get(n);
     const list = p ? parseWho(layout.who[n], book.data.students.length) : null;
-    const k = `${n}|${layout.orient[n] || ''}|${layout.fit[n] || ''}|${layout.dpi}|${list ? list.join(',') : ''}`;
+    const k = `${n}|${book.font}|${layout.orient[n] || ''}|${layout.fit[n] || ''}|${layout.dpi}|${list ? list.join(',') : ''}`;
     if (book.pages.has(k)) return book.pages.get(k);
     const opt = { orientation: layout.orient[n] || null, fit: layout.fit[n] || null };
     let pages;
@@ -225,12 +228,13 @@ export async function bookView(paper, ctx, room) {
     }
     const total = groups.reduce((s, g) => s + g.pages.length, 0);
     const picked = () => groups.reduce((s, g) => s + g.pages.filter((_, i) => !(layout.skip[g.n] || []).includes(i)).length, 0);
-    const legacyOk = legacyThaiAvailable('TH SarabunPSK');
+    const legacyOk = true;   // ใช้ฟอนต์ที่ฝังในแอป (js/thai-fonts.js)
     const z = +layout.zoom;
     pv.innerHTML = `
       <div class="row" style="justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;position:sticky;top:0;background:var(--sheet);z-index:2;padding:4px 0">
         <h3 style="margin:0">ตัวอย่างเล่ม ปพ. <span class="small muted" id="pv-count"></span></h3>
         <div class="row" style="flex-wrap:wrap">
+          ${fontSelectHtml('pv-font')}
           <label class="small">ขนาด <select id="pv-zoom">${Object.entries(ZOOM).map(([v, l]) => `<option value="${v}" ${+v === z ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
           <button class="btn btn-sm" id="pv-all">เลือกทุกหน้า</button>
           <button class="btn btn-sm" id="pv-reload" title="ดึงข้อมูลล่าสุดของห้องมาใหม่">โหลดข้อมูลใหม่</button>
@@ -272,6 +276,7 @@ export async function bookView(paper, ctx, room) {
       store(); count();
     };
     $('#pv-zoom', pv).addEventListener('change', (e) => { layout.zoom = +e.target.value; store(); showPreview(); });
+    $('#pv-font', pv).addEventListener('change', (e) => { setThaiFont(e.target.value); book.R = null; book.pages.clear(); showPreview(); });
     $('#pv-all', pv).addEventListener('click', () => { for (const g of groups) delete layout.skip[g.n]; store(); showPreview(); });
     $('#pv-reload', pv).addEventListener('click', () => showPreview(true));
     $('#pv-print', pv).addEventListener('click', async (e) => {
@@ -328,7 +333,7 @@ function reportHtml(data, report, plain = false) {
 }
 
 // สไตล์ของตัวอย่าง (ใส่ครั้งเดียว)
-function ensureCss() {
+export function ensureCss() {
   if (document.getElementById('xl-css')) return;
   const st = document.createElement('style'); st.id = 'xl-css';
   st.textContent = `${XL_CSS}
@@ -342,7 +347,7 @@ function ensureCss() {
 }
 
 // พิมพ์ผ่าน iframe แยก: กระดาษ A4 ไม่มีระยะขอบของเบราว์เซอร์ หน้าแนวนอนใช้หน้ากระดาษแนวนอน
-async function printPages(list, title, tab = null) {
+export async function printPages(list, title, tab = null) {
   let ifr = null; let doc;
   if (tab) doc = tab.document;
   else {
@@ -356,7 +361,8 @@ async function printPages(list, title, tab = null) {
   doc.open();
   doc.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <link rel="stylesheet" href="${fontLink}">
-<style>${XL_CSS}
+<style>${fontFaceCss()}
+${XL_CSS}
 @page{size:A4 portrait;margin:0} @page xl-land{size:A4 landscape;margin:0}
 html,body{margin:0;padding:0;background:#fff}
 .pg{break-after:page;page-break-after:always;overflow:hidden;position:relative;width:210mm;height:297mm}

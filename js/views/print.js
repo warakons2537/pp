@@ -6,6 +6,7 @@ import { icon } from '../icons.js';
 import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js';
 import { bookView } from './pp-book-view.js';
 import { listView, studentView, missingOf, termsOf } from './pp6-hub.js';
+import { pp6FormsView } from './pp6-forms-view.js';
 
 const DOCS = { book: 'เล่ม ปพ. (เหมือนไฟล์ต้นฉบับ)', pp6: 'ปพ.6 รายบุคคล', coverClass: 'ปก ปพ.5 รายชั้น', coverCourse: 'ปก ปพ.5 รายวิชา', cert: 'ใบรับรองผลการศึกษา' };
 const pref = { doc: 'book', room: null, from: 1, to: 99, scope: 'term', page2: true, course: null, pp6View: 'list', stu: null,
@@ -25,6 +26,8 @@ export async function render(el, ctx) {
   pref.certDate ??= todayIso();
   const room = ctx.classroomById[pref.room];
   const inFrame = window.self !== window.top;
+  // ปพ.6 รายภาคเรียน: ใช้แบบพิมพ์ในตัว (เหมือนไฟล์ ปพ.5-6 เดิม) · ทั้งปีการศึกษา: แบบที่แอปจัดเอง (ไฟล์เดิมไม่มีแบบรายปี)
+  const nativePp6 = pref.doc === 'pp6' && pref.scope === 'term';
   if (pref.doc === 'pp6' && pref.pp6View !== 'paper') return hub(el, ctx, rooms, room);
 
   el.innerHTML = `
@@ -35,11 +38,11 @@ export async function render(el, ctx) {
       <label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label>
       ${['pp6', 'cert'].includes(pref.doc) ? `<label class="field">เลขที่<span class="row" style="gap:4px;align-items:center">
         <input type="number" id="from" min="1" value="${pref.from}" style="width:70px"> ถึง <input type="number" id="to" min="1" value="${pref.to}" style="width:70px"></span></label>` : ''}
-      ${pref.doc === 'pp6' ? `<label class="field">ช่วงข้อมูล<select id="scope"><option value="term" ${pref.scope === 'term' ? 'selected' : ''}>ภาคเรียนที่ ${ctx.term.term} (ภาคปัจจุบัน)</option>
+      ${pref.doc === 'pp6' && !nativePp6 ? `<label class="field">ช่วงข้อมูล<select id="scope"><option value="term" ${pref.scope === 'term' ? 'selected' : ''}>ภาคเรียนที่ ${ctx.term.term} (ภาคปัจจุบัน)</option>
         <option value="year" ${pref.scope === 'year' ? 'selected' : ''}>ทั้งปีการศึกษา ${room.academic_year}</option></select></label>
         <label class="field" style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="page2" ${pref.page2 ? 'checked' : ''}> พิมพ์หน้า 2 (สุขภาพ ความเห็น เกณฑ์)</label>` : ''}
       ${pref.doc === 'coverCourse' ? '<label class="field">วิชา<select id="course"></select></label>' : ''}
-      ${pref.doc === 'book' ? '' : '<button class="btn btn-primary" id="print">พิมพ์ / บันทึก PDF</button>'}
+      ${pref.doc === 'book' || nativePp6 ? '' : '<button class="btn btn-primary" id="print">พิมพ์ / บันทึก PDF</button>'}
       ${inFrame && pref.doc !== 'book' ? '<span class="print-note muted">หน้าทดลองนี้เปิดหน้าต่างพิมพ์ไม่ได้ เมื่อติดตั้งแอปจริงจะพิมพ์ได้ทันที</span>' : ''}
     </div>
     ${pref.doc === 'cert' ? `<div class="card no-print"><div class="row">
@@ -81,6 +84,11 @@ export async function render(el, ctx) {
       // ล็อกการพิมพ์: ไม่แสดงคนที่ยังมีวิชาไม่มีเกรดหรือคะแนนไม่ครบ
       const ok = pick.filter((s) => !missingOf(d, termsOf(ctx, d, pref.scope), s).length);
       const skip = pick.length - ok.length;
+      if (nativePp6) {
+        paper.closest('.card').classList.remove('print-area'); paper.classList.remove('a4-scroll'); paper.closest('.card').style.background = '';
+        if (skip) toast(`ไม่แสดง ${skip} คนที่ยังมีวิชาไม่มีเกรดหรือคะแนนไม่ครบ`, 'err');
+        return pp6FormsView(paper, ctx, room, ok.map((s) => s.id));
+      }
       paper.innerHTML = (skip ? `<div class="empty no-print">ไม่แสดง ${skip} คนที่ยังมีวิชาไม่มีเกรดหรือคะแนนไม่ครบ (ดูได้ที่ "กลับไปรายชื่อ")</div>` : '')
         + (ok.length ? ok.map((s) => pp6(ctx, d, s)).join('') : (skip ? '' : '<div class="empty">ไม่มีนักเรียนในช่วงเลขที่ที่เลือก</div>'));
     }

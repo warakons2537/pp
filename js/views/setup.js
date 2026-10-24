@@ -57,15 +57,17 @@ function terms(pane, ctx, run) {
       <label>ภาคเรียน<select id="t-term" name="term">${options([{ id: 1, label: '1' }, { id: 2, label: '2' }], t.term ?? 1)}</select></label></div>
     <div class="row"><label>วันเปิดภาค<input type="date" id="t-start" name="start_date" value="${t.start_date ?? ''}"></label>
       <label>วันปิดภาค<input type="date" id="t-end" name="end_date" value="${t.end_date ?? ''}"></label></div>
+    <div class="row"><label>วันที่อนุมัติผลการเรียน<input type="date" id="t-approve" name="approve_date" value="${t.approve_date ?? ''}"></label></div>
+    <p class="muted small" style="margin:0">วันที่อนุมัติผลการเรียนจะพิมพ์ในช่องลงนามของ ปพ.6 (ครูประจำชั้น หัวหน้างานวิชาการ ผู้อำนวยการ)</p>
     <label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="t-cur" name="is_current" ${t.is_current || !ctx.terms.length ? 'checked' : ''}> ใช้เป็นภาคเรียนปัจจุบัน</label>`);
   $('#add', pane).addEventListener('click', async () => {
     const r = await form(); if (!r) return;
-    run(() => ctx.db.insert('terms', [{ academic_year: Number(r.academic_year), term: Number(r.term), start_date: r.start_date || null, end_date: r.end_date || null, is_current: !!r.is_current }]).then(() => r.is_current && clearOthers(ctx)));
+    run(() => ctx.db.insert('terms', [{ academic_year: Number(r.academic_year), term: Number(r.term), start_date: r.start_date || null, end_date: r.end_date || null, approve_date: r.approve_date || null, is_current: !!r.is_current }]).then(() => r.is_current && clearOthers(ctx)));
   });
   pane.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', async () => {
     const t = ctx.terms.find((x) => x.id === b.dataset.edit);
     const r = await form(t); if (!r) return;
-    run(async () => { await ctx.db.update('terms', { id: t.id }, { academic_year: Number(r.academic_year), term: Number(r.term), start_date: r.start_date || null, end_date: r.end_date || null, is_current: !!r.is_current }); if (r.is_current) await clearOthers(ctx, t.id); });
+    run(async () => { await ctx.db.update('terms', { id: t.id }, { academic_year: Number(r.academic_year), term: Number(r.term), start_date: r.start_date || null, end_date: r.end_date || null, approve_date: r.approve_date || null, is_current: !!r.is_current }); if (r.is_current) await clearOthers(ctx, t.id); });
   }));
   pane.querySelectorAll('[data-cur]').forEach((b) => b.addEventListener('click', () =>
     run(async () => { await ctx.db.update('terms', { id: b.dataset.cur }, { is_current: true }); await clearOthers(ctx, b.dataset.cur); })));
