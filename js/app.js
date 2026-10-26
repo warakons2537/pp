@@ -2,6 +2,7 @@ import { db } from './db.js';
 import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js';
 import { icon } from './icons.js';
 import { BRAND, VERSION } from './brand.js';
+import { mountNav, labelHtml } from './navbar.js';
 import * as home from './views/home.js';
 import * as students from './views/students.js';
 import * as daily from './views/daily.js';
@@ -16,6 +17,7 @@ import * as print from './views/print.js';
 const VIEWS = { home, students, daily, period, reports, setup, scores, health, traits, print };
 const root = document.getElementById('app');
 let cleanup = null;
+let navCtl = null;
 
 // ---------------------------------------------------------------------
 // ข้อมูลกลางที่ทุกหน้าจอใช้ร่วมกัน
@@ -127,7 +129,8 @@ function renderLogin() {
 const schoolLine = (ctx) => (ctx.settings.school_name ? `โรงเรียน${ctx.settings.school_name}` : 'ยังไม่ได้ตั้งชื่อโรงเรียน');
 const termLine = (ctx) => (ctx.term ? `ภาคเรียนที่ ${ctx.term.term} ปีการศึกษา ${ctx.term.academic_year}` : 'ยังไม่ได้ตั้งภาคเรียน');
 
-const NAV = { home: 'วันนี้', students: 'นักเรียน', daily: 'เช็กชื่อประจำวัน', period: 'เช็กชื่อรายคาบ', reports: 'รายงาน A4',
+// \u200b = จุดตัดบรรทัดที่ระบุเอง (ตัวตัดคำของเบราว์เซอร์ตัด "เช็กชื่อ" ผิดที่)
+const NAV = { home: 'วันนี้', students: 'นักเรียน', daily: 'เช็กชื่อ\u200bประจำวัน', period: 'เช็กชื่อ\u200bรายคาบ', reports: 'รายงาน A4',
   scores: 'คะแนนรายวิชา', health: 'น้ำหนัก-ส่วนสูง', traits: 'คุณลักษณะ/กิจกรรม', print: 'พิมพ์ ปพ.6 / ปพ.5', setup: 'ตั้งค่าระบบ' };
 let clockTimer = null;
 const THAI_DAYS = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
@@ -145,7 +148,7 @@ window.addEventListener('online', showNet);
 window.addEventListener('offline', showNet);
 
 function renderShell(ctx) {
-  const item = (v) => `<a href="#${v}" data-v="${v}">${icon(v)}<span>${NAV[v]}</span></a>`;
+  const item = (v) => `<a href="#${v}" data-v="${v}">${icon(v)}<span>${labelHtml(NAV[v])}</span></a>`;
   const name = ctx.me.full_name || ctx.me.email || '';
   root.innerHTML = `
     <div class="shell">
@@ -171,7 +174,7 @@ function renderShell(ctx) {
       </aside>
       <main class="main">
         <header class="topbar no-print">
-          <div class="tb-title" id="tb-title"></div>
+          <div class="tb-title"><b id="tb-title"></b><small id="tb-term">${esc(termLine(ctx))}</small></div>
           <div class="tb-clock"><span id="tb-date">${icon('daily')}<span></span></span><i class="sep"></i><span id="tb-time">${icon('period')}<span></span></span></div>
           <span class="live tb-net" id="tb-net"></span>
           <div class="tb-user"><span class="avatar" aria-hidden="true">${esc((name.replace(/^(ครู|นาย|นางสาว|นาง)\s*/, '').replace(/^[เแโใไ]/, '')[0]) || '?')}</span>
@@ -180,7 +183,10 @@ function renderShell(ctx) {
         </header>
         <div class="main-pad">${db.mode === 'demo' ? `<div class="demo-bar no-print"><span><b>โหมดทดลอง</b> ข้อมูลตัวอย่าง (ชื่อสมมติ) เก็บในเบราว์เซอร์นี้เท่านั้น</span>
         <button class="btn btn-sm" id="demo-reset">ล้างข้อมูลทดลอง</button></div>` : ''}<div class="main-inner" id="view"></div></div></main>
-    </div>`;
+    </div>
+    <div id="bnav-root"></div>`;
+  navCtl = mountNav($('#bnav-root'), { labels: NAV, version: VERSION,
+    ok: ['home', 'students', 'daily', 'period', 'reports', 'scores', 'health', 'traits', 'print', ...(ctx.isAdmin ? ['setup'] : [])] });
   $('#logout').addEventListener('click', async () => { await db.auth.signOut(); boot(); });
   $('#demo-reset')?.addEventListener('click', async () => { db.resetDemo(); await db.auth.signOut(); boot(); });
   clearInterval(clockTimer); tickClock(); clockTimer = setInterval(tickClock, 1000);
@@ -191,6 +197,7 @@ async function route(ctx) {
   const v = (location.hash.replace('#', '') || 'home').split('?')[0];
   const view = VIEWS[v] && (v !== 'setup' || ctx.isAdmin) ? v : 'home';
   $$('.nav a[data-v]').forEach((a) => a.classList.toggle('on', a.dataset.v === view));
+  navCtl?.setView(view);
   const tt = $('#tb-title'); if (tt) tt.textContent = NAV[view] || '';
   if (cleanup) { try { cleanup(); } catch { /* */ } cleanup = null; }
   const el = $('#view');
@@ -217,6 +224,7 @@ function makeLive(ctx, userId) {
     Object.assign(ctx, fresh);
     const sc = document.getElementById('brand-school'); if (sc) sc.textContent = schoolLine(ctx);
     const tm = document.getElementById('brand-term'); if (tm) tm.textContent = termLine(ctx);
+    const tt = document.getElementById('tb-term'); if (tt) tt.textContent = termLine(ctx);
   };
   ctx.refresh = () => { const p = chain.then(load, load); chain = p.catch(() => {}); return p; };
   ctx.go = (view, params = {}) => { ctx.params = params; location.hash = view; };
