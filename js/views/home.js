@@ -85,10 +85,10 @@ export async function render(el, ctx) {
       </div>`).join('')}</div>` : ''}
 
     <h2>วิชาที่สอน</h2>
-    ${ctx.myCourses.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>รายวิชา</th><th>ห้อง</th><th class="hide-sm">ครูผู้สอน</th><th></th></tr></thead><tbody>
-      ${ctx.myCourses.map((k) => `<tr><td><b>${esc(k.subject?.code)}</b> ${esc(k.subject?.name)}</td><td>${esc(roomName(k.classroom))}</td>
+    ${ctx.myCourses.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>รายวิชา</th><th>ห้อง</th><th class="hide-sm">ครูผู้สอน</th><th></th></tr></thead><tbody>
+      ${ctx.myCourses.map((k) => `<tr><td class="tc-ttl"><b>${esc(k.subject?.code)}</b> ${esc(k.subject?.name)}</td><td data-l="ห้อง">${esc(roomName(k.classroom))}</td>
         <td class="small muted hide-sm">${esc(k.teachers.map((t) => t.full_name).join(', '))}</td>
-        <td class="n" style="white-space:nowrap"><a class="btn btn-sm" href="#period" data-k="${esc(k.id)}" data-v="period">${icon('period')}เช็กชื่อ</a>
+        <td class="n tc-act" style="white-space:nowrap"><a class="btn btn-sm" href="#period" data-k="${esc(k.id)}" data-v="period">${icon('period')}เช็กชื่อ</a>
           <a class="btn btn-sm" href="#scores" data-k="${esc(k.id)}" data-v="scores">${icon('scores')}คะแนน</a></td></tr>`).join('')}
     </tbody></table></div>` : '<div class="empty">ยังไม่มีวิชาที่ได้รับมอบหมายในภาคเรียนนี้</div>'}`;
   el.querySelectorAll('[data-k]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); ctx.go(a.dataset.v, { course: a.dataset.k }); }));

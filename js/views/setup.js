@@ -46,9 +46,9 @@ function school(pane, ctx, run) {
 function terms(pane, ctx, run) {
   pane.innerHTML = `<div class="card">
     <div class="row"><button class="btn btn-primary" id="add">เพิ่มภาคเรียน</button></div>
-    ${ctx.terms.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>ปีการศึกษา</th><th>ภาคเรียน</th><th>เปิดภาค</th><th>ปิดภาค</th><th></th></tr></thead><tbody>
-      ${ctx.terms.map((t) => `<tr><td>${t.academic_year}</td><td>${t.term}</td><td>${esc(thaiDate(t.start_date, true))}</td><td>${esc(thaiDate(t.end_date, true))}</td>
-        <td class="n">${t.is_current ? '<span class="chip chip-ok">ภาคเรียนปัจจุบัน</span>' : `<button class="btn btn-sm" data-cur="${t.id}">ตั้งเป็นปัจจุบัน</button>`}
+    ${ctx.terms.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>ปีการศึกษา</th><th>ภาคเรียน</th><th>เปิดภาค</th><th>ปิดภาค</th><th></th></tr></thead><tbody>
+      ${ctx.terms.map((t) => `<tr><td data-l="ปีการศึกษา">${t.academic_year}</td><td data-l="ภาคเรียน">${t.term}</td><td data-l="เปิดภาค">${esc(thaiDate(t.start_date, true))}</td><td data-l="ปิดภาค">${esc(thaiDate(t.end_date, true))}</td>
+        <td class="n tc-act">${t.is_current ? '<span class="chip chip-ok">ภาคเรียนปัจจุบัน</span>' : `<button class="btn btn-sm" data-cur="${t.id}">ตั้งเป็นปัจจุบัน</button>`}
           <button class="btn btn-sm" data-edit="${t.id}">แก้ไข</button></td></tr>`).join('')}
     </tbody></table></div>` : '<div class="empty">ยังไม่มีภาคเรียน</div>'}
     <p class="muted small">วันเปิด-ปิดภาคใช้กำหนดช่วงเดือนของการเช็กชื่อและรายงาน ห้องเรียนผูกกับปีการศึกษา ดังนั้นเมื่อขึ้นภาคเรียนที่ 2 ห้องและนักเรียนเดิมใช้ต่อได้ทันที</p></div>`;
@@ -123,16 +123,16 @@ function subjects(pane, ctx, run) {
   const teachers = ctx.profiles.filter((p) => p.role !== 'pending');
   pane.innerHTML = `
     <div class="card"><div class="row" style="justify-content:space-between"><h2>รายวิชาในหลักสูตร</h2><button class="btn" id="add-sub">เพิ่มรายวิชา</button></div>
-      ${ctx.subjects.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>รหัส</th><th>ชื่อวิชา</th><th>ประเภท</th><th>กลุ่มสาระ</th><th class="n">หน่วยกิต</th><th class="n">ชม./ปี</th><th></th></tr></thead><tbody>
-        ${ctx.subjects.map((s) => `<tr><td>${esc(s.code)}</td><td>${esc(s.name)}</td><td>${esc(s.subject_type)}</td><td class="small">${esc(s.subject_group ?? '')}</td>
-          <td class="n">${s.credits ?? ''}</td><td class="n">${s.hours_per_year ?? ''}</td><td class="n"><button class="btn btn-sm" data-sub="${s.id}">แก้ไข</button></td></tr>`).join('')}
+      ${ctx.subjects.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>รหัส</th><th>ชื่อวิชา</th><th>ประเภท</th><th>กลุ่มสาระ</th><th class="n">หน่วยกิต</th><th class="n">ชม./ปี</th><th></th></tr></thead><tbody>
+        ${ctx.subjects.map((s) => `<tr><td data-l="รหัส">${esc(s.code)}</td><td class="tc-ttl">${esc(s.name)}</td><td data-l="ประเภท">${esc(s.subject_type)}</td><td class="small" data-l="กลุ่มสาระ">${esc(s.subject_group ?? '')}</td>
+          <td class="n" data-l="หน่วยกิต">${s.credits ?? ''}</td><td class="n" data-l="ชม./ปี">${s.hours_per_year ?? ''}</td><td class="n tc-act"><button class="btn btn-sm" data-sub="${s.id}">แก้ไข</button></td></tr>`).join('')}
       </tbody></table></div>` : '<div class="empty">ยังไม่มีรายวิชา</div>'}</div>
     <div class="card"><div class="row" style="justify-content:space-between"><h2>การเปิดสอน ภาคเรียนที่ ${ctx.term ? `${ctx.term.term}/${ctx.term.academic_year}` : '-'}</h2>
       <button class="btn btn-primary" id="add-course" ${ctx.subjects.length && ctx.classrooms.length ? '' : 'disabled'}>เปิดสอนวิชา</button></div>
-      ${ctx.courses.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>ห้อง</th><th>วิชา</th><th>ครูผู้สอน</th><th class="n">ระหว่างภาค:ปลายภาค</th><th></th></tr></thead><tbody>
-        ${ctx.courses.map((k) => `<tr><td>${esc(roomName(k.classroom))}</td><td>${esc(k.subject?.code)} ${esc(k.subject?.name)}</td>
-          <td>${esc(k.teachers.map((t) => t.full_name).join(', ') || '—')}</td><td class="n">${k.midterm_ratio}:${k.final_ratio}</td>
-          <td class="n"><button class="btn btn-sm" data-course="${k.id}">แก้ไข</button> <button class="btn btn-sm btn-danger" data-delc="${k.id}">ลบ</button></td></tr>`).join('')}
+      ${ctx.courses.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>ห้อง</th><th>วิชา</th><th>ครูผู้สอน</th><th class="n">ระหว่างภาค:ปลายภาค</th><th></th></tr></thead><tbody>
+        ${ctx.courses.map((k) => `<tr><td data-l="ห้อง">${esc(roomName(k.classroom))}</td><td class="tc-ttl">${esc(k.subject?.code)} ${esc(k.subject?.name)}</td>
+          <td data-l="ครูผู้สอน">${esc(k.teachers.map((t) => t.full_name).join(', ') || '—')}</td><td class="n" data-l="ระหว่างภาค:ปลายภาค">${k.midterm_ratio}:${k.final_ratio}</td>
+          <td class="n tc-act"><button class="btn btn-sm" data-course="${k.id}">แก้ไข</button> <button class="btn btn-sm btn-danger" data-delc="${k.id}">ลบ</button></td></tr>`).join('')}
       </tbody></table></div>` : '<div class="empty">ยังไม่ได้เปิดสอนวิชาใดในภาคเรียนนี้</div>'}
       <p class="muted small">วิชาหนึ่งมีครูผู้สอนได้หลายคน (ในไฟล์ Excel เดิมต้องแทรกแถวเพิ่ม ซึ่งทำให้สูตรเสี่ยงพัง)</p></div>`;
 

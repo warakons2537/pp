@@ -467,6 +467,18 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
   .stu-tbl td { border: 0; padding: 0; }
   .stu-tbl .stu-act { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; white-space: normal; }
 }
+/* ตารางที่มีปุ่มท้ายแถว → การ์ดบนมือถือ: table.tbl.tbl-card · td[data-l] = ป้ายกำกับ · td.tc-ttl = หัวการ์ด · td.tc-act = แถวปุ่ม */
+@media (max-width: 600px) {
+  .tbl.tbl-card, .tbl-card tbody { display: block; }
+  .tbl-card thead { display: none; }
+  .tbl-card tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; padding: 10px 12px; border-bottom: 1px solid var(--rule); }
+  .tbl-card tr:last-child { border-bottom: 0; }
+  .tbl.tbl-card td { border: 0; padding: 0; text-align: left; min-width: 0; }
+  .tbl-card td[data-l]::before { content: attr(data-l) ' '; color: var(--ink-soft); font-size: .8rem; }
+  .tbl-card td.tc-ttl { order: -1; flex: 1 1 100%; font-weight: 600; }
+  .tbl-card td.tc-act { order: 1; flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 6px; white-space: normal !important; }
+  .tbl-card td:empty { display: none; }
+}
 /* iOS ซูมเข้าเองเมื่อแตะช่องกรอกที่ตัวอักษร < 16px และไม่ซูมกลับ → จอสัมผัสใช้ 16px */
 @media (pointer: coarse) {
   input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea, .reg input.sc, .reg select.sp { font-size: 16px; }
