@@ -295,9 +295,9 @@ function itemsTab(pane, ctx, course, items, canEdit, again) {
   const table = (k) => `
     <div class="card"><div class="row" style="justify-content:space-between;align-items:center">
       <h3>${KIND[k]}</h3>${k !== 'indicator' ? `<span class="small muted">คะแนนเต็มรวม ${sum(k)}${k === 'final' && g(k).length && sum(k) !== course.final_ratio ? ` (จะถูกแปลงเป็น ${course.final_ratio})` : ''}</span>` : ''}</div>
-      ${g(k).length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>${k === 'indicator' ? 'รหัสตัวชี้วัด' : 'ชื่อช่องคะแนน'}</th>${k === 'indicator' ? '<th>คำอธิบาย</th>' : '<th class="n">คะแนนเต็ม</th>'}<th></th></tr></thead><tbody>
-        ${g(k).map((it, i, arr) => `<tr><td>${esc(k === 'indicator' ? it.code : it.title)}</td><td class="${k === 'indicator' ? 'small' : 'n'}">${esc(k === 'indicator' ? it.title ?? '' : Number(it.max_score))}</td>
-          <td class="n" style="white-space:nowrap">${canEdit ? `<button class="btn btn-sm btn-ghost" data-up="${it.id}" ${i ? '' : 'disabled'} aria-label="เลื่อนขึ้น">↑</button><button class="btn btn-sm btn-ghost" data-down="${it.id}" ${i < arr.length - 1 ? '' : 'disabled'} aria-label="เลื่อนลง">↓</button>
+      ${g(k).length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>${k === 'indicator' ? 'รหัสตัวชี้วัด' : 'ชื่อช่องคะแนน'}</th>${k === 'indicator' ? '<th>คำอธิบาย</th>' : '<th class="n">คะแนนเต็ม</th>'}<th></th></tr></thead><tbody>
+        ${g(k).map((it, i, arr) => `<tr><td class="tc-ttl">${esc(k === 'indicator' ? it.code : it.title)}</td><td class="${k === 'indicator' ? 'small' : 'n'}" data-l="${k === 'indicator' ? 'คำอธิบาย' : 'คะแนนเต็ม'}">${esc(k === 'indicator' ? it.title ?? '' : Number(it.max_score))}</td>
+          <td class="n tc-act" style="white-space:nowrap">${canEdit ? `<button class="btn btn-sm btn-ghost" data-up="${it.id}" ${i ? '' : 'disabled'} aria-label="เลื่อนขึ้น">↑</button><button class="btn btn-sm btn-ghost" data-down="${it.id}" ${i < arr.length - 1 ? '' : 'disabled'} aria-label="เลื่อนลง">↓</button>
             <button class="btn btn-sm" data-edit="${it.id}">แก้ไข</button> <button class="btn btn-sm btn-danger" data-del="${it.id}">ลบ</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`
         : `<div class="empty">ยังไม่มี${KIND[k]}</div>`}
       ${canEdit ? `<div class="row"><button class="btn btn-sm" data-add="${k}">เพิ่มทีละช่อง</button><button class="btn btn-sm" data-bulk="${k}">เพิ่มหลายช่อง (วางจาก Excel)</button></div>` : ''}
