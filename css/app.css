@@ -467,3 +467,7 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
   .stu-tbl td { border: 0; padding: 0; }
   .stu-tbl .stu-act { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; white-space: normal; }
 }
+/* iOS ซูมเข้าเองเมื่อแตะช่องกรอกที่ตัวอักษร < 16px และไม่ซูมกลับ → จอสัมผัสใช้ 16px */
+@media (pointer: coarse) {
+  input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea, .reg input.sc, .reg select.sp { font-size: 16px; }
+}
