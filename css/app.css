@@ -77,7 +77,7 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
   background: var(--paper); border-right: 1px solid var(--rule);
   color: var(--ink-soft); padding-block: 18px 18px;
   padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: 12px;
-  display: flex; flex-direction: column; gap: 16px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 16px; position: sticky; top: 0; height: 100vh; height: 100dvh; overflow-y: auto;
   scrollbar-width: thin; scrollbar-color: var(--rule) transparent;
 }
 .brand { color: var(--ink); padding: 4px 6px 14px; border-bottom: 1px solid var(--rule);
@@ -101,7 +101,8 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
 /* ---------- แถบบน ---------- */
 .topbar { display: flex; align-items: center; gap: 10px 18px; flex-wrap: wrap; background: var(--bg); border-bottom: 1px solid var(--rule);
   padding: 10px max(20px, env(safe-area-inset-right, 0px)) 10px 24px; position: sticky; top: 0; z-index: 4; }
-.topbar .tb-title { font-weight: 600; margin-right: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.topbar .tb-title { font-weight: 600; margin-right: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+.tb-title small { font-weight: 400; font-size: .74rem; color: var(--ink-soft); }
 .tb-clock { display: inline-flex; align-items: center; gap: 4px; background: var(--paper); border: 1px solid var(--rule); border-radius: 99px;
   padding: 3px 12px; font-size: .82rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tb-clock svg.i { width: 15px; height: 15px; color: var(--pen); }
@@ -128,13 +129,6 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
   padding: 6px 8px 6px 14px; font-size: .84rem; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; justify-content: space-between; }
 
 @media (max-width: 860px) {
-  .shell { grid-template-columns: minmax(0, 1fr); }
-  .side { position: sticky; top: env(safe-area-inset-top, 0px); height: auto; z-index: 5; padding-block: 8px 8px; gap: 8px;
-    padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); border-right: 0; border-bottom: 1px solid var(--rule); }
-  .brand { display: none; }
-  .nav { flex-direction: row; overflow-x: auto; gap: 4px; scrollbar-width: none; }
-  .nav .sec, .nav .soon { display: none; }
-  .nav a { white-space: nowrap; padding: 7px 12px; }
   .topbar { position: static; padding: 8px 16px; gap: 8px 12px; }
   .topbar .tb-title { display: none; }
   .tb-clock { margin-right: auto; }
@@ -144,6 +138,53 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
   h1 { font-size: 1.5rem; }
 }
 @media (max-width: 480px) { .topbar .tb-net, .tb-user .nm { display: none; } .tb-clock .sep, #tb-date { display: none; } }
+
+/* ---------- การจัดวางตามความกว้างจอ (ไม่ดูชนิดเครื่อง) ----------
+   ≥600px: navigation rail ด้านซ้าย · <600px: navigation bar ด้านล่าง + แผง "เพิ่มเติม" */
+:root { --bnav-h: 72px; }
+.bnav, .sheet-wrap { display: none; }
+.w { white-space: nowrap; }
+@media (min-width: 600px) {
+  .shell { grid-template-columns: 88px minmax(0, 1fr); }
+  .side { padding-inline: 6px; gap: 10px; }
+  .brand { grid-template-columns: 1fr; justify-items: center; padding: 2px 0 10px; }
+  .brand .mark { grid-row: auto; }
+  .brand b, .brand small:not(.ver) { display: none; }
+  .brand .ver { font-size: .62rem; text-align: center; white-space: normal; line-height: 1.25; }
+  .nav { gap: 4px; }
+  .nav a { flex-direction: column; gap: 4px; padding: 4px 2px 6px; border-radius: 16px; font-size: .72rem; line-height: 1.3; text-align: center; }
+  .nav a > span { max-width: 100%; overflow-wrap: break-word; text-wrap: balance; }
+  .nav a svg.i { box-sizing: content-box; width: 24px; height: 24px; padding: 4px 16px; border-radius: 16px; transition: background .15s; }
+  .nav a:hover, .nav a.on { background: none; }
+  .nav a:hover svg.i { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+  .nav a.on svg.i { background: var(--chosen); }
+  .nav .sec { height: 1px; padding: 0; margin: 6px 14px; background: var(--rule); font-size: 0; }
+}
+@media (max-width: 599px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .side { display: none; }
+  .topbar { padding-top: max(8px, env(safe-area-inset-top, 0px)); }
+  .main { padding-bottom: calc(var(--bnav-h) + 24px + env(safe-area-inset-bottom, 0px)); }
+  .toast { bottom: calc(var(--bnav-h) + 16px + env(safe-area-inset-bottom, 0px)); }
+  .bnav { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--paper); border-top: 1px solid var(--rule);
+    height: calc(var(--bnav-h) + env(safe-area-inset-bottom, 0px)); padding: 0 max(4px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(4px, env(safe-area-inset-left, 0px)); }
+  .bnav a, .bnav button { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 0 2px;
+    background: none; border: 0; color: var(--ink-soft); text-decoration: none; font-size: .72rem; line-height: 1.3; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .bnav svg.i { box-sizing: content-box; width: 24px; height: 24px; padding: 3px 18px; border-radius: 16px; transition: background .15s; }
+  .bnav a > span, .bnav button > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-align: center; overflow-wrap: break-word; }
+  .bnav .on { color: var(--ink); font-weight: 600; }
+  .bnav .on svg.i { background: var(--chosen); color: var(--on-chosen); }
+  .sheet-wrap:not([hidden]) { display: flex; align-items: flex-end; position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, .4); }
+  .sheet { width: 100%; max-height: 80vh; max-height: 80dvh; overflow-y: auto; background: var(--surface-high); border-radius: 28px 28px 0 0;
+    padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; }
+  .sheet-grip { width: 32px; height: 4px; border-radius: 2px; background: var(--outline); opacity: .5; margin: 0 auto 2px; }
+  .sheet-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .sheet-list a, .sheet-list .pick { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 14px; border-radius: 16px; border: 1px solid transparent;
+    background: var(--sheet); color: var(--ink); text-decoration: none; font: inherit; font-size: .92rem; text-align: left; cursor: pointer; }
+  .sheet-list a.on, .sheet-list .pick.on { background: var(--chosen); color: var(--on-chosen); font-weight: 600; }
+  .sheet-list .pick.on { border-color: var(--pen); }
+  .sheet-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+}
 
 /* ---------- ส่วนประกอบ ---------- */
 .card { background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--r-lg); padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -200,7 +241,7 @@ textarea { width: 100%; min-height: 70px; }
 .empty { padding: 32px 18px; text-align: center; color: var(--ink-soft); border: 1px dashed var(--rule-strong); border-radius: var(--r-lg); background: var(--sheet); }
 
 /* ---------- ตาราง ---------- */
-.tbl-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--r-lg); background: var(--sheet); }
+.tbl-wrap { overflow-x: auto; overscroll-behavior-x: contain; border: 1px solid var(--rule); border-radius: var(--r-lg); background: var(--sheet); }
 table.tbl { border-collapse: collapse; width: 100%; font-size: .9rem; }
 .tbl th, .tbl td { border-bottom: 1px solid var(--rule); padding: 8px 12px; text-align: left; vertical-align: middle; }
 .tbl th { font-weight: 600; font-size: .8rem; color: var(--ink-soft); background: var(--paper); position: sticky; top: 0; }
