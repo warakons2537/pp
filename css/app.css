@@ -458,3 +458,5 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
 .a4 .cv { border-bottom: 1px dotted #555; padding: 0 3mm; font-weight: 700; }
 .a4 .cert-sign { display: grid; grid-template-columns: 34mm 1fr; gap: 10mm; align-items: end; margin-top: 12mm; text-align: center; }
 .a4 .photo { width: 30mm; height: 40mm; border: 1px solid #000; display: grid; place-items: center; font-size: 12px; line-height: 1.4; }
+.stu-tbl .stu-act { white-space: nowrap; }
+@media (max-width: 600px) { .stu-tbl .stu-act { white-space: normal; min-width: 96px; } .stu-tbl .stu-act .btn { margin: 0 0 4px 4px; } }

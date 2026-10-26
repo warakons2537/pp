@@ -32,13 +32,13 @@ export async function render(el, ctx) {
       <button class="btn" id="renum">เรียงเลขที่ใหม่</button>
       <span class="muted small">ชาย ${boys} · หญิง ${active.length - boys} · รวม ${active.length} คน</span>
     </div>
-    ${roster.length ? `<div class="tbl-wrap"><table class="tbl">
-      <thead><tr><th class="n">เลขที่</th><th>เลขประจำตัว</th><th>ชื่อ-สกุล</th><th class="c">เพศ</th><th>สถานะ</th><th></th></tr></thead>
+    ${roster.length ? `<div class="tbl-wrap"><table class="tbl stu-tbl">
+      <thead><tr><th class="n">เลขที่</th><th class="hide-sm">เลขประจำตัว</th><th>ชื่อ-สกุล</th><th class="c hide-sm">เพศ</th><th>สถานะ</th><th></th></tr></thead>
       <tbody>${roster.map((s) => `<tr>
-        <td class="n">${s.number ?? ''}</td><td class="tabular">${esc(s.student_code ?? '')}</td>
-        <td>${esc(fullName(s))}</td><td class="c">${esc(s.gender ?? '')}</td>
+        <td class="n">${s.number ?? ''}</td><td class="tabular hide-sm">${esc(s.student_code ?? '')}</td>
+        <td class="w">${esc(fullName(s))}</td><td class="c hide-sm">${esc(s.gender ?? '')}</td>
         <td>${s.enroll_status === 'left' ? `<span class="chip chip-warn">ออก ${esc(thaiDate(s.left_on, true))}</span>` : '<span class="chip chip-ok">กำลังเรียน</span>'}</td>
-        <td class="n" style="white-space:nowrap">
+        <td class="n stu-act">
           <button class="btn btn-sm" data-edit="${esc(s.id)}">แก้ไข</button>
           <button class="btn btn-sm" data-info="${esc(s.id)}">ข้อมูล DMC</button>
           ${s.enroll_status !== 'left' ? `<button class="btn btn-sm btn-ghost" data-leave="${esc(s.enrollment_id)}">ย้ายออก</button>` : ''}
