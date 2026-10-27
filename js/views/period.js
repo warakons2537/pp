@@ -1,5 +1,5 @@
-import { esc, $, toast, options, fullName, todayIso, thaiDate, STATUS } from '../util.js?v=2569.10.27-4';
-import { getRoster } from '../data.js?v=2569.10.27-4';
+import { esc, $, toast, options, fullName, todayIso, thaiDate, STATUS } from '../util.js?v=2569.10.27-5';
+import { getRoster } from '../data.js?v=2569.10.27-5';
 
 const pref = { course: null, date: null, period: 1 };
 
@@ -27,7 +27,7 @@ export async function render(el, ctx) {
 
   el.innerHTML = `
     <div class="page-head">
-      <div><h1>เช็กชื่อรายคาบ</h1><p>${esc(ctx.courseLabel(course))} · <span class="live">อัปเดตทันที</span></p></div>
+      <div><h1>เช็กชื่อรายคาบ</h1><p>บันทึกการเข้าเรียนรายคาบ และดูเวลาเรียนสะสมของวิชา · <span class="live">อัปเดตทันที</span></p></div>
       <div class="row">
         <label class="field">วิชา<select id="course">${options(list, course.id, ctx.courseLabel)}</select></label>
         <label class="field">วันที่<input type="date" id="date" value="${pref.date}"></label>

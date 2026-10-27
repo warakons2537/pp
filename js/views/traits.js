@@ -1,9 +1,10 @@
-import { esc, $, toast, modal, options, roomName, fullName } from '../util.js?v=2569.10.27-4';
-import { getRoster } from '../data.js?v=2569.10.27-4';
-import { attachGrid } from '../grid.js?v=2569.10.27-4';
-import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.10.27-4';
-import { detailPane } from './assess-detail.js?v=2569.10.27-4';
-import { FORMS } from '../assess-forms.js?v=2569.10.27-4';
+import { esc, $, toast, modal, options, roomName, fullName } from '../util.js?v=2569.10.27-5';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-5';
+import { getRoster } from '../data.js?v=2569.10.27-5';
+import { attachGrid } from '../grid.js?v=2569.10.27-5';
+import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.10.27-5';
+import { detailPane } from './assess-detail.js?v=2569.10.27-5';
+import { FORMS } from '../assess-forms.js?v=2569.10.27-5';
 
 const pref = { room: null, tab: 'trait8' };
 const TABS = { ...Object.fromEntries(Object.entries(TRAIT_KINDS).map(([k, v]) => [k, v.short])),
@@ -19,12 +20,14 @@ export async function render(el, ctx) {
 
   el.innerHTML = `
     <div class="page-head">
-      <div><h1>คุณลักษณะและกิจกรรม</h1><p>ห้อง ${esc(roomName(room))} · ภาคเรียนที่ ${ctx.term.term}/${ctx.term.academic_year} · ${canEdit ? '<span class="live">อัปเดตทันที</span>' : 'ดูอย่างเดียว (ครูประจำชั้นเป็นผู้บันทึก)'}</p></div>
+      <div><h1>คุณลักษณะและกิจกรรม</h1><p>ประเมินคุณลักษณะ การอ่านคิดวิเคราะห์ สมรรถนะ และกิจกรรมรายห้อง · ภาคเรียนที่ ${ctx.term.term}/${ctx.term.academic_year} · ${canEdit ? '<span class="live">อัปเดตทันที</span>' : 'ดูอย่างเดียว (ครูประจำชั้นเป็นผู้บันทึก)'}</p></div>
       <div class="row"><label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label></div>
     </div>
-    <div class="tabs">${Object.entries(TABS).map(([k, v]) => `<button data-tab="${k}" class="${pref.tab === k ? 'on' : ''}">${v}</button>`).join('')}</div>
+    ${tabGroups([['ผลการประเมิน', 'traits', Object.keys(TRAIT_KINDS)], ['แบบประเมินละเอียด', 'reports', Object.keys(FORMS).map((k) => `d_${k}`)], ['กิจกรรมและความเห็น', 'students', ['activities', 'comments']]]
+    .map(([label, ic, keys]) => ({ label, icon: ic, tabs: keys.map((k) => ({ key: k, label: esc(TABS[k]) })) })), pref.tab)}
     <div id="pane"></div>`;
   el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { pref.tab = b.dataset.tab; render(el, ctx); }));
+  wireTabGroups(el);
   $('#room', el).addEventListener('change', (e) => { pref.room = e.target.value; render(el, ctx); });
   const pane = $('#pane', el);
   if (!roster.length) { pane.innerHTML = '<div class="empty">ห้องนี้ยังไม่มีนักเรียน</div>'; return; }

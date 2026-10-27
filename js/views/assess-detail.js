@@ -3,12 +3,13 @@
 //  บันทึกคะแนนรายข้อใน assess_detail แล้วเขียนผลสรุปรายข้อลง trait_scores ให้อัตโนมัติ
 //  (ปพ.6 และแท็บสรุปเดิมจึงได้ผลเดียวกัน)
 // =====================================================================
-import { esc, $, toast, modal, fullName, levelName, roomName } from '../util.js?v=2569.10.27-4';
-import { attachGrid } from '../grid.js?v=2569.10.27-4';
-import { TRAITS, SUBS, subResult, traitResult, traitOverall, LV4, COMPETENCIES, compResult, compOverall, COMP_LV, FORMS } from '../assess-forms.js?v=2569.10.27-4';
-import { traitWorkbook, competencyWorkbook } from '../assess-export.js?v=2569.10.27-4';
-import { buildXlsx, downloadBytes } from '../xlsx-write.js?v=2569.10.27-4';
-import { sheetName as stuName } from '../achievement.js?v=2569.10.27-4';
+import { esc, $, toast, modal, fullName, levelName, roomName } from '../util.js?v=2569.10.27-5';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-5';
+import { attachGrid } from '../grid.js?v=2569.10.27-5';
+import { TRAITS, SUBS, subResult, traitResult, traitOverall, LV4, COMPETENCIES, compResult, compOverall, COMP_LV, FORMS } from '../assess-forms.js?v=2569.10.27-5';
+import { traitWorkbook, competencyWorkbook } from '../assess-export.js?v=2569.10.27-5';
+import { buildXlsx, downloadBytes } from '../xlsx-write.js?v=2569.10.27-5';
+import { sheetName as stuName } from '../achievement.js?v=2569.10.27-5';
 
 const pref = { trait8: '1.1', competency5: '1' };
 const chip = (label, lv) => `<span class="chip ${lv === 0 ? 'chip-bad' : lv === 3 ? 'chip-ok' : 'chip-info'}">${esc(label)}</span>`;
@@ -37,13 +38,12 @@ export async function detailPane(pane, ctx, room, roster, ids, canEdit, form) {
       <div class="small muted">${esc(FORMS[form].label)} · กรอก ${min}–${max} ${isTrait ? '(0 = ไม่ผ่าน, 1 = ผ่าน, 2 = ดี, 3 = ดีเยี่ยม)' : '(1 = พอใช้, 2 = ดี, 3 = ดีเยี่ยม)'} · ผลสรุปจะไปอยู่ในแท็บ "${isTrait ? 'คุณลักษณะฯ' : 'สมรรถนะ'}" และ ปพ.6 อัตโนมัติ</div>
       <div class="row">${canEdit && cur ? '<button class="btn btn-sm" id="fill">เติมช่องว่าง…</button>' : ''}<button class="btn btn-sm btn-primary" id="xls">ส่งออก Excel</button></div>
     </div>
-    <div class="subtabs" style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0">
-      ${sheets.map((s) => { const f = filledOf(s); const all = s.items.length * roster.length;
-        return `<button class="btn btn-sm ${pref[form] === s.key ? 'btn-primary' : ''}" data-sheet="${s.key}" title="${esc(s.title)}">${esc(s.label)} <span class="small" style="opacity:.75">${f === all ? '✓' : f ? `${Math.round((f * 100) / all)}%` : ''}</span></button>`; }).join('')}
-      <button class="btn btn-sm ${pref[form] === 'sum' ? 'btn-primary' : ''}" data-sheet="sum">สรุปผล</button>
-    </div>
+    ${tabGroups([{ label: 'แผ่นประเมิน', icon: 'excel', tabs: [...sheets.map((s) => { const f = filledOf(s); const all = s.items.length * roster.length;
+      return { key: s.key, title: s.title, label: `${esc(s.label)} <span class="small" style="opacity:.75">${f === all ? '✓' : f ? `${Math.round((f * 100) / all)}%` : ''}</span>` }; }),
+      { key: 'sum', label: 'สรุปผล' }] }], pref[form], 'sheet')}
     <div id="dview"></div>`;
   pane.querySelectorAll('[data-sheet]').forEach((b) => b.addEventListener('click', () => { pref[form] = b.dataset.sheet; detailPane(pane, ctx, room, roster, ids, canEdit, form); }));
+  wireTabGroups(pane);
   $('#xls', pane).addEventListener('click', () => exportForm(ctx, room, roster, form, getter));
   const view = $('#dview', pane);
 

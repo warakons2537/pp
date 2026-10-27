@@ -1,8 +1,8 @@
 // รายงาน ปพ.5: ผลสัมฤทธิ์รายวิชา · ผลการเรียนรายชั้น (GPA/อันดับ) · สรุปผลสัมฤทธิ์
-import { esc, fullName, levelName } from '../util.js?v=2569.10.27-4';
-import { getRoster } from '../data.js?v=2569.10.27-4';
-import { loadCourse, computeCourse, fmtGrade, gpa, rank, distribution, weightOf, GRADE_LABELS } from '../grading.js?v=2569.10.27-4';
-import { head, signs, termText } from './report-common.js?v=2569.10.27-4';
+import { esc, fullName, levelName } from '../util.js?v=2569.10.27-5';
+import { getRoster } from '../data.js?v=2569.10.27-5';
+import { loadCourse, computeCourse, fmtGrade, gpa, rank, distribution, weightOf, GRADE_LABELS } from '../grading.js?v=2569.10.27-5';
+import { head, signs, termText } from './report-common.js?v=2569.10.27-5';
 
 const rounding = (ctx) => ctx.settings.score_rounding || 'floor';
 const unit = (s) => (s?.credits ? `${Number(s.credits)} หน่วยกิต` : s?.hours_per_year ? `${s.hours_per_year} ชั่วโมง/ปี` : '');

@@ -1,9 +1,10 @@
 import { esc, $, options, roomName, fullName, levelName, iso, fromIso, daysInMonth, thaiDate, todayIso,
-  THAI_MONTHS, THAI_MONTHS_SHORT, STATUS } from '../util.js?v=2569.10.27-4';
-import { getRoster, termMonths, termRange } from '../data.js?v=2569.10.27-4';
-import { head, signs, termText } from './report-common.js?v=2569.10.27-4';
-import { p5Report, gradesReport, achieveReport } from './report-grades.js?v=2569.10.27-4';
-import { nutritionReport, traitReport } from './report-assess.js?v=2569.10.27-4';
+  THAI_MONTHS, THAI_MONTHS_SHORT, STATUS } from '../util.js?v=2569.10.27-5';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-5';
+import { getRoster, termMonths, termRange } from '../data.js?v=2569.10.27-5';
+import { head, signs, termText } from './report-common.js?v=2569.10.27-5';
+import { p5Report, gradesReport, achieveReport } from './report-grades.js?v=2569.10.27-5';
+import { nutritionReport, traitReport } from './report-assess.js?v=2569.10.27-5';
 
 const pref = { tab: 'month', room: null, ym: null, course: null, round: 1 };
 const TABS = { month: 'เวลาเรียนประจำเดือน', term: 'สรุปเวลาเรียนภาคเรียน', course: 'เวลาเรียนรายวิชา (มส)', list: 'รายชื่อนักเรียน',
@@ -26,8 +27,7 @@ export async function render(el, ctx) {
   const inFrame = window.self !== window.top;
 
   el.innerHTML = `
-    <div class="page-head"><div><h1>รายงาน A4</h1><p>ดูตัวอย่างหน้ากระดาษ แล้วกดพิมพ์หรือบันทึกเป็น PDF</p></div></div>
-    <div class="tabs no-print"><span class="tab-sec">ธุรการ</span>${Object.entries(TABS).map(([k, v]) => `${k === 'p5' ? '<span class="tab-sec">ปพ.5</span>' : ''}${k === 'nutrition' ? '<span class="tab-sec">สุขภาพ/คุณลักษณะ</span>' : ''}<button data-tab="${k}" class="${pref.tab === k ? 'on' : ''}">${v}</button>`).join('')}</div>
+    <div class="page-head"><div><h1>รายงาน A4</h1><p>ดูตัวอย่างหน้ากระดาษ แล้วกดพิมพ์หรือบันทึกเป็น PDF</p></div>
     <div class="row no-print">
       ${COURSE_TABS.includes(pref.tab)
         ? `<label class="field">วิชา<select id="course">${options(courses, pref.course, ctx.courseLabel)}</select></label>`
@@ -36,10 +36,13 @@ export async function render(el, ctx) {
       ${pref.tab === 'nutrition' ? `<label class="field">ครั้งที่<select id="round">${[1, 2, 3, 4].map((n) => `<option value="${n}" ${pref.round === n ? 'selected' : ''}>ครั้งที่ ${n}</option>`).join('')}</select></label>` : ''}
       <button class="btn btn-primary" id="print">พิมพ์ / บันทึก PDF</button>
       ${inFrame ? '<span class="print-note muted">หน้าทดลองนี้เปิดหน้าต่างพิมพ์ไม่ได้ เมื่อติดตั้งแอปจริงจะพิมพ์ได้ทันที</span>' : ''}
-    </div>
+    </div></div>
+    ${tabGroups([['ธุรการ', 'daily', ['month', 'term', 'course', 'list']], ['ปพ.5', 'scores', ['p5', 'grades', 'achieve']], ['สุขภาพ / คุณลักษณะ', 'health', ['nutrition', 'traitsum']]]
+    .map(([label, ic, keys]) => ({ label, icon: ic, tabs: keys.map((k) => ({ key: k, label: esc(TABS[k]) })) })), pref.tab, 'tab', 'no-print')}
     <div class="card print-area" style="background:var(--paper)"><div class="a4-scroll" id="paper"><p class="muted">กำลังจัดหน้า…</p></div></div>`;
 
   el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { pref.tab = b.dataset.tab; render(el, ctx); }));
+  wireTabGroups(el);
   $('#room', el)?.addEventListener('change', (e) => { pref.room = e.target.value; render(el, ctx); });
   $('#ym', el)?.addEventListener('change', (e) => { pref.ym = e.target.value; render(el, ctx); });
   $('#course', el)?.addEventListener('change', (e) => { pref.course = e.target.value; render(el, ctx); });

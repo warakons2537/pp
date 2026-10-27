@@ -1,7 +1,7 @@
-import { esc, $, toast, options, roomName, fullName, todayIso, thaiDate } from '../util.js?v=2569.10.27-4';
-import { getRoster, loadGrowthRef, getBirthDates } from '../data.js?v=2569.10.27-4';
-import { attachGrid } from '../grid.js?v=2569.10.27-4';
-import { classify, ageMonths, ageText, severity, WH, HA, OUT_OF_TABLE } from '../assess.js?v=2569.10.27-4';
+import { esc, $, toast, options, roomName, fullName, todayIso, thaiDate } from '../util.js?v=2569.10.27-5';
+import { getRoster, loadGrowthRef, getBirthDates } from '../data.js?v=2569.10.27-5';
+import { attachGrid } from '../grid.js?v=2569.10.27-5';
+import { classify, ageMonths, ageText, severity, WH, HA, OUT_OF_TABLE } from '../assess.js?v=2569.10.27-5';
 
 const pref = { room: null, round: 1, date: null };
 const chip = (label) => {
@@ -39,7 +39,7 @@ export async function render(el, ctx) {
   el.innerHTML = `
     <div class="page-head">
       <div><h1>น้ำหนัก-ส่วนสูง</h1>
-        <p>ห้อง ${esc(roomName(room))} · ปีการศึกษา ${year} · ${canEdit ? '<span class="live">อัปเดตทันที</span>' : 'ดูอย่างเดียว'}</p></div>
+        <p>บันทึกน้ำหนัก-ส่วนสูงปีละ 4 ครั้ง แปลผลตามเกณฑ์กรมอนามัย · ปีการศึกษา ${year} · ${canEdit ? '<span class="live">อัปเดตทันที</span>' : 'ดูอย่างเดียว'}</p></div>
       <div class="row">
         <label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label>
         <label class="field">ครั้งที่<select id="round">${options([1, 2, 3, 4].map((n) => ({ id: n, label: `ครั้งที่ ${n}` })), pref.round)}</select></label>

@@ -1,6 +1,6 @@
-import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.10.27-4';
-import { getRoster } from '../data.js?v=2569.10.27-4';
-import { readDmcFile } from '../dmc.js?v=2569.10.27-4';
+import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.10.27-5';
+import { getRoster } from '../data.js?v=2569.10.27-5';
+import { readDmcFile } from '../dmc.js?v=2569.10.27-5';
 
 let selected = null;   // ห้องที่เลือกค้างไว้ระหว่างเปลี่ยนหน้า
 
@@ -21,7 +21,7 @@ export async function render(el, ctx) {
 
   el.innerHTML = `
     <div class="page-head">
-      <div><h1>นักเรียน</h1><p>ห้อง ${esc(roomName(room))} · ครูประจำชั้น: ${esc(ctx.homeroomTeachers(room.id).map((t) => t.full_name).join(', ') || '—')}</p></div>
+      <div><h1>นักเรียน</h1><p>ทะเบียนนักเรียนรายห้อง · ครูประจำชั้น: ${esc(ctx.homeroomTeachers(room.id).map((t) => t.full_name).join(', ') || '—')}</p></div>
       <div class="row">
         <label class="field">ห้อง<select id="room">${options(rooms, selected, (r) => `ห้อง ${roomName(r)}`)}</select></label>
       </div>
