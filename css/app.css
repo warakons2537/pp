@@ -518,7 +518,7 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
   .nav a > .nbadge { position: absolute; top: 0; left: calc(50% + 10px); margin: 0; }
 }
 @media (max-width: 599px) {
-  .bnav .nbadge { position: absolute; top: 4px; left: calc(50% + 8px); margin: 0; }
+  .bnav .nbadge { position: absolute; top: 12px; left: calc(50% + 10px); margin: 0; }
 }
 .alert-list { display: flex; flex-direction: column; gap: 4px; }
 .alert-list button { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; border-radius: 12px; border: 0;
