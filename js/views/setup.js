@@ -1,26 +1,30 @@
-import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.27-6';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-6';
-import { ROUNDING } from '../grading.js?v=2569.10.27-6';
-import { excelRefToRows } from '../assess.js?v=2569.10.27-6';
-import { clearGrowthRef } from '../data.js?v=2569.10.27-6';
+import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.27-7';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-7';
+import { ROUNDING } from '../grading.js?v=2569.10.27-7';
+import { excelRefToRows } from '../assess.js?v=2569.10.27-7';
+import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.27-7';
+import { clearGrowthRef } from '../data.js?v=2569.10.27-7';
 
 let tab = 'school';
-const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', rooms: 'ห้องเรียน', subjects: 'รายวิชา', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', backup: 'สำรองข้อมูล' };
+const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', rooms: 'ห้องเรียน', subjects: 'รายวิชา', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', notify: 'การแจ้งเตือน', backup: 'สำรองข้อมูล' };
 
 export async function render(el, ctx) {
   if (!ctx.isAdmin) { el.innerHTML = '<div class="empty">เฉพาะผู้ดูแลระบบ</div>'; return; }
   const pending = ctx.profiles.filter((p) => p.role === 'pending').length;
+  if (ctx.params?.tab && TABS[ctx.params.tab]) { tab = ctx.params.tab; ctx.params = {}; }
+  // จุดแดงบนแท็บที่ค้าง (แท็บผู้ใช้มีป้ายจำนวนรออนุมัติอยู่แล้ว)
+  const dot = (k) => (k === 'users' ? '' : badge((ctx.alerts || []).filter((a) => a.tab === k).length));
   el.innerHTML = `
     <div class="page-head"><div><h1>ตั้งค่าระบบ</h1><p>ข้อมูลที่ตั้งไว้ที่นี่ใช้ร่วมกันทั้งระบบธุรการและ ปพ.</p></div></div>
-    ${tabGroups([['ข้อมูลโรงเรียน', 'school', ['school', 'terms', 'rooms', 'subjects', 'users']], ['ระบบและข้อมูล', 'setup', ['growth', 'backup']]]
-    .map(([label, ic, keys]) => ({ label, icon: ic, tabs: keys.map((k) => ({ key: k, label: `${TABS[k]}${k === 'users' && pending ? ` <span class="chip chip-bad">${pending}</span>` : ''}` })) })), tab)}
+    ${tabGroups([['ข้อมูลโรงเรียน', 'school', ['school', 'terms', 'rooms', 'subjects', 'users']], ['ระบบและข้อมูล', 'setup', ['growth', 'notify', 'backup']]]
+    .map(([label, ic, keys]) => ({ label, icon: ic, tabs: keys.map((k) => ({ key: k, label: `${TABS[k]}${k === 'users' && pending ? ` <span class="chip chip-bad">${pending}</span>` : ''}${dot(k)}` })) })), tab)}
     <div id="pane"></div>`;
   el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; render(el, ctx); }));
   wireTabGroups(el);
   const pane = $('#pane', el);
   const again = async () => { await ctx.refresh(); render(el, ctx); };
   const run = async (fn, msg = 'บันทึกแล้ว') => { try { await fn(); toast(msg); await again(); } catch (err) { toast(err.message, 'err'); } };
-  ({ school, terms, rooms, subjects, users, growth, backup })[tab](pane, ctx, run);
+  ({ school, terms, rooms, subjects, users, growth, notify, backup })[tab](pane, ctx, run);
 }
 
 // ---------------------------------------------------------------------
@@ -244,7 +248,7 @@ async function growth(pane, ctx, run) {
   $('#g-tpl', pane).href = URL.createObjectURL(new Blob(['\ufeff' + tpl], { type: 'text/csv' }));
   const upsertRows = async (rows) => { for (let i = 0; i < rows.length; i += 500) await ctx.db.upsert('growth_reference', rows.slice(i, i + 500), 'ref_set,sex,basis,key,measure'); clearGrowthRef(); };
   $('#load-excel', pane).addEventListener('click', () => run(async () => {
-    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.27-6');
+    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.27-7');
     await upsertRows(excelRefToRows(EXCEL_AGE, EXCEL_HT));
   }, 'โหลดตารางจาก Excel เดิมแล้ว'));
   pane.querySelectorAll('[data-use]').forEach((b) => b.addEventListener('click', () =>
@@ -302,5 +306,26 @@ function backup(pane, ctx) {
       window.XLSX.writeFile(wb, `สำรองข้อมูล-${d.getFullYear() + 543}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}.xlsx`);
       prog.textContent = 'ดาวน์โหลดแล้ว';
     } catch (err) { prog.textContent = ''; toast(err.message, 'err'); }
+  });
+}
+
+// ---------------------------------------------------------------------
+//  การแจ้งเตือน: เลือกเรื่องที่ให้นับเป็นจุดแดง (ค่ากลางของโรงเรียน)
+// ---------------------------------------------------------------------
+function notify(pane, ctx, run) {
+  const cfg = notifyConfig(ctx);
+  const pend = new Set((ctx.alerts || []).map((a) => a.key));
+  pane.innerHTML = `<form class="card" id="f-notify">
+    <label class="sw-row"><input type="checkbox" id="n-all" ${cfg.all ? 'checked' : ''}><b>เปิดการแจ้งเตือนทั้งหมด</b></label>
+    <p class="muted small" style="margin:0">เมื่อมีเรื่องค้าง จะมีจุดแดงบอกจำนวนเรื่องที่เมนู "ตั้งค่าระบบ" และบนแท็บที่ต้องแก้ เห็นเฉพาะผู้ดูแลระบบ</p>
+    <div class="sw-list" id="n-items">${ITEMS.map((it) => `<label class="sw-row"><input type="checkbox" data-k="${it.key}" ${cfg.off.includes(it.key) ? '' : 'checked'} ${cfg.all ? '' : 'disabled'}>
+      <span>${esc(it.label)}</span>${cfg.all && !cfg.off.includes(it.key) ? (pend.has(it.key) ? '<span class="chip chip-bad">ค้าง</span>' : '<span class="chip chip-ok">ครบแล้ว</span>') : ''}</label>`).join('')}</div>
+    <div><button class="btn btn-primary" type="submit">บันทึก</button></div></form>`;
+  const all = $('#n-all', pane);
+  all.addEventListener('change', () => pane.querySelectorAll('[data-k]').forEach((c) => { c.disabled = !all.checked; }));
+  $('#f-notify', pane).addEventListener('submit', (e) => {
+    e.preventDefault();
+    const off = [...pane.querySelectorAll('[data-k]')].filter((c) => !c.checked).map((c) => c.dataset.k);
+    run(() => ctx.db.upsert('school_settings', [{ id: 1, notify: { all: all.checked, off } }], 'id'));
   });
 }

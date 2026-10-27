@@ -1,7 +1,8 @@
 // แถบเมนูล่างสำหรับจอแคบ + แผง "เพิ่มเติม" + จัดแถบเมนูเอง
 // เลือกเมนูหลักได้ 4 อัน จำเฉพาะเครื่องนี้ (localStorage) ไม่ใช้ฐานข้อมูล
-import { icon } from './icons.js?v=2569.10.27-6';
-import { esc, toast } from './util.js?v=2569.10.27-6';
+import { icon } from './icons.js?v=2569.10.27-7';
+import { esc, toast } from './util.js?v=2569.10.27-7';
+import { badge } from './notify.js?v=2569.10.27-7';
 
 const KEY = 'wl-bnav', MAX = 4, DEFAULT = ['home', 'daily', 'scores', 'students'];
 // ชื่อเมนูที่มีจุดตัดบรรทัด (\u200b) → ห่อแต่ละท่อนไม่ให้ตัดกลางคำ
@@ -19,7 +20,8 @@ const save = (a) => { try { localStorage.setItem(KEY, JSON.stringify(a)); } catc
 
 export function mountNav(host, { labels, ok, version }) {
   let bar = load(ok), view = 'home', open = false, edit = false;
-  const link = (v) => `<a href="#${v}" data-v="${v}">${icon(v)}<span>${labelHtml(labels[v])}</span></a>`;
+  const badges = {};   // จุดแดงจำนวนเรื่องค้าง { view: n }
+  const link = (v) => `<a href="#${v}" data-v="${v}">${icon(v)}<span>${labelHtml(labels[v])}</span>${badge(badges[v])}</a>`;
   const pick = (v) => `<button type="button" class="pick${bar.includes(v) ? ' on' : ''}" data-pick="${v}" aria-pressed="${bar.includes(v)}">${icon(v)}<span>${labelHtml(labels[v])}</span></button>`;
 
   function draw() {
@@ -33,7 +35,7 @@ export function mountNav(host, { labels, ok, version }) {
     host.innerHTML = `
       <nav class="bnav no-print" aria-label="เมนูหลัก">
         ${bar.map(link).join('')}
-        <button type="button" data-act="more" aria-haspopup="dialog" aria-expanded="${open}">${icon('more')}<span>เพิ่มเติม</span></button>
+        <button type="button" data-act="more" aria-haspopup="dialog" aria-expanded="${open}">${icon('more')}<span>เพิ่มเติม</span>${badge(ok.filter((v) => !bar.includes(v)).reduce((n, v) => n + (badges[v] || 0), 0))}</button>
       </nav>
       <div class="sheet-wrap no-print"${open ? '' : ' hidden'}>
         <div class="sheet" role="dialog" aria-modal="true" aria-label="${edit ? 'จัดแถบเมนู' : 'เมนูทั้งหมด'}"><div class="sheet-grip"></div>${body}</div>
@@ -68,7 +70,7 @@ export function mountNav(host, { labels, ok, version }) {
     else if (b.dataset.act === 'done') { if (bar.length !== MAX) return toast('ต้องเลือกให้ครบ 4 เมนู'); edit = false; draw(); }
   });
   draw();
-  const ctl = { setView(v) { view = v; mark(); }, close() { if (open) setOpen(false); } };
+  const ctl = { setView(v) { view = v; mark(); }, setBadge(v, n) { if ((badges[v] || 0) !== n) { badges[v] = n; draw(); } }, close() { if (open) setOpen(false); } };
   cur = ctl;
   return ctl;
 }

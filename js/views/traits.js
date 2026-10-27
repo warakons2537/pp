@@ -1,10 +1,10 @@
-import { esc, $, toast, modal, options, roomName, fullName } from '../util.js?v=2569.10.27-6';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-6';
-import { getRoster } from '../data.js?v=2569.10.27-6';
-import { attachGrid } from '../grid.js?v=2569.10.27-6';
-import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.10.27-6';
-import { detailPane } from './assess-detail.js?v=2569.10.27-6';
-import { FORMS } from '../assess-forms.js?v=2569.10.27-6';
+import { esc, $, toast, modal, options, roomName, fullName } from '../util.js?v=2569.10.27-7';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-7';
+import { getRoster } from '../data.js?v=2569.10.27-7';
+import { attachGrid } from '../grid.js?v=2569.10.27-7';
+import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.10.27-7';
+import { detailPane } from './assess-detail.js?v=2569.10.27-7';
+import { FORMS } from '../assess-forms.js?v=2569.10.27-7';
 
 const pref = { room: null, tab: 'trait8' };
 const TABS = { ...Object.fromEntries(Object.entries(TRAIT_KINDS).map(([k, v]) => [k, v.short])),

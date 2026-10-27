@@ -506,3 +506,26 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
 @media (pointer: coarse) {
   input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea, .reg input.sc, .reg select.sp { font-size: 16px; }
 }
+
+/* ---------- จุดแดงแจ้งเตือน (จำนวนเรื่องที่ตั้งค่ายังไม่ครบ) ---------- */
+.nbadge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--red); color: var(--paper);
+  font-size: .7rem; font-weight: 700; line-height: 1; box-sizing: border-box; margin-left: 6px; vertical-align: middle; }
+.nav a > .nbadge { margin-left: auto; }
+.apps .tile, .bnav a, .bnav button { position: relative; }
+.apps .tile > .nbadge { position: absolute; top: -6px; right: -6px; margin: 0; box-shadow: 0 0 0 2px var(--paper); }
+@media (min-width: 600px) {
+  .nav a { position: relative; }
+  .nav a > .nbadge { position: absolute; top: 0; left: calc(50% + 10px); margin: 0; }
+}
+@media (max-width: 599px) {
+  .bnav .nbadge { position: absolute; top: 4px; left: calc(50% + 8px); margin: 0; }
+}
+.alert-list { display: flex; flex-direction: column; gap: 4px; }
+.alert-list button { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; border-radius: 12px; border: 0;
+  background: color-mix(in srgb, var(--ink) 4%, transparent); color: var(--ink); font: inherit; cursor: pointer; }
+.alert-list button:hover { background: color-mix(in srgb, var(--ink) 9%, transparent); }
+.alert-list button > span:nth-child(2) { flex: 1; }
+.alert-list .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex: none; }
+.sw-list { display: flex; flex-direction: column; gap: 2px; }
+.sw-row { display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 6px 0; }
+.sw-row input { width: 20px; height: 20px; margin: 0; accent-color: var(--pen); }

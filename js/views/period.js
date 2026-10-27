@@ -1,5 +1,5 @@
-import { esc, $, toast, options, fullName, todayIso, thaiDate, STATUS } from '../util.js?v=2569.10.27-6';
-import { getRoster } from '../data.js?v=2569.10.27-6';
+import { esc, $, toast, options, fullName, todayIso, thaiDate, STATUS } from '../util.js?v=2569.10.27-7';
+import { getRoster } from '../data.js?v=2569.10.27-7';
 
 const pref = { course: null, date: null, period: 1 };
 
