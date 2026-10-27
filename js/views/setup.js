@@ -1,10 +1,11 @@
-import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.27-9';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-9';
-import { ROUNDING } from '../grading.js?v=2569.10.27-9';
-import { excelRefToRows } from '../assess.js?v=2569.10.27-9';
-import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.27-9';
-import { subjectImportFlow } from './subject-import-view.js?v=2569.10.27-9';
-import { clearGrowthRef } from '../data.js?v=2569.10.27-9';
+import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.27-10';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-10';
+import { ROUNDING } from '../grading.js?v=2569.10.27-10';
+import { excelRefToRows } from '../assess.js?v=2569.10.27-10';
+import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.27-10';
+import { subjectImportFlow } from './subject-import-view.js?v=2569.10.27-10';
+import { teacherImportFlow } from './teacher-import-view.js?v=2569.10.27-10';
+import { clearGrowthRef } from '../data.js?v=2569.10.27-10';
 
 let tab = 'school';
 const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', rooms: 'ห้องเรียน', subjects: 'รายวิชา', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', notify: 'การแจ้งเตือน', backup: 'สำรองข้อมูล' };
@@ -136,7 +137,8 @@ function subjects(pane, ctx, run) {
           <td class="n" data-l="หน่วยกิต">${s.credits ?? ''}</td><td class="n" data-l="ชม./ปี">${s.hours_per_year ?? ''}</td><td class="n tc-act"><button class="btn btn-sm" data-sub="${s.id}">แก้ไข</button></td></tr>`).join('')}
       </tbody></table></div>` : '<div class="empty">ยังไม่มีรายวิชา</div>'}</div>
     <div class="card"><div class="row" style="justify-content:space-between"><h2>การเปิดสอน ภาคเรียนที่ ${ctx.term ? `${ctx.term.term}/${ctx.term.academic_year}` : '-'}</h2>
-      <button class="btn btn-primary" id="add-course" ${ctx.subjects.length && ctx.classrooms.length ? '' : 'disabled'}>เปิดสอนวิชา</button></div>
+      <div class="row"><label class="btn" title="ไฟล์ CSV จาก WL Scheduler · สร้างครูที่ยังไม่มีบัญชีและผูกกับวิชาที่เปิดสอน">นำเข้าครูจาก WL Scheduler<input type="file" id="imp-teach" accept=".csv,text/csv" hidden></label>
+      <button class="btn btn-primary" id="add-course" ${ctx.subjects.length && ctx.classrooms.length ? '' : 'disabled'}>เปิดสอนวิชา</button></div></div>
       ${ctx.courses.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>ห้อง</th><th>วิชา</th><th>ครูผู้สอน</th><th class="n">ระหว่างภาค:ปลายภาค</th><th></th></tr></thead><tbody>
         ${ctx.courses.map((k) => `<tr><td data-l="ห้อง">${esc(roomName(k.classroom))}</td><td class="tc-ttl">${esc(k.subject?.code)} ${esc(k.subject?.name)}</td>
           <td data-l="ครูผู้สอน">${esc(k.teachers.map((t) => t.full_name).join(', ') || '—')}</td><td class="n" data-l="ระหว่างภาค:ปลายภาค">${k.midterm_ratio}:${k.final_ratio}</td>
@@ -163,6 +165,13 @@ function subjects(pane, ctx, run) {
     if (!res) return;
     if (res.errors.length) await modal('นำเข้าไม่ครบ', `<ul class="small">${res.errors.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`, { okText: 'ตกลง', cancelText: '' });
     run(async () => {}, `นำเข้าแล้ว ${res.imported} ไฟล์ · สร้างวิชาใหม่ ${res.created} · เปิดสอนใหม่ ${res.opened}`);
+  });
+  $('#imp-teach', pane).addEventListener('change', async (e) => {
+    const file = e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    let res;
+    try { res = await teacherImportFlow(ctx, file); } catch (err) { toast(err.message, 'err'); return; }
+    if (res) run(async () => {}, `สร้างครู ${res.created} คน · ผูกครูกับวิชา ${res.linked} รายการ · ข้าม ${res.skipped} แถว`);
   });
   pane.querySelectorAll('[data-sub]').forEach((b) => b.addEventListener('click', async () => {
     const r = await subForm(ctx.subjectById[b.dataset.sub]); if (r) run(() => ctx.db.update('subjects', { id: b.dataset.sub }, subRow(r)));
@@ -217,15 +226,23 @@ function subjects(pane, ctx, run) {
 // ---------------------------------------------------------------------
 function users(pane, ctx, run) {
   const roleOpts = [{ id: 'pending', label: 'รออนุมัติ' }, { id: 'teacher', label: 'ครู' }, { id: 'admin', label: 'ผู้ดูแลระบบ' }];
+  const holders = ctx.profiles.filter((p) => p.has_account === false);
   pane.innerHTML = `<div class="card">
     <p class="small muted">ครูสมัครใช้งานเองจากหน้าเข้าสู่ระบบ แล้วผู้ดูแลอนุมัติที่นี่ · ผู้ดูแลระบบแก้ไขได้ทุกอย่าง · ครูแก้ได้เฉพาะห้องที่เป็นครูประจำชั้นและวิชาที่สอน</p>
     <div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>ชื่อ</th><th>อีเมล</th><th>สิทธิ์</th></tr></thead><tbody>
       ${ctx.profiles.map((p) => `<tr><td class="tc-ttl">${esc(p.full_name || '—')}</td><td class="small wrap-any" data-l="อีเมล">${esc(p.email ?? '')}</td>
-        <td data-l="สิทธิ์">${p.id === ctx.me.id ? '<span class="chip chip-info">ผู้ดูแลระบบ (คุณ)</span>'
-          : `<select data-role="${p.id}" aria-label="สิทธิ์ของ ${esc(p.full_name)}">${options(roleOpts, p.role)}</select>`}</td></tr>`).join('')}
+        <td data-l="สิทธิ์">${p.has_account === false ? '<span class="chip">ยังไม่มีบัญชี</span>'
+          : `${p.id === ctx.me.id ? '<span class="chip chip-info">ผู้ดูแลระบบ (คุณ)</span>'
+          : `<select data-role="${p.id}" aria-label="สิทธิ์ของ ${esc(p.full_name)}">${options(roleOpts, p.role)}</select>`}
+          ${holders.length ? `<select data-claim="${p.id}" aria-label="จับคู่ ${esc(p.full_name)} กับรายชื่อครูที่สร้างไว้"><option value="">จับคู่กับรายชื่อที่สร้างไว้…</option>${options(holders, null, (h) => h.full_name)}</select>` : ''}`}</td></tr>`).join('')}
     </tbody></table></div></div>`;
   pane.querySelectorAll('[data-role]').forEach((s) => s.addEventListener('change', () =>
     run(() => ctx.db.update('profiles', { id: s.dataset.role }, { role: s.value }), 'เปลี่ยนสิทธิ์แล้ว')));
+  pane.querySelectorAll('[data-claim]').forEach((s) => s.addEventListener('change', async () => {
+    const h = ctx.profileById[s.value]; const acc = ctx.profileById[s.dataset.claim];
+    if (!h || !await confirmBox(`จับคู่ "${h.full_name}" กับบัญชี ${acc.full_name || acc.email}? วิชาและห้องที่ผูกไว้จะย้ายมาที่บัญชีนี้`, 'จับคู่')) { s.value = ''; return; }
+    run(() => ctx.db.rpc('claim_teacher', { placeholder: h.id, account: acc.id }), 'จับคู่แล้ว');
+  }));
 }
 
 // ---------------------------------------------------------------------
@@ -258,7 +275,7 @@ async function growth(pane, ctx, run) {
   $('#g-tpl', pane).href = URL.createObjectURL(new Blob(['\ufeff' + tpl], { type: 'text/csv' }));
   const upsertRows = async (rows) => { for (let i = 0; i < rows.length; i += 500) await ctx.db.upsert('growth_reference', rows.slice(i, i + 500), 'ref_set,sex,basis,key,measure'); clearGrowthRef(); };
   $('#load-excel', pane).addEventListener('click', () => run(async () => {
-    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.27-9');
+    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.27-10');
     await upsertRows(excelRefToRows(EXCEL_AGE, EXCEL_HT));
   }, 'โหลดตารางจาก Excel เดิมแล้ว'));
   pane.querySelectorAll('[data-use]').forEach((b) => b.addEventListener('click', () =>

@@ -1,6 +1,6 @@
-import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.10.27-9';
-import { getRoster } from '../data.js?v=2569.10.27-9';
-import { readDmcFile } from '../dmc.js?v=2569.10.27-9';
+import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.10.27-10';
+import { getRoster } from '../data.js?v=2569.10.27-10';
+import { readDmcFile } from '../dmc.js?v=2569.10.27-10';
 
 let selected = null;   // ห้องที่เลือกค้างไว้ระหว่างเปลี่ยนหน้า
 

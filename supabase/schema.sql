@@ -17,7 +17,7 @@ exception when duplicate_object then null; end $$;
 -- 1) ผู้ใช้ (ครู) — ผูกกับระบบล็อกอินของ Supabase
 -- ---------------------------------------------------------------------
 create table if not exists public.profiles (
-  id          uuid primary key references auth.users(id) on delete cascade,
+  id          uuid primary key default gen_random_uuid(),   -- = auth.users.id (ครูที่ยังไม่มีบัญชี: has_account = false)
   full_name   text not null default '',
   email       text,
   role        text not null default 'pending'
@@ -400,14 +400,20 @@ $$;
 -- ทริกเกอร์
 -- =====================================================================
 -- สมัครสมาชิกใหม่ -> สร้าง profile อัตโนมัติ ; คนแรกของระบบเป็น admin
+-- ชื่อตรงกับครูที่สร้างไว้ก่อน (ยังไม่มีบัญชี) 1 คนพอดี -> ย้ายวิชา/ห้องที่ผูกไว้มาที่บัญชีนี้ (ยังรออนุมัติตามปกติ)
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
+declare k text := public.teacher_name_key(new.raw_user_meta_data->>'full_name'); ids uuid[];
 begin
   insert into public.profiles (id, email, full_name, role)
   values (new.id, new.email,
           coalesce(new.raw_user_meta_data->>'full_name', ''),
-          case when exists (select 1 from public.profiles) then 'pending' else 'admin' end)
+          case when exists (select 1 from public.profiles where has_account) then 'pending' else 'admin' end)
   on conflict (id) do nothing;
+  if k <> '' then
+    select array_agg(id) into ids from public.profiles where not has_account and public.teacher_name_key(full_name) = k;
+    if cardinality(ids) = 1 then perform public.merge_teacher(ids[1], new.id); end if;
+  end if;
   return new;
 end $$;
 
@@ -420,7 +426,8 @@ create or replace function public.guard_profile_role() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   -- auth.uid() ว่าง = รันจาก SQL Editor ของเจ้าของโปรเจกต์ (ใช้กู้สิทธิ์ผู้ดูแลได้)
-  if new.role is distinct from old.role and auth.uid() is not null and not public.is_admin() then
+  if (new.role is distinct from old.role or new.has_account is distinct from old.has_account)
+     and auth.uid() is not null and not public.is_admin() then
     raise exception 'เฉพาะผู้ดูแลระบบเท่านั้นที่เปลี่ยนสิทธิ์ผู้ใช้ได้';
   end if;
   return new;
@@ -660,3 +667,50 @@ end $$;
 -- { "all": true/false, "off": ["key ที่ปิดไว้"] } · ค่าว่าง = เปิดทุกเรื่อง
 -- =====================================================================
 alter table public.school_settings add column if not exists notify jsonb not null default '{}'::jsonb;
+
+-- =====================================================================
+-- ครูที่ยังไม่มีบัญชี (นำเข้าจากไฟล์ WL Scheduler) : profiles.has_account = false
+-- จับคู่กับบัญชีจริงอัตโนมัติตอนสมัคร (ชื่อตรงกัน 1 คน) หรือผู้ดูแลจับคู่เองที่ ตั้งค่าระบบ → ผู้ใช้
+-- =====================================================================
+alter table public.profiles add column if not exists has_account boolean not null default true;
+alter table public.profiles alter column id set default gen_random_uuid();
+alter table public.profiles drop constraint if exists profiles_id_fkey;
+
+-- ลบบัญชีใน Authentication -> ลบ profile ด้วย (แทน FK เดิม)
+create or replace function public.handle_deleted_user() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  delete from public.profiles where id = old.id;
+  return old;
+end $$;
+drop trigger if exists on_auth_user_deleted on auth.users;
+create trigger on_auth_user_deleted after delete on auth.users
+  for each row execute function public.handle_deleted_user();
+
+-- ชื่อสำหรับจับคู่: ตัดคำนำหน้า (ครู นาย นาง นางสาว น.ส.) และช่องว่างทั้งหมด
+create or replace function public.teacher_name_key(s text) returns text
+language sql immutable as $$
+  select regexp_replace(regexp_replace(btrim(coalesce(s, '')), '^((ครู|นางสาว|นาง|นาย|น\.ส\.)\s*)+', ''), '\s+', '', 'g')
+$$;
+
+-- ย้ายวิชา/ห้องของครูที่ยังไม่มีบัญชีไปที่บัญชีจริง แล้วลบรายชื่อเดิม (ใช้ภายใน)
+create or replace function public.merge_teacher(placeholder uuid, account uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.course_teachers (course_id, teacher_id)
+    select course_id, account from public.course_teachers where teacher_id = placeholder on conflict do nothing;
+  insert into public.classroom_teachers (classroom_id, teacher_id)
+    select classroom_id, account from public.classroom_teachers where teacher_id = placeholder on conflict do nothing;
+  delete from public.profiles where id = placeholder and not has_account;
+end $$;
+revoke all on function public.merge_teacher(uuid, uuid) from public, anon, authenticated;
+
+-- ผู้ดูแลจับคู่เอง (กรณีชื่อไม่ตรงหรือซ้ำกันหลายคน)
+create or replace function public.claim_teacher(placeholder uuid, account uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'เฉพาะผู้ดูแลระบบเท่านั้น'; end if;
+  if not exists (select 1 from public.profiles where id = account and has_account) then raise exception 'ไม่พบบัญชีผู้ใช้'; end if;
+  if not exists (select 1 from public.profiles where id = placeholder and not has_account) then raise exception 'ไม่พบรายชื่อครูที่ยังไม่มีบัญชี'; end if;
+  perform public.merge_teacher(placeholder, account);
+end $$;

@@ -2,8 +2,8 @@
 //  ชั้นข้อมูล: ใช้ Supabase จริง หรือ "โหมดทดลอง" (เก็บในเบราว์เซอร์)
 //  หน้าจอทุกหน้าเรียกผ่าน API ชุดเดียวกัน จึงสลับได้โดยไม่ต้องแก้หน้าจอ
 // =====================================================================
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2569.10.27-9';
-import { seedDemo } from './demo-data.js?v=2569.10.27-9';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2569.10.27-10';
+import { seedDemo } from './demo-data.js?v=2569.10.27-10';
 
 const thaiError = (e) => {
   const m = String(e?.message || e);
@@ -217,7 +217,23 @@ function demoDb() {
       state[t] = rows.filter((r) => !match(r, m));
       gone.forEach((r) => emit(t, 'DELETE', r)); save();
     },
-    async rpc(name, args) { return clone(RPC[name](args)); },
+    async rpc(name, args) {
+      // ผู้ดูแลจับคู่ครูที่ยังไม่มีบัญชีกับบัญชีจริง (เหมือน claim_teacher ใน schema.sql)
+      if (name === 'claim_teacher') {
+        const { placeholder, account } = args;
+        for (const t of ['course_teachers', 'classroom_teachers']) {
+          for (const r of T(t).filter((x) => x.teacher_id === placeholder)) {
+            const add = { ...r, teacher_id: account };
+            if (!T(t).some((x) => sameRow(t, x, add))) write(t, add, pk(t));
+          }
+          for (const r of T(t).filter((x) => x.teacher_id === placeholder)) { T(t).splice(T(t).indexOf(r), 1); emit(t, 'DELETE', r); }
+        }
+        const p = T('profiles').find((x) => x.id === placeholder);
+        if (p) { T('profiles').splice(T('profiles').indexOf(p), 1); emit('profiles', 'DELETE', p); }
+        save(); return null;
+      }
+      return clone(RPC[name](args));
+    },
     files: demoFiles(),
     subscribe(table, filter, cb) {
       const l = { table, fn: ({ type, row }) => {

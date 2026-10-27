@@ -1,19 +1,19 @@
-import { db } from './db.js?v=2569.10.27-9';
-import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.27-9';
-import { icon } from './icons.js?v=2569.10.27-9';
-import { BRAND, VERSION } from './brand.js?v=2569.10.27-9';
-import { mountNav, labelHtml } from './navbar.js?v=2569.10.27-9';
-import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.27-9';
-import * as home from './views/home.js?v=2569.10.27-9';
-import * as students from './views/students.js?v=2569.10.27-9';
-import * as daily from './views/daily.js?v=2569.10.27-9';
-import * as period from './views/period.js?v=2569.10.27-9';
-import * as reports from './views/reports.js?v=2569.10.27-9';
-import * as setup from './views/setup.js?v=2569.10.27-9';
-import * as scores from './views/scores.js?v=2569.10.27-9';
-import * as health from './views/health.js?v=2569.10.27-9';
-import * as traits from './views/traits.js?v=2569.10.27-9';
-import * as print from './views/print.js?v=2569.10.27-9';
+import { db } from './db.js?v=2569.10.27-10';
+import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.27-10';
+import { icon } from './icons.js?v=2569.10.27-10';
+import { BRAND, VERSION } from './brand.js?v=2569.10.27-10';
+import { mountNav, labelHtml } from './navbar.js?v=2569.10.27-10';
+import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.27-10';
+import * as home from './views/home.js?v=2569.10.27-10';
+import * as students from './views/students.js?v=2569.10.27-10';
+import * as daily from './views/daily.js?v=2569.10.27-10';
+import * as period from './views/period.js?v=2569.10.27-10';
+import * as reports from './views/reports.js?v=2569.10.27-10';
+import * as setup from './views/setup.js?v=2569.10.27-10';
+import * as scores from './views/scores.js?v=2569.10.27-10';
+import * as health from './views/health.js?v=2569.10.27-10';
+import * as traits from './views/traits.js?v=2569.10.27-10';
+import * as print from './views/print.js?v=2569.10.27-10';
 
 const VIEWS = { home, students, daily, period, reports, setup, scores, health, traits, print };
 const root = document.getElementById('app');
@@ -77,7 +77,7 @@ function loginCover(sub) {
 
 function renderLogin() {
   if (db.mode === 'demo') {
-    const users = db.auth.demoUsers();
+    const users = db.auth.demoUsers().filter((u) => u.has_account !== false);
     const roleText = { admin: 'ฝ่ายวิชาการ', teacher: 'ครู', pending: 'รออนุมัติ' };
     root.innerHTML = `
       <div class="login"><div class="login-book">${loginCover('โหมดทดลอง · ข้อมูลตัวอย่าง ชื่อสมมติ')}
