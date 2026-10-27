@@ -3,11 +3,11 @@
 //  เลือกได้หลายไฟล์ → ตารางตรวจ (ห้อง · จับคู่นักเรียน · ข้อมูลเดิม · นำเข้า/ข้าม) → เขียน assess_detail / trait_scores
 //  ช่องที่ว่างในไฟล์ไม่ลบค่าเดิมในระบบ · ผลสรุปรายข้อ (trait_scores) คำนวณใหม่จากค่ารวมของไฟล์กับค่าเดิม
 // =====================================================================
-import { esc, toast, roomName, fullName } from '../util.js?v=2569.10.27-13';
-import { getRoster } from '../data.js?v=2569.10.27-13';
-import { sheetMatrix, matchStudents } from '../achievement-import.js?v=2569.10.27-13';
-import { detectKind, parseAssessFile, KIND_LABEL } from '../assess-import.js?v=2569.10.27-13';
-import { TRAITS, COMPETENCIES, traitResult, compResult } from '../assess-forms.js?v=2569.10.27-13';
+import { esc, toast, roomName, fullName } from '../util.js?v=2569.10.27-14';
+import { getRoster } from '../data.js?v=2569.10.27-14';
+import { sheetMatrix, matchStudents } from '../achievement-import.js?v=2569.10.27-14';
+import { detectKind, parseAssessFile, KIND_LABEL } from '../assess-import.js?v=2569.10.27-14';
+import { TRAITS, COMPETENCIES, traitResult, compResult } from '../assess-forms.js?v=2569.10.27-14';
 
 async function readFiles(files) {
   if (!window.XLSX) throw new Error('โหลดตัวอ่านไฟล์ Excel ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วรีเฟรชหน้า');

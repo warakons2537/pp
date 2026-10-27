@@ -1,8 +1,9 @@
-import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.10.27-13';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-13';
-import { getRoster } from '../data.js?v=2569.10.27-13';
-import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.10.27-13';
-import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.10.27-13';
+import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.10.27-14';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-14';
+import { getRoster } from '../data.js?v=2569.10.27-14';
+import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.10.27-14';
+import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.10.27-14';
+import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.10.27-14';
 
 const pref = { course: null, tab: 'scores' };
 const KIND = { score: 'คะแนนเก็บระหว่างภาค', final: 'สอบปลายภาค', indicator: 'ตัวชี้วัด (ผ/มผ)' };
@@ -19,7 +20,10 @@ export async function render(el, ctx) {
   const course = ctx.courseById[pref.course];
   const canEdit = ctx.isAdmin || course.teachers.some((t) => t.id === ctx.me.id);
   const rounding = ctx.settings.score_rounding || 'floor';
-  const [roster, data] = await Promise.all([getRoster(ctx.db, course.classroom_id), loadCourse(ctx.db, course)]);
+  let [roster, data] = await Promise.all([getRoster(ctx.db, course.classroom_id), loadCourse(ctx.db, course)]);
+  // ตัวชี้วัดกลางของรายวิชา: ใส่ตัวที่ห้องนี้ยังไม่มี (ยังไม่ได้รัน schema ใหม่ = ข้ามไป)
+  const master = await ctx.db.select('subject_indicators', { eq: { subject_id: course.subject_id } }).catch(() => []);
+  if (canEdit && await syncCourse(ctx.db, course.id, master, data.items).catch(() => 0)) data = await loadCourse(ctx.db, course);
   const items = data.items;
   const byKind = (k) => items.filter((i) => i.kind === k);
   if (!items.length && pref.tab !== 'items') pref.tab = 'items';
@@ -43,7 +47,7 @@ export async function render(el, ctx) {
   const again = () => render(el, ctx);
   $('#xls', el).addEventListener('click', () => exportDialog(ctx, course));
 
-  if (pref.tab === 'items') return itemsTab(pane, ctx, course, items, canEdit, again);
+  if (pref.tab === 'items') return itemsTab(pane, ctx, course, data.items, canEdit, again, master);
   if (!roster.length) { pane.innerHTML = '<div class="empty">ห้องนี้ยังไม่มีนักเรียน</div>'; return; }
   return pref.tab === 'indicators'
     ? indicatorsTab(pane, ctx, course, roster, data, canEdit)
@@ -288,7 +292,7 @@ function indicatorsTab(pane, ctx, course, roster, data, canEdit) {
 // =====================================================================
 //  แท็บตั้งค่าช่องคะแนน
 // =====================================================================
-function itemsTab(pane, ctx, course, items, canEdit, again) {
+function itemsTab(pane, ctx, course, items, canEdit, again, master = []) {
   const g = (k) => items.filter((i) => i.kind === k);
   const sum = (k) => g(k).reduce((s, i) => s + Number(i.max_score || 0), 0);
   const others = ctx.myCourses.filter((k) => k.id !== course.id);
@@ -318,7 +322,7 @@ function itemsTab(pane, ctx, course, items, canEdit, again) {
         <label class="field">ปลายภาค<input type="number" id="r-fin" name="fin" min="0" max="100" value="${course.final_ratio}" style="width:90px" ${canEdit ? '' : 'disabled'}></label>
         ${canEdit ? '<button class="btn btn-sm" type="submit">บันทึกสัดส่วน</button>' : ''}</form></div>
       <p class="small muted">คะแนนระหว่างภาค = คะแนนเก็บรวม ÷ (คะแนนเต็มรวม ÷ ${course.midterm_ratio}) แล้วปัดเศษตามที่โรงเรียนตั้งไว้ · รวมกับคะแนนปลายภาคได้เต็ม 100</p></div>
-    ${table('score')}${table('final')}${table('indicator')}`;
+    ${table('score')}${table('final')}${masterCard(course, master, canEdit)}${table('indicator')}`;
   if (!canEdit) return;
 
   const nextOrder = () => items.reduce((m, i) => Math.max(m, i.sort_order || 0), 0) + 1;
@@ -328,7 +332,7 @@ function itemsTab(pane, ctx, course, items, canEdit, again) {
       <label>คำอธิบาย (ไม่บังคับ)<input type="text" id="i-title" name="title" value="${esc(it.title ?? '')}"></label>` : `
       <label>ชื่อช่องคะแนน<input type="text" id="i-title" name="title" required value="${esc(it.title ?? (k === 'final' ? 'สอบปลายภาค' : ''))}"></label>
       <label>คะแนนเต็ม<input type="number" id="i-max" name="max" step="0.5" min="0.5" required value="${it.max_score ?? (k === 'final' ? course.final_ratio : 10)}" style="width:110px"></label>`);
-  const row = (k, r) => (k === 'indicator' ? { code: r.code.trim(), title: r.title?.trim() || null, max_score: null }
+  const row = (k, r) => (k === 'indicator' ? { code: normIndicatorCode(r.code), title: r.title?.trim() || null, max_score: null }
     : { title: r.title.trim(), max_score: Number(r.max) });
 
   pane.querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', async () => {
@@ -342,7 +346,7 @@ function itemsTab(pane, ctx, course, items, canEdit, again) {
     if (!r) return;
     const rows = []; let order = nextOrder();
     for (const line of r.text.split('\n').map((l) => l.trim()).filter(Boolean)) {
-      if (k === 'indicator') { const [code, title] = line.split('\t'); rows.push({ course_id: course.id, kind: k, code: code.trim(), title: title?.trim() || null, sort_order: order++ }); }
+      if (k === 'indicator') { const [code, title] = line.split('\t'); rows.push({ course_id: course.id, kind: k, code: normIndicatorCode(code), title: title?.trim() || null, sort_order: order++ }); }
       else { const m = line.match(/^(.*?)[\t ]+([\d.]+)$/); if (!m) { toast(`อ่านบรรทัด "${line}" ไม่ได้ ต้องมีคะแนนเต็มท้ายบรรทัด`, 'err'); return; }
         rows.push({ course_id: course.id, kind: k, title: m[1].trim(), max_score: Number(m[2]), sort_order: order++ }); }
     }
@@ -366,6 +370,7 @@ function itemsTab(pane, ctx, course, items, canEdit, again) {
   };
   pane.querySelectorAll('[data-up]').forEach((b) => b.addEventListener('click', () => swap(b.dataset.up, -1)));
   pane.querySelectorAll('[data-down]').forEach((b) => b.addEventListener('click', () => swap(b.dataset.down, 1)));
+  wireMaster(pane, ctx, course, master, run, again);
   $('#ratio', pane)?.addEventListener('submit', (e) => {
     e.preventDefault();
     const mid = Number($('#r-mid', pane).value); const fin = Number($('#r-fin', pane).value);
@@ -443,4 +448,72 @@ async function importDialog(ctx, course, items, file) {
   if (course.midterm_ratio !== parsed.midRatio) await ctx.refresh();
   toast(`นำเข้าแล้ว: ${r.items} ช่องคะแนน · ${r.students} คน · ${r.scores} คะแนน`);
   pref.tab = 'scores';
+}
+
+// =====================================================================
+//  ตัวชี้วัดกลางของรายวิชา (ใช้ร่วมกับทุกห้องที่เปิดสอนรหัสวิชานี้)
+// =====================================================================
+function masterCard(course, master, canEdit) {
+  const list = [...master].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  return `
+    <div class="card"><div class="row" style="justify-content:space-between;align-items:center">
+      <h3>ตัวชี้วัดกลางของรายวิชา ${esc(course.subject?.code ?? '')}</h3><span class="small muted">${list.length} ตัว</span></div>
+      <p class="small muted">ใช้ร่วมกับทุกห้องที่เปิดสอนรหัสวิชานี้ ระบบเพิ่มตัวที่ห้องยังไม่มีให้เอง ไม่ลบหรือแทนของเดิม · รหัสจัดรูปแบบให้อัตโนมัติ (เช่น ม 3/3 → ม.3/3)
+        · ถ้าจะเอาตัวชี้วัดออกจากห้อง ให้ลบจากรายการนี้ก่อน มิฉะนั้นจะถูกเพิ่มกลับเมื่อเปิดหน้านี้</p>
+      ${list.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>รหัสตัวชี้วัด</th><th>คำอธิบาย</th><th></th></tr></thead><tbody>
+        ${list.map((m) => `<tr><td class="tc-ttl">${esc(m.code)}</td><td class="small" data-l="คำอธิบาย">${esc(m.title ?? '')}</td>
+          <td class="n tc-act" style="white-space:nowrap">${canEdit ? `<button class="btn btn-sm" data-medit="${m.id}">แก้ไข</button> <button class="btn btn-sm btn-danger" data-mdel="${m.id}">ลบ</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`
+        : '<div class="empty">ยังไม่มีตัวชี้วัดกลาง</div>'}
+      ${canEdit ? '<div class="row"><button class="btn btn-sm" data-madd>เพิ่มตัวชี้วัดกลาง (วางจาก Excel ได้)</button></div>' : ''}
+    </div>`;
+}
+
+function wireMaster(pane, ctx, course, master, run, again) {
+  const sid = course.subject_id;
+  const warnLevel = (codes) => {
+    const bad = levelMismatch(codes, course.subject);
+    return bad.length ? confirmBox(`รหัสต่อไปนี้ชั้นไม่ตรงกับวิชา: ${bad.join(', ')} บันทึกตามนี้หรือไม่?`, 'บันทึก') : true;
+  };
+  const done = (r, n) => `เพิ่มตัวชี้วัดกลาง ${n} ตัว${r.added ? ` · ใส่ลง ${r.rooms} ห้อง (${r.added} ช่อง)` : ''}`;
+
+  $('[data-madd]', pane)?.addEventListener('click', async () => {
+    const r = await modal('เพิ่มตัวชี้วัดกลาง', `<label>รหัสตัวชี้วัด บรรทัดละ 1 ตัว (คั่นคำอธิบายด้วยแท็บได้) · ตัวที่มีอยู่แล้วจะข้ามไป
+      <textarea id="m-bulk" name="text" rows="8" placeholder="ท 1.1 ม.3/1\nท 1.1 ม.3/2"></textarea></label>`, { okText: 'เพิ่ม' });
+    if (!r) return;
+    const { rows, dup } = parseIndicatorLines(r.text, master);
+    if (!rows.length) { toast(dup.length ? 'ทุกตัวมีอยู่แล้ว' : 'ไม่มีรหัสที่จะเพิ่ม', 'err'); return; }
+    if (!await warnLevel(rows.map((x) => x.code))) return;
+    let order = master.reduce((m, x) => Math.max(m, x.sort_order || 0), 0);
+    try {
+      await ctx.db.insert('subject_indicators', rows.map((x) => ({ subject_id: sid, ...x, sort_order: ++order })));
+      const res = await syncSubject(ctx, sid);
+      toast(done(res, rows.length) + (dup.length ? ` · ข้ามที่มีแล้ว ${dup.length} ตัว` : '')); again();
+    } catch (err) { toast(err.message, 'err'); }
+  });
+
+  pane.querySelectorAll('[data-medit]').forEach((b) => b.addEventListener('click', async () => {
+    const m = master.find((x) => x.id === b.dataset.medit);
+    const r = await modal('แก้ไขตัวชี้วัดกลาง', `
+      <label>รหัสตัวชี้วัด<input type="text" id="m-code" name="code" required value="${esc(m.code)}"></label>
+      <label>คำอธิบาย (ไม่บังคับ)<input type="text" id="m-title" name="title" value="${esc(m.title ?? '')}"></label>
+      <p class="small muted">ตัวชี้วัดเดียวกันในห้องที่คุณแก้ได้จะถูกแก้ตามด้วย ผล ผ/มผ ที่กรอกไว้ไม่หาย</p>`);
+    if (!r) return;
+    const code = normIndicatorCode(r.code); if (!code) return;
+    if (indKey(code) !== indKey(m.code) && master.some((x) => indKey(x.code) === indKey(code))) { toast(`มีรหัส ${code} อยู่แล้ว`, 'err'); return; }
+    if (!await warnLevel([code])) return;
+    const patch = { code, title: r.title?.trim() || null };
+    run(async () => {
+      await ctx.db.update('subject_indicators', { id: m.id }, patch);
+      const ids = syncableCourses(ctx, sid).map((k) => k.id);
+      const its = ids.length ? await ctx.db.select('assessment_items', { in: { course_id: ids } }) : [];
+      for (const it of its) if (it.kind === 'indicator' && indKey(it.code || '') === indKey(m.code)) await ctx.db.update('assessment_items', { id: it.id }, patch);
+      await syncSubject(ctx, sid);
+    });
+  }));
+
+  pane.querySelectorAll('[data-mdel]').forEach((b) => b.addEventListener('click', async () => {
+    const m = master.find((x) => x.id === b.dataset.mdel);
+    if (!await confirmBox(`ลบ "${m.code}" จากตัวชี้วัดกลาง? ลบเฉพาะรายการกลาง ตัวชี้วัดและผล ผ/มผ ในแต่ละห้องยังอยู่ (ลบในห้องได้ที่ตารางตัวชี้วัดด้านล่าง)`, 'ลบ')) return;
+    run(() => ctx.db.remove('subject_indicators', { id: m.id }), 'ลบแล้ว');
+  }));
 }
