@@ -151,7 +151,7 @@ const pf = (a) => (a?.passed === true ? 'ผ่าน' : a?.passed === false ? '
 
 function gradeRows(pt, s) {
   return pt.results.map((r, i) => { const x = r.res[s.id];
-    const note = x.reason || (x.incomplete ? 'คะแนนยังไม่ครบ' : '');
+    const note = x.reason || '';
     return `<tr><td>${i + 1}</td><td>${esc(r.course.subject?.code)}</td><td class="l">${esc(r.course.subject?.name)}</td><td>${unit(r.course.subject)}</td>
       <td>100</td><td>${r.classAvg ?? ''}</td><td>${x.total ?? ''}</td><td><b>${fmtGrade(x.grade)}</b></td><td class="l" style="font-size:11px">${esc(note)}</td></tr>`; }).join('');
 }

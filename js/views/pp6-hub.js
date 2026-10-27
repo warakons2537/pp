@@ -22,7 +22,6 @@ export function missingOf(d, terms, s) {
     for (const r of d.perTerm[t.id].results) {
       const x = r.res[s.id];
       if (x.grade === null) out.push({ t, k: r.course, why: 'ยังไม่มีคะแนน' });
-      else if (x.incomplete) out.push({ t, k: r.course, why: `คะแนนยังไม่ครบ ${x.missing} ช่อง` });
     }
   }
   return out;
