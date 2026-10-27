@@ -3,13 +3,13 @@
 //  บันทึกคะแนนรายข้อใน assess_detail แล้วเขียนผลสรุปรายข้อลง trait_scores ให้อัตโนมัติ
 //  (ปพ.6 และแท็บสรุปเดิมจึงได้ผลเดียวกัน)
 // =====================================================================
-import { esc, $, toast, modal, fullName, levelName, roomName } from '../util.js?v=2569.10.27-6';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-6';
-import { attachGrid } from '../grid.js?v=2569.10.27-6';
-import { TRAITS, SUBS, subResult, traitResult, traitOverall, LV4, COMPETENCIES, compResult, compOverall, COMP_LV, FORMS } from '../assess-forms.js?v=2569.10.27-6';
-import { traitWorkbook, competencyWorkbook } from '../assess-export.js?v=2569.10.27-6';
-import { buildXlsx, downloadBytes } from '../xlsx-write.js?v=2569.10.27-6';
-import { sheetName as stuName } from '../achievement.js?v=2569.10.27-6';
+import { esc, $, toast, modal, fullName, levelName, roomName } from '../util.js?v=2569.10.27-7';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-7';
+import { attachGrid } from '../grid.js?v=2569.10.27-7';
+import { TRAITS, SUBS, subResult, traitResult, traitOverall, LV4, COMPETENCIES, compResult, compOverall, COMP_LV, FORMS } from '../assess-forms.js?v=2569.10.27-7';
+import { traitWorkbook, competencyWorkbook } from '../assess-export.js?v=2569.10.27-7';
+import { buildXlsx, downloadBytes } from '../xlsx-write.js?v=2569.10.27-7';
+import { sheetName as stuName } from '../achievement.js?v=2569.10.27-7';
 
 const pref = { trait8: '1.1', competency5: '1' };
 const chip = (label, lv) => `<span class="chip ${lv === 0 ? 'chip-bad' : lv === 3 ? 'chip-ok' : 'chip-info'}">${esc(label)}</span>`;

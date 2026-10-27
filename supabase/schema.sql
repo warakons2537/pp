@@ -654,3 +654,9 @@ do $$ begin
     create policy pp_files_delete on storage.objects for delete using (bucket_id = 'pp-files' and public.is_admin());
   end if;
 end $$;
+
+-- =====================================================================
+-- การแจ้งเตือน "ตั้งค่าระบบยังไม่ครบ" (ตั้งค่าระบบ → การแจ้งเตือน)
+-- { "all": true/false, "off": ["key ที่ปิดไว้"] } · ค่าว่าง = เปิดทุกเรื่อง
+-- =====================================================================
+alter table public.school_settings add column if not exists notify jsonb not null default '{}'::jsonb;

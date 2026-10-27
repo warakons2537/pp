@@ -1,18 +1,19 @@
-import { db } from './db.js?v=2569.10.27-6';
-import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.27-6';
-import { icon } from './icons.js?v=2569.10.27-6';
-import { BRAND, VERSION } from './brand.js?v=2569.10.27-6';
-import { mountNav, labelHtml } from './navbar.js?v=2569.10.27-6';
-import * as home from './views/home.js?v=2569.10.27-6';
-import * as students from './views/students.js?v=2569.10.27-6';
-import * as daily from './views/daily.js?v=2569.10.27-6';
-import * as period from './views/period.js?v=2569.10.27-6';
-import * as reports from './views/reports.js?v=2569.10.27-6';
-import * as setup from './views/setup.js?v=2569.10.27-6';
-import * as scores from './views/scores.js?v=2569.10.27-6';
-import * as health from './views/health.js?v=2569.10.27-6';
-import * as traits from './views/traits.js?v=2569.10.27-6';
-import * as print from './views/print.js?v=2569.10.27-6';
+import { db } from './db.js?v=2569.10.27-7';
+import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.27-7';
+import { icon } from './icons.js?v=2569.10.27-7';
+import { BRAND, VERSION } from './brand.js?v=2569.10.27-7';
+import { mountNav, labelHtml } from './navbar.js?v=2569.10.27-7';
+import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.27-7';
+import * as home from './views/home.js?v=2569.10.27-7';
+import * as students from './views/students.js?v=2569.10.27-7';
+import * as daily from './views/daily.js?v=2569.10.27-7';
+import * as period from './views/period.js?v=2569.10.27-7';
+import * as reports from './views/reports.js?v=2569.10.27-7';
+import * as setup from './views/setup.js?v=2569.10.27-7';
+import * as scores from './views/scores.js?v=2569.10.27-7';
+import * as health from './views/health.js?v=2569.10.27-7';
+import * as traits from './views/traits.js?v=2569.10.27-7';
+import * as print from './views/print.js?v=2569.10.27-7';
 
 const VIEWS = { home, students, daily, period, reports, setup, scores, health, traits, print };
 const root = document.getElementById('app');
@@ -58,6 +59,7 @@ async function loadContext(userId) {
   ctx.courseById = indexBy(ctx.courses);
   ctx.myCourses = ctx.isAdmin ? ctx.courses : ctx.courses.filter((k) => k.teachers.some((t) => t.id === me.id));
   ctx.courseLabel = (k) => `${k.subject?.code ?? ''} ${k.subject?.name ?? ''} — ${roomName(k.classroom)}`;
+  ctx.alerts = await computeAlerts(ctx);
   return ctx;
 }
 
@@ -193,6 +195,27 @@ function renderShell(ctx) {
   showNet();
 }
 
+// จุดแดงจำนวนเรื่องที่ตั้งค่ายังไม่ครบ: เมนูด้านข้าง · เมนูลัดหน้าหลัก · แถบล่าง
+let curCtx = null;
+function paintBadges() {
+  const n = curCtx?.alerts?.length || 0;
+  $$('.nav a[data-v="setup"], .apps a[data-v="setup"] .tile').forEach((el) => {
+    el.querySelector(':scope > .nbadge')?.remove();
+    if (n) el.insertAdjacentHTML('beforeend', badge(n));
+  });
+  navCtl?.setBadge('setup', n);
+}
+// แตะเมนูตั้งค่าระบบขณะมีเรื่องค้าง → แสดงรายการก่อน
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[data-v="setup"]');
+  if (!a || !curCtx?.alerts?.length) return;
+  e.preventDefault();
+  showAlerts(curCtx.alerts, (tab) => {
+    curCtx.params = tab ? { tab } : {};
+    if (location.hash === '#setup') route(curCtx); else location.hash = 'setup';
+  });
+}, true);
+
 async function route(ctx) {
   const v = (location.hash.replace('#', '') || 'home').split('?')[0];
   const view = VIEWS[v] && (v !== 'setup' || ctx.isAdmin) ? v : 'home';
@@ -204,6 +227,7 @@ async function route(ctx) {
   el.innerHTML = '<p class="muted">กำลังโหลด…</p>';
   try { cleanup = (await VIEWS[view].render(el, ctx)) || null; }
   catch (err) { console.error(err); el.innerHTML = `<div class="card"><h2>เปิดหน้านี้ไม่สำเร็จ</h2><p>${esc(err.message)}</p></div>`; }
+  paintBadges();
   window.scrollTo(0, 0);
 }
 
@@ -225,6 +249,7 @@ function makeLive(ctx, userId) {
     const sc = document.getElementById('brand-school'); if (sc) sc.textContent = schoolLine(ctx);
     const tm = document.getElementById('brand-term'); if (tm) tm.textContent = termLine(ctx);
     const tt = document.getElementById('tb-term'); if (tt) tt.textContent = termLine(ctx);
+    paintBadges();
   };
   ctx.refresh = () => { const p = chain.then(load, load); chain = p.catch(() => {}); return p; };
   ctx.go = (view, params = {}) => { ctx.params = params; location.hash = view; };
@@ -254,6 +279,7 @@ async function boot() {
     return;
   }
   makeLive(ctx, s.user.id);
+  curCtx = ctx;
   renderShell(ctx);
   watchStructure(ctx);
   hashHandler = () => route(ctx);
