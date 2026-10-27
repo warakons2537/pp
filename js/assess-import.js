@@ -5,8 +5,8 @@
 //   rtw         การอ่าน คิดวิเคราะห์ และเขียน แผ่น "สรุป" (ระดับ 0–3 ต่อตัวชี้วัด 1–5)
 //  รับ "แผ่นงาน → ตาราง [แถว][คอลัมน์]" (แถว 0 = แถว 1 ใน Excel) ผลลัพธ์เป็นค่ารายนักเรียนตามรหัสช่อง
 // =====================================================================
-import { parseLine1 } from './subject-import.js?v=2569.10.27-14';
-import { COMPETENCIES, SUBS } from './assess-forms.js?v=2569.10.27-14';
+import { parseLine1 } from './subject-import.js?v=2569.10.27-15';
+import { COMPETENCIES, SUBS } from './assess-forms.js?v=2569.10.27-15';
 
 export const KIND_LABEL = { trait8: 'คุณลักษณะอันพึงประสงค์', competency5: 'สมรรถนะสำคัญของผู้เรียน', rtw: 'อ่าน คิดวิเคราะห์ และเขียน' };
 

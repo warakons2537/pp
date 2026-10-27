@@ -1,16 +1,16 @@
-import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.27-14';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-14';
-import { ROUNDING } from '../grading.js?v=2569.10.27-14';
-import { excelRefToRows } from '../assess.js?v=2569.10.27-14';
-import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.27-14';
-import { subjectImportFlow } from './subject-import-view.js?v=2569.10.27-14';
-import { teacherImportFlow } from './teacher-import-view.js?v=2569.10.27-14';
-import { indicatorImportFlow } from './indicator-import-view.js?v=2569.10.27-14';
-import { clearGrowthRef } from '../data.js?v=2569.10.27-14';
-import { teacherKey, displayName } from '../teacher-import.js?v=2569.10.27-14';
+import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.27-15';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-15';
+import { ROUNDING } from '../grading.js?v=2569.10.27-15';
+import { excelRefToRows } from '../assess.js?v=2569.10.27-15';
+import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.27-15';
+import { subjectImportFlow } from './subject-import-view.js?v=2569.10.27-15';
+import { teacherImportFlow } from './teacher-import-view.js?v=2569.10.27-15';
+import { indicatorImportFlow } from './indicator-import-view.js?v=2569.10.27-15';
+import { clearGrowthRef } from '../data.js?v=2569.10.27-15';
+import { teacherKey, displayName } from '../teacher-import.js?v=2569.10.27-15';
 
 let tab = 'school';
-const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', rooms: 'ห้องเรียน', subjects: 'รายวิชา', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', notify: 'การแจ้งเตือน', backup: 'สำรองข้อมูล' };
+const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', rooms: 'ห้องเรียน', subjects: 'รายวิชา', roomsubj: 'รายวิชาตามชั้น', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', notify: 'การแจ้งเตือน', backup: 'สำรองข้อมูล' };
 
 export async function render(el, ctx) {
   if (!ctx.isAdmin) { el.innerHTML = '<div class="empty">เฉพาะผู้ดูแลระบบ</div>'; return; }
@@ -20,7 +20,7 @@ export async function render(el, ctx) {
   const dot = (k) => (k === 'users' ? '' : badge((ctx.alerts || []).filter((a) => a.tab === k).length));
   el.innerHTML = `
     <div class="page-head"><div><h1>ตั้งค่าระบบ</h1><p>ข้อมูลที่ตั้งไว้ที่นี่ใช้ร่วมกันทั้งระบบธุรการและ ปพ.</p></div></div>
-    ${tabGroups([['ข้อมูลโรงเรียน', 'school', ['school', 'terms', 'rooms', 'subjects', 'users']], ['ระบบและข้อมูล', 'setup', ['growth', 'notify', 'backup']]]
+    ${tabGroups([['ข้อมูลโรงเรียน', 'school', ['school', 'terms', 'rooms', 'subjects', 'roomsubj', 'users']], ['ระบบและข้อมูล', 'setup', ['growth', 'notify', 'backup']]]
     .map(([label, ic, keys]) => ({ label, icon: ic, tabs: keys.map((k) => ({ key: k, label: `${TABS[k]}${k === 'users' && pending ? ` <span class="chip chip-bad">${pending}</span>` : ''}${dot(k)}` })) })), tab)}
     <div id="pane"></div>`;
   el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; render(el, ctx); }));
@@ -28,7 +28,7 @@ export async function render(el, ctx) {
   const pane = $('#pane', el);
   const again = async () => { await ctx.refresh(); render(el, ctx); };
   const run = async (fn, msg = 'บันทึกแล้ว') => { try { await fn(); toast(msg); await again(); } catch (err) { toast(err.message, 'err'); } };
-  ({ school, terms, rooms, subjects, users, growth, notify, backup })[tab](pane, ctx, run);
+  ({ school, terms, rooms, subjects, roomsubj, users, growth, notify, backup })[tab](pane, ctx, run);
 }
 
 // ---------------------------------------------------------------------
@@ -127,6 +127,51 @@ function rooms(pane, ctx, run) {
     if (!await confirmBox(`ลบห้อง ${roomName(ctx.classroomById[b.dataset.del])}? ข้อมูลเวลาเรียนและรายวิชาของห้องนี้จะถูกลบด้วย`, 'ลบห้อง')) return;
     run(() => ctx.db.remove('classrooms', { id: b.dataset.del }), 'ลบแล้ว');
   }));
+}
+
+// ---------------------------------------------------------------------
+//  รายวิชาตามชั้น: ตารางแบบแผ่น "รายวิชา" ของไฟล์ ปพ.5-6 เดิม (ห้องเดียว ภาคเรียนปัจจุบัน)
+//  แก้หน่วยกิต/กลุ่มสาระได้ในแถว · หน่วยกิตเป็นของรายวิชา จึงมีผลกับทุกห้องที่เรียนรหัสเดียวกัน
+// ---------------------------------------------------------------------
+const SUBJECT_GROUPS = ['ภาษาไทย', 'คณิตศาสตร์', 'วิทยาศาสตร์และเทคโนโลยี', 'สังคมศึกษา ศาสนาและวัฒนธรรม', 'สุขศึกษาและพลศึกษา', 'ศิลปะ', 'การงานอาชีพ', 'ภาษาต่างประเทศ'];
+let roomSubjRoom = null;
+const noWeight = (s) => (s?.credits ?? null) === null && (s?.hours_per_year ?? null) === null;
+
+function roomsubj(pane, ctx, run) {
+  if (!ctx.classrooms.length) { pane.innerHTML = '<div class="card"><div class="empty">ยังไม่มีห้องเรียน</div></div>'; return; }
+  if (!ctx.classroomById[roomSubjRoom]) roomSubjRoom = (ctx.courses[0]?.classroom_id) || ctx.classrooms[0].id;   // เริ่มที่ห้องแรกที่มีวิชาเปิดสอน
+  const room = ctx.classroomById[roomSubjRoom];
+  const list = ctx.courses.filter((k) => k.classroom_id === room.id);
+  const miss = list.filter((k) => noWeight(k.subject)).length;
+  pane.innerHTML = `
+    <div class="card"><div class="row" style="justify-content:space-between;align-items:flex-end;flex-wrap:wrap">
+      <label>ห้อง<select id="rs-room">${options(ctx.classrooms.map((c) => ({ id: c.id, label: roomName(c) })), room.id)}</select></label>
+      <div class="small muted">ภาคเรียนที่ ${ctx.term ? `${ctx.term.term} ปีการศึกษา ${ctx.term.academic_year}` : '-'}</div></div>
+      ${miss ? `<p><span class="chip chip-bad">หน่วยกิตว่าง ${miss} วิชา</span> <span class="small muted">วิชาที่ไม่มีหน่วยกิตจะไม่มีคะแนนและเกรดในใบ ปพ.6</span></p>` : ''}
+      ${list.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th class="n">ที่</th><th>รหัสวิชา</th><th>รายวิชา</th><th class="n">หน่วยกิต</th><th>กลุ่มสาระการเรียนรู้</th><th>ครูประจำวิชา</th></tr></thead><tbody>
+        ${list.map((k, i) => { const s = k.subject || {}; return `<tr data-sid="${s.id}"><td class="n" data-l="ที่">${i + 1}</td><td data-l="รหัสวิชา">${esc(s.code ?? '')}</td><td class="tc-ttl">${esc(s.name ?? '')}</td>
+          <td class="n" data-l="หน่วยกิต"><input type="number" step="0.5" min="0" data-f="credits" value="${s.credits ?? ''}" placeholder="${s.hours_per_year ? `${s.hours_per_year} ชม.` : ''}" style="width:80px${noWeight(s) ? ';border-color:var(--red)' : ''}" aria-label="หน่วยกิต ${esc(s.code ?? '')}"></td>
+          <td data-l="กลุ่มสาระ"><select data-f="subject_group" aria-label="กลุ่มสาระ ${esc(s.code ?? '')}"><option value="">—</option>${options(SUBJECT_GROUPS.map((x) => ({ id: x, label: x })), s.subject_group)}</select></td>
+          <td class="small" data-l="ครูประจำวิชา">${esc(k.teachers.map((t) => t.full_name).join(', ') || '—')}</td></tr>`; }).join('')}
+      </tbody></table></div>
+      <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;margin-top:8px">
+        <p class="muted small" style="margin:0">หน่วยกิตและกลุ่มสาระเป็นของรายวิชา แก้ที่นี่มีผลกับทุกห้องที่เรียนรหัสเดียวกัน · ครูประจำวิชาแก้ที่แท็บรายวิชา → การเปิดสอน</p>
+        <button class="btn btn-primary" id="rs-save">บันทึก</button></div>`
+      : '<div class="empty">ห้องนี้ยังไม่ได้เปิดสอนวิชาใดในภาคเรียนนี้</div>'}</div>`;
+
+  $('#rs-room', pane).addEventListener('change', (e) => { roomSubjRoom = e.target.value; roomsubj(pane, ctx, run); });
+  $('#rs-save', pane)?.addEventListener('click', () => {
+    const changes = [];
+    pane.querySelectorAll('tr[data-sid]').forEach((tr) => {
+      const s = ctx.subjectById[tr.dataset.sid]; if (!s) return;
+      const cr = tr.querySelector('[data-f="credits"]').value.trim();
+      const credits = cr === '' ? null : Number(cr);
+      const subject_group = tr.querySelector('[data-f="subject_group"]').value || null;
+      if (credits !== (s.credits ?? null) || subject_group !== (s.subject_group ?? null)) changes.push([s.id, { credits, subject_group }]);
+    });
+    if (!changes.length) { toast('ไม่มีอะไรเปลี่ยน'); return; }
+    run(async () => { for (const [id, row] of changes) await ctx.db.update('subjects', { id }, row); }, `บันทึกแล้ว ${changes.length} วิชา`);
+  });
 }
 
 // ---------------------------------------------------------------------
@@ -302,7 +347,7 @@ async function growth(pane, ctx, run) {
   $('#g-tpl', pane).href = URL.createObjectURL(new Blob(['\ufeff' + tpl], { type: 'text/csv' }));
   const upsertRows = async (rows) => { for (let i = 0; i < rows.length; i += 500) await ctx.db.upsert('growth_reference', rows.slice(i, i + 500), 'ref_set,sex,basis,key,measure'); clearGrowthRef(); };
   $('#load-excel', pane).addEventListener('click', () => run(async () => {
-    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.27-14');
+    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.27-15');
     await upsertRows(excelRefToRows(EXCEL_AGE, EXCEL_HT));
   }, 'โหลดตารางจาก Excel เดิมแล้ว'));
   pane.querySelectorAll('[data-use]').forEach((b) => b.addEventListener('click', () =>
