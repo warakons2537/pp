@@ -1,11 +1,12 @@
-import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.27-11';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-11';
-import { ROUNDING } from '../grading.js?v=2569.10.27-11';
-import { excelRefToRows } from '../assess.js?v=2569.10.27-11';
-import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.27-11';
-import { subjectImportFlow } from './subject-import-view.js?v=2569.10.27-11';
-import { teacherImportFlow } from './teacher-import-view.js?v=2569.10.27-11';
-import { clearGrowthRef } from '../data.js?v=2569.10.27-11';
+import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.27-12';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-12';
+import { ROUNDING } from '../grading.js?v=2569.10.27-12';
+import { excelRefToRows } from '../assess.js?v=2569.10.27-12';
+import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.27-12';
+import { subjectImportFlow } from './subject-import-view.js?v=2569.10.27-12';
+import { teacherImportFlow } from './teacher-import-view.js?v=2569.10.27-12';
+import { clearGrowthRef } from '../data.js?v=2569.10.27-12';
+import { teacherKey, displayName } from '../teacher-import.js?v=2569.10.27-12';
 
 let tab = 'school';
 const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', rooms: 'ห้องเรียน', subjects: 'รายวิชา', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', notify: 'การแจ้งเตือน', backup: 'สำรองข้อมูล' };
@@ -228,14 +229,30 @@ function users(pane, ctx, run) {
   const roleOpts = [{ id: 'pending', label: 'รออนุมัติ' }, { id: 'teacher', label: 'ครู' }, { id: 'admin', label: 'ผู้ดูแลระบบ' }];
   const holders = ctx.profiles.filter((p) => p.has_account === false);
   pane.innerHTML = `<div class="card">
+    <div class="row" style="justify-content:space-between"><h2>ผู้ใช้</h2><button class="btn" id="add-teacher">เพิ่มครู</button></div>
     <p class="small muted">ครูสมัครใช้งานเองจากหน้าเข้าสู่ระบบ แล้วผู้ดูแลอนุมัติที่นี่ · ผู้ดูแลระบบแก้ไขได้ทุกอย่าง · ครูแก้ได้เฉพาะห้องที่เป็นครูประจำชั้นและวิชาที่สอน</p>
     <div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>ชื่อ</th><th>อีเมล</th><th>สิทธิ์</th></tr></thead><tbody>
       ${ctx.profiles.map((p) => `<tr><td class="tc-ttl">${esc(p.full_name || '—')}</td><td class="small wrap-any" data-l="อีเมล">${esc(p.email ?? '')}</td>
-        <td data-l="สิทธิ์">${p.has_account === false ? '<span class="chip">ยังไม่มีบัญชี</span>'
+        <td data-l="สิทธิ์">${p.has_account === false ? `<span class="chip">ยังไม่มีบัญชี</span> <button class="btn btn-sm btn-danger" data-delt="${p.id}">ลบ</button>`
           : `${p.id === ctx.me.id ? '<span class="chip chip-info">ผู้ดูแลระบบ (คุณ)</span>'
           : `<select data-role="${p.id}" aria-label="สิทธิ์ของ ${esc(p.full_name)}">${options(roleOpts, p.role)}</select>`}
           ${holders.length ? `<select data-claim="${p.id}" aria-label="จับคู่ ${esc(p.full_name)} กับรายชื่อครูที่สร้างไว้"><option value="">จับคู่กับรายชื่อที่สร้างไว้…</option>${options(holders, null, (h) => h.full_name)}</select>` : ''}`}</td></tr>`).join('')}
     </tbody></table></div></div>`;
+  $('#add-teacher', pane).addEventListener('click', async () => {
+    const r = await modal('เพิ่มครู', `<label>ชื่อ-นามสกุล<input type="text" name="full_name" required autofocus placeholder="เช่น วรากร ตรงต่อกิจ"></label>
+      <p class="small muted" style="margin:0">ครูที่เพิ่มจะยังไม่มีบัญชี เมื่อครูสมัครด้วยชื่อเดียวกัน ระบบจับคู่ให้เอง (ต้องรอผู้ดูแลอนุมัติ)</p>`);
+    if (!r) return;
+    const name = displayName(r.full_name); const key = teacherKey(name);
+    if (!key) { toast('กรุณากรอกชื่อ', 'err'); return; }
+    if (ctx.profiles.some((p) => teacherKey(p.full_name) === key)) { toast(`มีชื่อ "${name}" อยู่แล้ว`, 'err'); return; }
+    run(() => ctx.db.insert('profiles', [{ full_name: name, role: 'teacher', has_account: false }]), 'เพิ่มครูแล้ว');
+  });
+  pane.querySelectorAll('[data-delt]').forEach((b) => b.addEventListener('click', async () => {
+    const t = ctx.profileById[b.dataset.delt]; if (!t) return;
+    const n = ctx.courseTeacherRows.filter((x) => x.teacher_id === t.id).length + ctx.classroomTeacherRows.filter((x) => x.teacher_id === t.id).length;
+    if (!await confirmBox(`ลบ "${t.full_name}"?${n ? ` ที่ผูกกับวิชาหรือห้องอยู่ ${n} รายการจะถูกเอาออกด้วย` : ''}`, 'ลบ')) return;
+    run(() => ctx.db.remove('profiles', { id: t.id }), 'ลบแล้ว');
+  }));
   pane.querySelectorAll('[data-role]').forEach((s) => s.addEventListener('change', () =>
     run(() => ctx.db.update('profiles', { id: s.dataset.role }, { role: s.value }), 'เปลี่ยนสิทธิ์แล้ว')));
   pane.querySelectorAll('[data-claim]').forEach((s) => s.addEventListener('change', async () => {
@@ -275,7 +292,7 @@ async function growth(pane, ctx, run) {
   $('#g-tpl', pane).href = URL.createObjectURL(new Blob(['\ufeff' + tpl], { type: 'text/csv' }));
   const upsertRows = async (rows) => { for (let i = 0; i < rows.length; i += 500) await ctx.db.upsert('growth_reference', rows.slice(i, i + 500), 'ref_set,sex,basis,key,measure'); clearGrowthRef(); };
   $('#load-excel', pane).addEventListener('click', () => run(async () => {
-    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.27-11');
+    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.27-12');
     await upsertRows(excelRefToRows(EXCEL_AGE, EXCEL_HT));
   }, 'โหลดตารางจาก Excel เดิมแล้ว'));
   pane.querySelectorAll('[data-use]').forEach((b) => b.addEventListener('click', () =>
