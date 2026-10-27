@@ -1,9 +1,10 @@
-import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.27-8';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-8';
-import { ROUNDING } from '../grading.js?v=2569.10.27-8';
-import { excelRefToRows } from '../assess.js?v=2569.10.27-8';
-import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.27-8';
-import { clearGrowthRef } from '../data.js?v=2569.10.27-8';
+import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.27-9';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-9';
+import { ROUNDING } from '../grading.js?v=2569.10.27-9';
+import { excelRefToRows } from '../assess.js?v=2569.10.27-9';
+import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.27-9';
+import { subjectImportFlow } from './subject-import-view.js?v=2569.10.27-9';
+import { clearGrowthRef } from '../data.js?v=2569.10.27-9';
 
 let tab = 'school';
 const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', rooms: 'ห้องเรียน', subjects: 'รายวิชา', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', notify: 'การแจ้งเตือน', backup: 'สำรองข้อมูล' };
@@ -129,7 +130,7 @@ function rooms(pane, ctx, run) {
 function subjects(pane, ctx, run) {
   const teachers = ctx.profiles.filter((p) => p.role !== 'pending');
   pane.innerHTML = `
-    <div class="card"><div class="row" style="justify-content:space-between"><h2>รายวิชาในหลักสูตร</h2><button class="btn" id="add-sub">เพิ่มรายวิชา</button></div>
+    <div class="card"><div class="row" style="justify-content:space-between"><h2>รายวิชาในหลักสูตร</h2><div class="row"><label class="btn" title="เลือกได้หลายไฟล์ (.xlsb .xlsx .xls) ระบบสร้างวิชา เปิดสอน และนำเข้าคะแนนให้">นำเข้าจากไฟล์คะแนน<input type="file" id="imp-subj" accept=".xlsb,.xlsx,.xls" multiple hidden></label><button class="btn" id="add-sub">เพิ่มรายวิชา</button></div></div>
       ${ctx.subjects.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>รหัส</th><th>ชื่อวิชา</th><th>ประเภท</th><th>กลุ่มสาระ</th><th class="n">หน่วยกิต</th><th class="n">ชม./ปี</th><th></th></tr></thead><tbody>
         ${ctx.subjects.map((s) => `<tr><td data-l="รหัส">${esc(s.code)}</td><td class="tc-ttl">${esc(s.name)}</td><td data-l="ประเภท">${esc(s.subject_type)}</td><td class="small" data-l="กลุ่มสาระ">${esc(s.subject_group ?? '')}</td>
           <td class="n" data-l="หน่วยกิต">${s.credits ?? ''}</td><td class="n" data-l="ชม./ปี">${s.hours_per_year ?? ''}</td><td class="n tc-act"><button class="btn btn-sm" data-sub="${s.id}">แก้ไข</button></td></tr>`).join('')}
@@ -154,6 +155,15 @@ function subjects(pane, ctx, run) {
   const subRow = (r) => ({ code: r.code.replace(/\s/g, ''), name: r.name.trim(), subject_type: r.subject_type, subject_group: r.subject_group,
     credits: r.credits ? Number(r.credits) : null, hours_per_year: r.hours_per_year ? Number(r.hours_per_year) : null, level: r.level || null });
   $('#add-sub', pane).addEventListener('click', async () => { const r = await subForm(); if (r) run(() => ctx.db.insert('subjects', [subRow(r)])); });
+  $('#imp-subj', pane).addEventListener('change', async (e) => {
+    const files = [...e.target.files]; e.target.value = '';
+    if (!files.length) return;
+    let res;
+    try { res = await subjectImportFlow(ctx, files); } catch (err) { toast(err.message, 'err'); return; }
+    if (!res) return;
+    if (res.errors.length) await modal('นำเข้าไม่ครบ', `<ul class="small">${res.errors.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`, { okText: 'ตกลง', cancelText: '' });
+    run(async () => {}, `นำเข้าแล้ว ${res.imported} ไฟล์ · สร้างวิชาใหม่ ${res.created} · เปิดสอนใหม่ ${res.opened}`);
+  });
   pane.querySelectorAll('[data-sub]').forEach((b) => b.addEventListener('click', async () => {
     const r = await subForm(ctx.subjectById[b.dataset.sub]); if (r) run(() => ctx.db.update('subjects', { id: b.dataset.sub }, subRow(r)));
   }));
@@ -248,7 +258,7 @@ async function growth(pane, ctx, run) {
   $('#g-tpl', pane).href = URL.createObjectURL(new Blob(['\ufeff' + tpl], { type: 'text/csv' }));
   const upsertRows = async (rows) => { for (let i = 0; i < rows.length; i += 500) await ctx.db.upsert('growth_reference', rows.slice(i, i + 500), 'ref_set,sex,basis,key,measure'); clearGrowthRef(); };
   $('#load-excel', pane).addEventListener('click', () => run(async () => {
-    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.27-8');
+    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.27-9');
     await upsertRows(excelRefToRows(EXCEL_AGE, EXCEL_HT));
   }, 'โหลดตารางจาก Excel เดิมแล้ว'));
   pane.querySelectorAll('[data-use]').forEach((b) => b.addEventListener('click', () =>
