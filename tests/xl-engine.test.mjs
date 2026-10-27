@@ -1,9 +1,12 @@
 // ทดสอบเครื่องคำนวณสูตร / รูปแบบตัวเลข / การแบ่งหน้า: node tests/xl-engine.test.mjs
 import assert from 'node:assert/strict';
-import { Workbook } from '../js/xl-model.js';
-import { Engine, XErr, ymdToSerial, parseFormula } from '../js/xl-formula.js';
-import { formatValue } from '../js/xl-numfmt.js';
-import { Renderer } from '../js/xl-render.js';
+// โมดูลใน js/ import กันด้วย ?v=VERSION → เทสต์ต้องใช้ URL แบบเดียวกัน ไม่งั้นได้โมดูลคนละชุด (TEXT_FORMAT.fn ไม่ถูกผูก)
+import { VERSION } from '../js/brand.js';
+const m = (f) => import(`../js/${f}.js?v=${VERSION}`);
+const { Workbook } = await m('xl-model');
+const { Engine, XErr, ymdToSerial, parseFormula } = await m('xl-formula');
+const { formatValue } = await m('xl-numfmt');
+const { Renderer } = await m('xl-render');
 
 // ---- สร้างสมุดงานในหน่วยความจำ (แบบที่ Excel บันทึก: สูตรร่วม สูตรอาร์เรย์ ชื่อ ข้อความร่วม) ----
 const sheet = (rows, extra = '') => `<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${extra.split('|')[0] || ''}<sheetData>${rows}</sheetData>${extra.split('|')[1] || ''}</worksheet>`;

@@ -1,9 +1,9 @@
 import { esc, $, options, roomName, fullName, levelName, iso, fromIso, daysInMonth, thaiDate, todayIso,
-  THAI_MONTHS, THAI_MONTHS_SHORT, STATUS } from '../util.js';
-import { getRoster, termMonths, termRange } from '../data.js';
-import { head, signs, termText } from './report-common.js';
-import { p5Report, gradesReport, achieveReport } from './report-grades.js';
-import { nutritionReport, traitReport } from './report-assess.js';
+  THAI_MONTHS, THAI_MONTHS_SHORT, STATUS } from '../util.js?v=2569.10.27-4';
+import { getRoster, termMonths, termRange } from '../data.js?v=2569.10.27-4';
+import { head, signs, termText } from './report-common.js?v=2569.10.27-4';
+import { p5Report, gradesReport, achieveReport } from './report-grades.js?v=2569.10.27-4';
+import { nutritionReport, traitReport } from './report-assess.js?v=2569.10.27-4';
 
 const pref = { tab: 'month', room: null, ym: null, course: null, round: 1 };
 const TABS = { month: 'เวลาเรียนประจำเดือน', term: 'สรุปเวลาเรียนภาคเรียน', course: 'เวลาเรียนรายวิชา (มส)', list: 'รายชื่อนักเรียน',

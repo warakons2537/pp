@@ -1,9 +1,9 @@
-import { esc, $, toast, modal, options, roomName, fullName } from '../util.js';
-import { getRoster } from '../data.js';
-import { attachGrid } from '../grid.js';
-import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js';
-import { detailPane } from './assess-detail.js';
-import { FORMS } from '../assess-forms.js';
+import { esc, $, toast, modal, options, roomName, fullName } from '../util.js?v=2569.10.27-4';
+import { getRoster } from '../data.js?v=2569.10.27-4';
+import { attachGrid } from '../grid.js?v=2569.10.27-4';
+import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.10.27-4';
+import { detailPane } from './assess-detail.js?v=2569.10.27-4';
+import { FORMS } from '../assess-forms.js?v=2569.10.27-4';
 
 const pref = { room: null, tab: 'trait8' };
 const TABS = { ...Object.fromEntries(Object.entries(TRAIT_KINDS).map(([k, v]) => [k, v.short])),
