@@ -2,11 +2,11 @@
 //  ปพ.6: ตารางรายชื่อ (ล็อกการพิมพ์เมื่อเกรดยังไม่ครบ) · หน้าเกรดรายคน · สรุปเกรด (Excel)
 //  ใช้ข้อมูลชุดเดียวกับหน้าพิมพ์ ปพ.6 (loadRoomYear) ไม่มีการเขียนฐานข้อมูล
 // =====================================================================
-import { esc, $, roomName, fullName, levelName, modal } from '../util.js?v=2569.10.27-15';
-import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.10.27-15';
-import { ACTIVITIES } from '../assess.js?v=2569.10.27-15';
-import { icon } from '../icons.js?v=2569.10.27-15';
-import { Sheet, buildXlsx, safeSheetName, downloadBytes } from '../xlsx-write.js?v=2569.10.27-15';
+import { esc, $, roomName, fullName, levelName, modal } from '../util.js?v=2569.10.27-16';
+import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.10.27-16';
+import { ACTIVITIES } from '../assess.js?v=2569.10.27-16';
+import { icon } from '../icons.js?v=2569.10.27-16';
+import { Sheet, buildXlsx, safeSheetName, downloadBytes } from '../xlsx-write.js?v=2569.10.27-16';
 
 const termTxt = (t) => `ภาคเรียนที่ ${t.term} ปีการศึกษา ${t.academic_year}`;
 const g2 = (v) => (v === null || v === undefined ? '-' : Number(v).toFixed(2));
@@ -22,7 +22,6 @@ export function missingOf(d, terms, s) {
     for (const r of d.perTerm[t.id].results) {
       const x = r.res[s.id];
       if (x.grade === null) out.push({ t, k: r.course, why: 'ยังไม่มีคะแนน' });
-      else if (x.incomplete) out.push({ t, k: r.course, why: `คะแนนยังไม่ครบ ${x.missing} ช่อง` });
     }
   }
   return out;

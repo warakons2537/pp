@@ -50,7 +50,8 @@ export function computeStudent(items, scoreOf, opts) {
     : Math.abs(finMax - finalRatio) < 1e-9 ? finSum : (finMax > 0 ? R(finSum * finalRatio / finMax) : null);
 
   const hasData = anyScore || anyFinal;
-  const total = hasData ? Math.round(((mid ?? 0) + (final ?? 0)) * 100) / 100 : null;
+  const hasItems = scoreItems.length + finalItems.length > 0;   // มีช่องคะแนน แม้ยังว่างทั้งหมด ก็คิดเกรดจากคะแนน 0
+  const total = hasData || hasItems ? Math.round(((mid ?? 0) + (final ?? 0)) * 100) / 100 : null;
   const scoreGrade = total === null ? null : toGrade(total);
 
   let grade = scoreGrade;
@@ -68,7 +69,7 @@ export function computeStudent(items, scoreOf, opts) {
   const indicator = !indItems.length || indPass + indFail === 0 ? null : indFail > 0 ? 'มผ' : 'ผ';
 
   // ช่องว่างนับเป็น 0 เหมือน Excel แต่แจ้งว่ายังไม่ครบ เพื่อไม่ให้เกรดที่ยังไม่สมบูรณ์ถูกส่งโดยไม่ตั้งใจ
-  const incomplete = hasData && missing > 0 && typeof grade === 'number';
+  const incomplete = (hasData || hasItems) && missing > 0 && typeof grade === 'number';
   return { rawSum, rawMax, mid, final, total, scoreGrade, grade, reason, indPass, indFail, indicator, hasData, missing, incomplete };
 }
 

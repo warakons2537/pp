@@ -35,7 +35,7 @@ assert.equal(run({ i1: { passed: true }, i2: { passed: false } }).indicator, '�
 assert.equal(run({}).indicator, null);
 
 // ยังไม่มีคะแนน = ไม่มีเกรด ; กรอกบางช่อง = มีเกรดแต่ incomplete
-assert.equal(run({}).grade, null);
+assert.equal(run({}).grade, 0); assert.equal(run({}).incomplete, true);   // มีช่องแต่ว่างหมด = เกรดจากคะแนน 0
 r = run({ a: { score: 5 } });
 assert.equal(r.incomplete, true); assert.equal(r.missing, 4);
 

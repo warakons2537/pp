@@ -1,13 +1,13 @@
 // พิมพ์เอกสาร ปพ.: ปพ.6 รายบุคคล · ปก ปพ.5 รายชั้น · ปก ปพ.5 รายวิชา · ใบรับรองผลการศึกษา
-import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js?v=2569.10.27-15';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-15';
-import { loadRoomYear, personName } from '../yeardata.js?v=2569.10.27-15';
-import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.10.27-15';
-import { icon } from '../icons.js?v=2569.10.27-15';
-import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js?v=2569.10.27-15';
-import { bookView } from './pp-book-view.js?v=2569.10.27-15';
-import { listView, studentView, missingOf, termsOf } from './pp6-hub.js?v=2569.10.27-15';
-import { pp6FormsView } from './pp6-forms-view.js?v=2569.10.27-15';
+import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js?v=2569.10.27-16';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-16';
+import { loadRoomYear, personName } from '../yeardata.js?v=2569.10.27-16';
+import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.10.27-16';
+import { icon } from '../icons.js?v=2569.10.27-16';
+import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js?v=2569.10.27-16';
+import { bookView } from './pp-book-view.js?v=2569.10.27-16';
+import { listView, studentView, missingOf, termsOf } from './pp6-hub.js?v=2569.10.27-16';
+import { pp6FormsView } from './pp6-forms-view.js?v=2569.10.27-16';
 
 const DOCS = { book: 'เล่ม ปพ. (เหมือนไฟล์ต้นฉบับ)', pp6: 'ปพ.6 รายบุคคล', coverClass: 'ปก ปพ.5 รายชั้น', coverCourse: 'ปก ปพ.5 รายวิชา', cert: 'ใบรับรองผลการศึกษา' };
 const pref = { doc: 'book', room: null, from: 1, to: 99, scope: 'term', page2: true, course: null, pp6View: 'list', stu: null,
@@ -151,7 +151,7 @@ const pf = (a) => (a?.passed === true ? 'ผ่าน' : a?.passed === false ? '
 
 function gradeRows(pt, s) {
   return pt.results.map((r, i) => { const x = r.res[s.id];
-    const note = x.reason || (x.incomplete ? 'คะแนนยังไม่ครบ' : '');
+    const note = x.reason || '';
     return `<tr><td>${i + 1}</td><td>${esc(r.course.subject?.code)}</td><td class="l">${esc(r.course.subject?.name)}</td><td>${unit(r.course.subject)}</td>
       <td>100</td><td>${r.classAvg ?? ''}</td><td>${x.total ?? ''}</td><td><b>${fmtGrade(x.grade)}</b></td><td class="l" style="font-size:11px">${esc(note)}</td></tr>`; }).join('');
 }
