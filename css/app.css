@@ -268,7 +268,7 @@ textarea { width: 100%; min-height: 70px; }
 table.tbl { border-collapse: collapse; width: 100%; font-size: .9rem; }
 .tbl th, .tbl td { border-bottom: 1px solid var(--rule); padding: 8px 12px; text-align: left; vertical-align: middle; }
 .tbl th { font-weight: 600; font-size: .8rem; color: var(--ink-soft); background: var(--paper); position: sticky; top: 0; }
-.tbl tbody tr:hover td { background: color-mix(in srgb, var(--pen-wash) 45%, transparent); }
+@media (hover: hover) { .tbl tbody tr:hover td { background: color-mix(in srgb, var(--pen-wash) 45%, transparent); } }   /* เฉพาะอุปกรณ์ที่มีเมาส์ — มือถือแตะแล้วไม่ค้างแถบสี */
 .tbl td.n, .tbl th.n { text-align: right; }
 .tbl td.c, .tbl th.c { text-align: center; }
 .tbl tr:last-child td { border-bottom: 0; }

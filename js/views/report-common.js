@@ -1,4 +1,4 @@
-import { esc } from '../util.js?v=2569.10.27-5';
+import { esc } from '../util.js?v=2569.10.27-6';
 
 // ---------- ส่วนหัว / ลายเซ็น ----------
 export const head = (ctx, title, sub) => `
