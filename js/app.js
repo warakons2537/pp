@@ -1,19 +1,19 @@
-import { db } from './db.js?v=2569.10.27-10';
-import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.27-10';
-import { icon } from './icons.js?v=2569.10.27-10';
-import { BRAND, VERSION } from './brand.js?v=2569.10.27-10';
-import { mountNav, labelHtml } from './navbar.js?v=2569.10.27-10';
-import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.27-10';
-import * as home from './views/home.js?v=2569.10.27-10';
-import * as students from './views/students.js?v=2569.10.27-10';
-import * as daily from './views/daily.js?v=2569.10.27-10';
-import * as period from './views/period.js?v=2569.10.27-10';
-import * as reports from './views/reports.js?v=2569.10.27-10';
-import * as setup from './views/setup.js?v=2569.10.27-10';
-import * as scores from './views/scores.js?v=2569.10.27-10';
-import * as health from './views/health.js?v=2569.10.27-10';
-import * as traits from './views/traits.js?v=2569.10.27-10';
-import * as print from './views/print.js?v=2569.10.27-10';
+import { db } from './db.js?v=2569.10.27-11';
+import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.27-11';
+import { icon } from './icons.js?v=2569.10.27-11';
+import { BRAND, VERSION } from './brand.js?v=2569.10.27-11';
+import { mountNav, labelHtml } from './navbar.js?v=2569.10.27-11';
+import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.27-11';
+import * as home from './views/home.js?v=2569.10.27-11';
+import * as students from './views/students.js?v=2569.10.27-11';
+import * as daily from './views/daily.js?v=2569.10.27-11';
+import * as period from './views/period.js?v=2569.10.27-11';
+import * as reports from './views/reports.js?v=2569.10.27-11';
+import * as setup from './views/setup.js?v=2569.10.27-11';
+import * as scores from './views/scores.js?v=2569.10.27-11';
+import * as health from './views/health.js?v=2569.10.27-11';
+import * as traits from './views/traits.js?v=2569.10.27-11';
+import * as print from './views/print.js?v=2569.10.27-11';
 
 const VIEWS = { home, students, daily, period, reports, setup, scores, health, traits, print };
 const root = document.getElementById('app');
@@ -133,7 +133,7 @@ const termLine = (ctx) => (ctx.term ? `ภาคเรียนที่ ${ctx.t
 
 // \u200b = จุดตัดบรรทัดที่ระบุเอง (ตัวตัดคำของเบราว์เซอร์ตัด "เช็กชื่อ" ผิดที่)
 const NAV = { home: 'วันนี้', students: 'นักเรียน', daily: 'เช็กชื่อ\u200bประจำวัน', period: 'เช็กชื่อ\u200bรายคาบ', reports: 'รายงาน A4',
-  scores: 'คะแนนรายวิชา', health: 'น้ำหนัก-ส่วนสูง', traits: 'คุณลักษณะ/กิจกรรม', print: 'พิมพ์ ปพ.6 / ปพ.5', setup: 'ตั้งค่าระบบ' };
+  scores: 'คะแนน\u200bรายวิชา', health: 'น้ำหนัก-\u200bส่วนสูง', traits: 'คุณลักษณะ/\u200bกิจกรรม', print: 'พิมพ์\u200bปพ.6 / ปพ.5', setup: 'ตั้งค่าระบบ' };
 let clockTimer = null;
 const THAI_DAYS = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
 function tickClock() {
