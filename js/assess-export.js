@@ -4,8 +4,8 @@
 //  · สมรรถนะ: "ข้อที่1 สื่อสาร" … "ข้อที่ 5 เทคโนโลยี" + "สรุปผล" + "แบบสรุปผล"
 //  ทุกแผ่นมีสูตรเชื่อมกันเหมือนไฟล์เดิม แก้คะแนนใน Excel แล้วผลสรุปเปลี่ยนตาม
 // =====================================================================
-import { Sheet, ref, colName } from './xlsx-write.js?v=2569.10.27-5';
-import { TRAITS, SUBS, subResult, traitOverall, LV4, COMPETENCIES, compResult, compOverall, COMP_LV } from './assess-forms.js?v=2569.10.27-5';
+import { Sheet, ref, colName } from './xlsx-write.js?v=2569.10.27-6';
+import { TRAITS, SUBS, subResult, traitOverall, LV4, COMPETENCIES, compResult, compOverall, COMP_LV } from './assess-forms.js?v=2569.10.27-6';
 
 const F = 'TH Sarabun New';
 const BLUE = '92CDDC'; const BLUE2 = 'DAEEF3'; const PINK = 'F2DCDB';
