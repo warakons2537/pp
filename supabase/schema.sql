@@ -231,6 +231,18 @@ create table if not exists public.course_results (           -- ผลพิเ�
   primary key (course_id, student_id)
 );
 
+-- ตัวชี้วัดกลางของรายวิชา: รายการเดียวต่อรหัสวิชา ใช้ร่วมกับทุกห้องที่เปิดสอนรหัสวิชานั้น
+-- แอปเพิ่มตัวที่ห้องยังไม่มีลง assessment_items (kind = indicator) ให้เอง ผล ผ/มผ ยังเก็บรายห้องเหมือนเดิม
+create table if not exists public.subject_indicators (
+  id          uuid primary key default gen_random_uuid(),
+  subject_id  uuid not null references public.subjects(id) on delete cascade,
+  code        text not null,        -- จัดรูปแบบแล้ว เช่น ท 1.1 ม.3/1
+  title       text,
+  sort_order  smallint not null default 0,
+  unique (subject_id, code)
+);
+create index if not exists subject_indicators_subject_idx on public.subject_indicators(subject_id);
+
 -- ระยะที่ 2: ยกเว้น มส (เช่น ผู้อำนวยการอนุญาตให้สอบ) และวิธีปัดเศษคะแนนของโรงเรียน
 alter table public.course_results add column if not exists ms_waived boolean not null default false;
 alter table public.school_settings add column if not exists score_rounding text not null default 'floor';
@@ -389,6 +401,13 @@ language sql stable security definer set search_path = public as $$
                  where course_id = crs and teacher_id = auth.uid())
 $$;
 
+create or replace function public.teaches_subject(sid uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.courses c
+                 join public.course_teachers ct on ct.course_id = c.id
+                 where c.subject_id = sid and ct.teacher_id = auth.uid())
+$$;
+
 create or replace function public.teaches_item(itm uuid) returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.assessment_items i
@@ -471,7 +490,7 @@ do $$ declare t text; begin
     'students','student_private','enrollments','subjects','courses','course_teachers',
     'daily_attendance','period_attendance','behavior_notes','assessment_items','item_scores',
     'course_results','trait_scores','activity_results','homeroom_comments',
-    'health_measurements','growth_reference','assess_detail'] loop
+    'health_measurements','growth_reference','assess_detail','subject_indicators'] loop
     execute format('alter table public.%I enable row level security', t);
   end loop;
 end $$;
@@ -541,6 +560,11 @@ create policy items_read  on public.assessment_items for select using (public.is
 create policy items_write on public.assessment_items for all
   using (public.is_admin() or public.teaches(course_id))
   with check (public.is_admin() or public.teaches(course_id));
+-- ตัวชี้วัดกลางของรายวิชา: ครูที่สอนรหัสวิชานั้น (ห้องใดก็ได้)
+create policy subj_ind_read  on public.subject_indicators for select using (public.is_staff());
+create policy subj_ind_write on public.subject_indicators for all
+  using (public.is_admin() or public.teaches_subject(subject_id))
+  with check (public.is_admin() or public.teaches_subject(subject_id));
 create policy scores_read  on public.item_scores for select using (public.is_staff());
 create policy scores_write on public.item_scores for all
   using (public.is_admin() or public.teaches_item(item_id))
