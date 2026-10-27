@@ -1,10 +1,11 @@
-import { esc, $, toast, modal, options, roomName, fullName } from '../util.js?v=2569.10.27-12';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-12';
-import { getRoster } from '../data.js?v=2569.10.27-12';
-import { attachGrid } from '../grid.js?v=2569.10.27-12';
-import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.10.27-12';
-import { detailPane } from './assess-detail.js?v=2569.10.27-12';
-import { FORMS } from '../assess-forms.js?v=2569.10.27-12';
+import { esc, $, toast, modal, options, roomName, fullName } from '../util.js?v=2569.10.27-13';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-13';
+import { getRoster } from '../data.js?v=2569.10.27-13';
+import { attachGrid } from '../grid.js?v=2569.10.27-13';
+import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.10.27-13';
+import { detailPane } from './assess-detail.js?v=2569.10.27-13';
+import { FORMS } from '../assess-forms.js?v=2569.10.27-13';
+import { assessImportFlow } from './assess-import-view.js?v=2569.10.27-13';
 
 const pref = { room: null, tab: 'trait8' };
 const TABS = { ...Object.fromEntries(Object.entries(TRAIT_KINDS).map(([k, v]) => [k, v.short])),
@@ -21,7 +22,8 @@ export async function render(el, ctx) {
   el.innerHTML = `
     <div class="page-head">
       <div><h1>คุณลักษณะและกิจกรรม</h1><p>ประเมินคุณลักษณะ การอ่านคิดวิเคราะห์ สมรรถนะ และกิจกรรมรายห้อง · ภาคเรียนที่ ${ctx.term.term}/${ctx.term.academic_year} · ${canEdit ? '<span class="live">อัปเดตทันที</span>' : 'ดูอย่างเดียว (ครูประจำชั้นเป็นผู้บันทึก)'}</p></div>
-      <div class="row"><label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label></div>
+      <div class="row"><label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label>
+        ${canEdit ? '<label class="btn" title="เลือกได้หลายไฟล์ (.xlsx) : คุณลักษณะอันพึงประสงค์ · สมรรถนะ · อ่านคิดวิเคราะห์เขียน">นำเข้าจากไฟล์<input type="file" id="imp-assess" accept=".xlsx,.xls,.xlsb" multiple hidden></label>' : ''}</div>
     </div>
     ${tabGroups([['ผลการประเมิน', 'traits', Object.keys(TRAIT_KINDS)], ['แบบประเมินละเอียด', 'reports', Object.keys(FORMS).map((k) => `d_${k}`)], ['กิจกรรมและความเห็น', 'students', ['activities', 'comments']]]
     .map(([label, ic, keys]) => ({ label, icon: ic, tabs: keys.map((k) => ({ key: k, label: esc(TABS[k]) })) })), pref.tab)}
@@ -29,6 +31,16 @@ export async function render(el, ctx) {
   el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { pref.tab = b.dataset.tab; render(el, ctx); }));
   wireTabGroups(el);
   $('#room', el).addEventListener('change', (e) => { pref.room = e.target.value; render(el, ctx); });
+  $('#imp-assess', el)?.addEventListener('change', async (e) => {
+    const files = [...e.target.files]; e.target.value = '';
+    if (!files.length) return;
+    let res;
+    try { res = await assessImportFlow(ctx, files, { roomId: room.id }); } catch (err) { toast(err.message, 'err'); return; }
+    if (!res) return;
+    if (res.errors.length) await modal('นำเข้าไม่ครบ', `<ul class="small">${res.errors.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`, { okText: 'ตกลง', cancelText: '' });
+    toast(`นำเข้าแล้ว ${res.files} ไฟล์ · ${res.students} คน · ${res.cells} ช่อง`);
+    render(el, ctx);
+  });
   const pane = $('#pane', el);
   if (!roster.length) { pane.innerHTML = '<div class="empty">ห้องนี้ยังไม่มีนักเรียน</div>'; return; }
   const ids = roster.map((s) => s.id);
