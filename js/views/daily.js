@@ -1,6 +1,6 @@
 import { esc, $, toast, options, roomName, fullName, iso, todayIso, thaiDate, daysInMonth,
-  THAI_MONTHS, THAI_DOW, STATUS, nextStatus } from '../util.js?v=2569.10.27-4';
-import { getRoster, termMonths } from '../data.js?v=2569.10.27-4';
+  THAI_MONTHS, THAI_DOW, STATUS, nextStatus } from '../util.js?v=2569.10.27-5';
+import { getRoster, termMonths } from '../data.js?v=2569.10.27-5';
 
 const pref = { room: null, mode: null, ym: null, date: null };
 
@@ -34,7 +34,7 @@ export async function render(el, ctx) {
   el.innerHTML = `
     <div class="page-head">
       <div><h1>เช็กชื่อประจำวัน</h1>
-        <p>ห้อง ${esc(roomName(room))} · ${canEdit ? '<span class="live">อัปเดตทันทีเมื่อครูคนอื่นบันทึก</span>' : 'ดูอย่างเดียว (ไม่ใช่ครูประจำชั้นห้องนี้)'}</p></div>
+        <p>บันทึกการมาเรียนประจำวัน ดูได้ทั้งรายวันและทั้งเดือน · ${canEdit ? '<span class="live">อัปเดตทันทีเมื่อครูคนอื่นบันทึก</span>' : 'ดูอย่างเดียว (ไม่ใช่ครูประจำชั้นห้องนี้)'}</p></div>
       <div class="row">
         <label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label>
         <div class="seg" role="group" aria-label="มุมมอง">

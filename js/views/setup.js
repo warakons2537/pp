@@ -1,7 +1,8 @@
-import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.27-4';
-import { ROUNDING } from '../grading.js?v=2569.10.27-4';
-import { excelRefToRows } from '../assess.js?v=2569.10.27-4';
-import { clearGrowthRef } from '../data.js?v=2569.10.27-4';
+import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.27-5';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-5';
+import { ROUNDING } from '../grading.js?v=2569.10.27-5';
+import { excelRefToRows } from '../assess.js?v=2569.10.27-5';
+import { clearGrowthRef } from '../data.js?v=2569.10.27-5';
 
 let tab = 'school';
 const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', rooms: 'ห้องเรียน', subjects: 'รายวิชา', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', backup: 'สำรองข้อมูล' };
@@ -11,9 +12,11 @@ export async function render(el, ctx) {
   const pending = ctx.profiles.filter((p) => p.role === 'pending').length;
   el.innerHTML = `
     <div class="page-head"><div><h1>ตั้งค่าระบบ</h1><p>ข้อมูลที่ตั้งไว้ที่นี่ใช้ร่วมกันทั้งระบบธุรการและ ปพ.</p></div></div>
-    <div class="tabs">${Object.entries(TABS).map(([k, v]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${v}${k === 'users' && pending ? ` <span class="chip chip-bad">${pending}</span>` : ''}</button>`).join('')}</div>
+    ${tabGroups([['ข้อมูลโรงเรียน', 'school', ['school', 'terms', 'rooms', 'subjects', 'users']], ['ระบบและข้อมูล', 'setup', ['growth', 'backup']]]
+    .map(([label, ic, keys]) => ({ label, icon: ic, tabs: keys.map((k) => ({ key: k, label: `${TABS[k]}${k === 'users' && pending ? ` <span class="chip chip-bad">${pending}</span>` : ''}` })) })), tab)}
     <div id="pane"></div>`;
   el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; render(el, ctx); }));
+  wireTabGroups(el);
   const pane = $('#pane', el);
   const again = async () => { await ctx.refresh(); render(el, ctx); };
   const run = async (fn, msg = 'บันทึกแล้ว') => { try { await fn(); toast(msg); await again(); } catch (err) { toast(err.message, 'err'); } };
@@ -241,7 +244,7 @@ async function growth(pane, ctx, run) {
   $('#g-tpl', pane).href = URL.createObjectURL(new Blob(['\ufeff' + tpl], { type: 'text/csv' }));
   const upsertRows = async (rows) => { for (let i = 0; i < rows.length; i += 500) await ctx.db.upsert('growth_reference', rows.slice(i, i + 500), 'ref_set,sex,basis,key,measure'); clearGrowthRef(); };
   $('#load-excel', pane).addEventListener('click', () => run(async () => {
-    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.27-4');
+    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.27-5');
     await upsertRows(excelRefToRows(EXCEL_AGE, EXCEL_HT));
   }, 'โหลดตารางจาก Excel เดิมแล้ว'));
   pane.querySelectorAll('[data-use]').forEach((b) => b.addEventListener('click', () =>

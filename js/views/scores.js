@@ -1,7 +1,8 @@
-import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.10.27-4';
-import { getRoster } from '../data.js?v=2569.10.27-4';
-import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.10.27-4';
-import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.10.27-4';
+import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.10.27-5';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-5';
+import { getRoster } from '../data.js?v=2569.10.27-5';
+import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.10.27-5';
+import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.10.27-5';
 
 const pref = { course: null, tab: 'scores' };
 const KIND = { score: 'คะแนนเก็บระหว่างภาค', final: 'สอบปลายภาค', indicator: 'ตัวชี้วัด (ผ/มผ)' };
@@ -26,18 +27,17 @@ export async function render(el, ctx) {
   el.innerHTML = `
     <div class="page-head">
       <div><h1>คะแนนรายวิชา (ปพ.5)</h1>
-        <p>${esc(ctx.courseLabel(course))} · ${esc(course.subject?.credits ? `${course.subject.credits} หน่วยกิต` : course.subject?.hours_per_year ? `${course.subject.hours_per_year} ชม./ปี` : '')}
+        <p>กรอกคะแนน ตัดเกรด และประเมินตัวชี้วัดรายวิชา · ${esc(course.subject?.credits ? `${course.subject.credits} หน่วยกิต` : course.subject?.hours_per_year ? `${course.subject.hours_per_year} ชม./ปี` : '')}
           · ระหว่างภาค:ปลายภาค ${course.midterm_ratio}:${course.final_ratio} · <span class="live">อัปเดตทันที</span></p></div>
       <div class="row"><label class="field">วิชา<select id="course">${options(list, course.id, ctx.courseLabel)}</select></label>
         <button class="btn" id="xls" ${items.length ? '' : 'disabled'} title="ไฟล์ Excel แบบบันทึกผลสัมฤทธิ์ (แผ่นงานผลสัมฤทธิ์) มีสูตรคำนวณ แก้ต่อใน Excel ได้">ส่งออก Excel</button></div>
     </div>
-    <div class="tabs">
-      <button data-tab="scores" class="${pref.tab === 'scores' ? 'on' : ''}" ${items.length ? '' : 'disabled'}>คะแนนและเกรด</button>
-      <button data-tab="indicators" class="${pref.tab === 'indicators' ? 'on' : ''}" ${byKind('indicator').length ? '' : 'disabled'}>ตัวชี้วัด (ผ/มผ)</button>
-      <button data-tab="items" class="${pref.tab === 'items' ? 'on' : ''}">ตั้งค่าช่องคะแนน</button>
-    </div>
+    ${tabGroups([
+      { label: 'บันทึกผล', icon: 'scores', tabs: [{ key: 'scores', label: 'คะแนนและเกรด', disabled: !items.length }, { key: 'indicators', label: 'ตัวชี้วัด (ผ/มผ)', disabled: !byKind('indicator').length }] },
+      { label: 'ตั้งค่า', icon: 'setup', tabs: [{ key: 'items', label: 'ตั้งค่าช่องคะแนน' }] }], pref.tab)}
     <div id="pane"></div>`;
   el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { pref.tab = b.dataset.tab; render(el, ctx); }));
+  wireTabGroups(el);
   $('#course', el).addEventListener('change', (e) => { pref.course = e.target.value; render(el, ctx); });
   const pane = $('#pane', el);
   const again = () => render(el, ctx);

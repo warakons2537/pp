@@ -17,6 +17,7 @@
   --weekend: #e5e9e5;
   --green: var(--pen); --green-wash: var(--pen-wash);       /* ปกติ / ผ่าน = สีหลัก */
   --solid-green: var(--pen);                                         /* พื้นปุ่มสีเขียว */
+  --primary: #2aad4b; --on-primary: #002200;                       /* ปุ่มหลัก: ตัวอักษรเข้มบนพื้นเขียว (คอนทราสต์ 5.8:1) */
   --solid-amber: #f4be54;                                      /* พื้นปุ่มสีทอง (ตัวอักษรเข้ม) */
   --cover: #0f5220; --cover-deep: #013911; --cover-ink: #beefc0;   /* หน้าปกล็อกอิน / แถบ GPA */
   --pen-bright: #83da8c; --err-bright: #feb4ac;
@@ -35,6 +36,7 @@
     --ink: #dfe4df; --ink-soft: #bfc9bf;
     --rule: #404940; --outline: #899389; --rule-strong: color-mix(in srgb, var(--outline) 55%, var(--rule));
     --pen: #83da8c; --on-pen: #013911; --pen-wash: #24502a; --on-pen-wash: #beefc0;
+    --primary: #83da8c; --on-primary: #013911;
     --chosen: #394b3a; --on-chosen: #d2e8d2;
     --red: #feb4ac; --red-wash: #92011a; --on-red-wash: #fedad6;
     --amber: #ecc075; --amber-wash: #5d4201; --on-amber-wash: #ffdeab;
@@ -49,6 +51,7 @@
   --ink: #dfe4df; --ink-soft: #bfc9bf;
   --rule: #404940; --outline: #899389; --rule-strong: color-mix(in srgb, var(--outline) 55%, var(--rule));
   --pen: #83da8c; --on-pen: #013911; --pen-wash: #24502a; --on-pen-wash: #beefc0;
+  --primary: #83da8c; --on-primary: #013911;
   --chosen: #394b3a; --on-chosen: #d2e8d2;
   --red: #feb4ac; --red-wash: #92011a; --on-red-wash: #fedad6;
   --amber: #ecc075; --amber-wash: #5d4201; --on-amber-wash: #ffdeab;
@@ -122,7 +125,7 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
 .main { min-width: 0; padding-bottom: 56px; }
 .main-pad { padding-top: 24px; padding-left: 24px; padding-right: max(20px, env(safe-area-inset-right, 0px)); }
 .main-inner { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
-.page-head { display: flex; flex-wrap: wrap; gap: 14px 20px; align-items: end; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
+.page-head { display: flex; flex-direction: column; gap: 14px; align-items: stretch; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
 .page-head p { margin: 6px 0 0; color: var(--ink-soft); font-size: .92rem; }
 
 .demo-bar { max-width: 1200px; margin: 0 auto 18px; background: var(--amber-wash); color: var(--ink); border-radius: var(--r);
@@ -190,7 +193,7 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
 .card { background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--r-lg); padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
-.row > label, .field { display: flex; flex-direction: column; gap: 4px; font-size: .82rem; color: var(--ink-soft); }
+.row > label:not(.btn), .field { display: flex; flex-direction: column; gap: 4px; font-size: .82rem; color: var(--ink-soft); }
 .muted { color: var(--ink-soft); }
 .small { font-size: .86rem; }
 code { overflow-wrap: anywhere; }
@@ -207,14 +210,14 @@ textarea { width: 100%; min-height: 70px; }
   transition: background .15s, border-color .15s;
 }
 .btn:hover { background: color-mix(in srgb, var(--pen) 8%, transparent); }
-.btn-primary { background: var(--pen); border-color: var(--pen); color: var(--on-pen); font-weight: 600; }
-.btn-primary:hover { background: var(--pen); filter: brightness(1.1); }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 600; }
+.btn-primary:hover { background: var(--primary); filter: brightness(1.08); }
 .btn-ghost { background: transparent; }
 .btn-danger { color: var(--red); border-color: color-mix(in srgb, var(--red) 45%, transparent); background: transparent; }
 .btn-danger:hover { background: var(--red-wash); border-color: var(--red); }
 .btn-sm { padding: 3px 12px; font-size: .84rem; min-height: 32px; }
-.btn-success { background: var(--solid-green); border-color: var(--solid-green); color: var(--on-pen); font-weight: 600; }
-.btn-success:hover { background: var(--solid-green); border-color: var(--solid-green); filter: brightness(1.08); }
+.btn-success { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 600; }
+.btn-success:hover { background: var(--primary); border-color: var(--primary); filter: brightness(1.08); }
 .btn-warn { background: var(--solid-amber); border-color: var(--solid-amber); color: #1c1300; font-weight: 600; }
 .btn-warn:hover { background: var(--solid-amber); border-color: var(--solid-amber); filter: brightness(1.06); }
 .btn-info { background: var(--sky-wash); border-color: color-mix(in srgb, var(--sky) 40%, transparent); color: var(--sky); }
@@ -240,6 +243,24 @@ textarea { width: 100%; min-height: 70px; }
 .tabs .tab-sec { align-self: center; font-size: .74rem; color: var(--ink-soft); padding: 0 4px 0 12px; border-left: 1px solid var(--rule); margin-left: 6px; }
 .tabs .tab-sec:first-child { border-left: 0; margin-left: 0; padding-left: 0; }
 .tabs button.on { color: var(--pen); border-color: var(--pen); font-weight: 600; }
+/* แท็บแบบกลุ่ม: ป้ายหัวกลุ่ม+ไอคอน → แถวเดียวเลื่อนแนวนอน · › ที่ขอบขวากดเลื่อนได้ · กลุ่มวางเรียงกันเมื่อจอกว้างพอ */
+.tabgroups { display: flex; flex-wrap: wrap; gap: 12px 24px; min-width: 0; }
+.tg { display: flex; flex-direction: column; gap: 6px; min-width: 0; max-width: 100%; }
+.tg-label { display: flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 600; letter-spacing: .02em; color: var(--ink-soft); }
+.tg-label svg.i { width: 16px; height: 16px; color: var(--pen); }
+.tg-scroll { position: relative; min-width: 0; }
+.tg-row { display: flex; gap: 8px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding: 2px 2px 4px; }
+.tg-row::-webkit-scrollbar { display: none; }
+.tg-row button { flex: none; border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 99px;
+  padding: 6px 14px; min-height: 36px; font-size: .9rem; white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.tg-row button:hover { background: var(--surface-high); }
+.tg-row button.on { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 600; }
+.tg-row button[disabled] { opacity: .4; cursor: default; }
+.tg-more { position: absolute; right: 0; top: 0; bottom: 4px; width: 52px; border: 0; padding: 0 4px 0 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: flex-end; font-size: 1.6rem; font-weight: 700; line-height: 1; color: var(--pen);
+  background: linear-gradient(to right, transparent, var(--bg) 55%); transition: opacity .2s; }
+.tg-scroll.at-end .tg-more { opacity: 0; pointer-events: none; }
+.card .tg-more { background: linear-gradient(to right, transparent, var(--sheet) 55%); }
 .empty { padding: 32px 18px; text-align: center; color: var(--ink-soft); border: 1px dashed var(--rule-strong); border-radius: var(--r-lg); background: var(--sheet); }
 
 /* ---------- ตาราง ---------- */
@@ -345,8 +366,8 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
   font-family: var(--font-display); font-size: 1.7rem; font-weight: 600; border: 2px solid color-mix(in srgb, var(--on-pen-wash) 35%, transparent); }
 .welcome h1 { font-size: 1.55rem; color: inherit; }
 .welcome p { margin: 4px 0 0; opacity: .9; font-size: .92rem; }
-.welcome .btn { background: var(--pen); color: var(--on-pen); border-color: var(--pen); font-weight: 600; }
-.welcome .btn:hover { background: var(--pen); filter: brightness(1.1); }
+.welcome .btn { background: var(--primary); color: var(--on-primary); border-color: var(--primary); font-weight: 600; }
+.welcome .btn:hover { background: var(--primary); filter: brightness(1.08); }
 @media (max-width: 600px) { .welcome { grid-template-columns: auto minmax(0, 1fr); padding: 18px; } .welcome .av { width: 48px; height: 48px; font-size: 1.3rem; }
   .welcome .btn { grid-column: 1 / -1; justify-content: center; } .welcome h1 { font-size: 1.25rem; } }
 .apps { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 14px 8px; }

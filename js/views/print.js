@@ -1,12 +1,13 @@
 // พิมพ์เอกสาร ปพ.: ปพ.6 รายบุคคล · ปก ปพ.5 รายชั้น · ปก ปพ.5 รายวิชา · ใบรับรองผลการศึกษา
-import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js?v=2569.10.27-4';
-import { loadRoomYear, personName } from '../yeardata.js?v=2569.10.27-4';
-import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.10.27-4';
-import { icon } from '../icons.js?v=2569.10.27-4';
-import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js?v=2569.10.27-4';
-import { bookView } from './pp-book-view.js?v=2569.10.27-4';
-import { listView, studentView, missingOf, termsOf } from './pp6-hub.js?v=2569.10.27-4';
-import { pp6FormsView } from './pp6-forms-view.js?v=2569.10.27-4';
+import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js?v=2569.10.27-5';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-5';
+import { loadRoomYear, personName } from '../yeardata.js?v=2569.10.27-5';
+import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.10.27-5';
+import { icon } from '../icons.js?v=2569.10.27-5';
+import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js?v=2569.10.27-5';
+import { bookView } from './pp-book-view.js?v=2569.10.27-5';
+import { listView, studentView, missingOf, termsOf } from './pp6-hub.js?v=2569.10.27-5';
+import { pp6FormsView } from './pp6-forms-view.js?v=2569.10.27-5';
 
 const DOCS = { book: 'เล่ม ปพ. (เหมือนไฟล์ต้นฉบับ)', pp6: 'ปพ.6 รายบุคคล', coverClass: 'ปก ปพ.5 รายชั้น', coverCourse: 'ปก ปพ.5 รายวิชา', cert: 'ใบรับรองผลการศึกษา' };
 const pref = { doc: 'book', room: null, from: 1, to: 99, scope: 'term', page2: true, course: null, pp6View: 'list', stu: null,
@@ -31,8 +32,7 @@ export async function render(el, ctx) {
   if (pref.doc === 'pp6' && pref.pp6View !== 'paper') return hub(el, ctx, rooms, room);
 
   el.innerHTML = `
-    <div class="page-head"><div><h1>พิมพ์เอกสาร ปพ.</h1><p>ดูตัวอย่างทุกหน้าก่อนพิมพ์ แต่ละคนขึ้นหน้าใหม่ให้อัตโนมัติ</p></div></div>
-    ${tabsHtml()}
+    <div class="page-head"><div><h1>พิมพ์เอกสาร ปพ.</h1><p>ดูตัวอย่างทุกหน้าก่อนพิมพ์ แต่ละคนขึ้นหน้าใหม่ให้อัตโนมัติ</p></div>
     <div class="row no-print">
       ${pref.doc === 'pp6' ? `<button class="btn btn-pill" id="pp6-back">${icon('back')}กลับไปรายชื่อ</button>` : ''}
       <label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label>
@@ -44,7 +44,8 @@ export async function render(el, ctx) {
       ${pref.doc === 'coverCourse' ? '<label class="field">วิชา<select id="course"></select></label>' : ''}
       ${pref.doc === 'book' || nativePp6 ? '' : '<button class="btn btn-primary" id="print">พิมพ์ / บันทึก PDF</button>'}
       ${inFrame && pref.doc !== 'book' ? '<span class="print-note muted">หน้าทดลองนี้เปิดหน้าต่างพิมพ์ไม่ได้ เมื่อติดตั้งแอปจริงจะพิมพ์ได้ทันที</span>' : ''}
-    </div>
+    </div></div>
+    ${tabsHtml()}
     ${pref.doc === 'cert' ? `<div class="card no-print"><div class="row">
       <label class="field">ออกให้ ณ วันที่<input type="date" id="c-date" value="${pref.certDate}"></label>
       <label class="field">เลขที่ใบรับรองเริ่มต้น<input type="text" id="c-no" value="${esc(pref.certNo)}" placeholder="เช่น 1/2569" style="width:130px"></label>
@@ -102,10 +103,11 @@ export async function render(el, ctx) {
 // ---------------------------------------------------------------------
 //  ปพ.6: ตารางรายชื่อ / หน้าเกรดรายคน (ดู js/views/pp6-hub.js)
 // ---------------------------------------------------------------------
-const tabsHtml = () => `<div class="tabs no-print">${Object.entries(DOCS).map(([k, v]) => `<button data-doc="${k}" class="${pref.doc === k ? 'on' : ''}">${v}</button>`).join('')}</div>`;
-const wireTabs = (el, again) => el.querySelectorAll('[data-doc]').forEach((b) => b.addEventListener('click', () => {
+const tabsHtml = () => tabGroups([['เล่ม ปพ.', 'book', ['book']], ['เอกสารรายบุคคล', 'students', ['pp6', 'cert']], ['ปก ปพ.5', 'reports', ['coverClass', 'coverCourse']]]
+  .map(([label, ic, keys]) => ({ label, icon: ic, tabs: keys.map((k) => ({ key: k, label: esc(DOCS[k]) })) })), pref.doc, 'doc', 'no-print');
+const wireTabs = (el, again) => { el.querySelectorAll('[data-doc]').forEach((b) => b.addEventListener('click', () => {
   if (b.dataset.doc === 'pp6' && pref.doc !== 'pp6') pref.pp6View = 'list';
-  pref.doc = b.dataset.doc; again(); }));
+  pref.doc = b.dataset.doc; again(); })); wireTabGroups(el); };
 async function getData(ctx, room) {
   const key = `${room.id}|${ctx.term.id}`;
   if (cache.key !== key) cache = { key, data: await loadRoomYear(ctx, room) };
@@ -115,13 +117,13 @@ async function getData(ctx, room) {
 async function hub(el, ctx, rooms, room) {
   const again = () => render(el, ctx);
   el.innerHTML = `
-    <div class="page-head"><div><h1>พิมพ์เอกสาร ปพ.</h1><p>ตรวจเกรดรายคนก่อนพิมพ์ ปพ.6 · คนที่ยังมีวิชาไม่มีเกรดหรือคะแนนไม่ครบจะพิมพ์ไม่ได้</p></div></div>
-    ${tabsHtml()}
-    <div class="card no-print"><div class="row">
+    <div class="page-head"><div><h1>พิมพ์เอกสาร ปพ.</h1><p>ตรวจเกรดรายคนก่อนพิมพ์ ปพ.6 · คนที่ยังมีวิชาไม่มีเกรดหรือคะแนนไม่ครบจะพิมพ์ไม่ได้</p></div>
+    <div class="row no-print">
       <label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label>
       <label class="field">ช่วงข้อมูล<select id="scope"><option value="term" ${pref.scope === 'term' ? 'selected' : ''}>ภาคเรียนที่ ${ctx.term.term} (ภาคปัจจุบัน)</option>
         <option value="year" ${pref.scope === 'year' ? 'selected' : ''}>ทั้งปีการศึกษา ${room.academic_year}</option></select></label>
     </div></div>
+    ${tabsHtml()}
     <div id="hub" style="display:flex;flex-direction:column;gap:16px"><p class="muted">กำลังรวบรวมข้อมูลทั้งปี…</p></div>`;
   wireTabs(el, again);
   $('#room', el).addEventListener('change', (e) => { pref.room = e.target.value; pref.pp6View = 'list'; pref.stu = null; again(); });
