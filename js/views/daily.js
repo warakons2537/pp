@@ -1,6 +1,6 @@
 import { esc, $, toast, options, roomName, fullName, iso, todayIso, thaiDate, daysInMonth,
-  THAI_MONTHS, THAI_DOW, STATUS, nextStatus } from '../util.js?v=2569.10.27-7';
-import { getRoster, termMonths } from '../data.js?v=2569.10.27-7';
+  THAI_MONTHS, THAI_DOW, STATUS, nextStatus } from '../util.js?v=2569.10.27-8';
+import { getRoster, termMonths } from '../data.js?v=2569.10.27-8';
 
 const pref = { room: null, mode: null, ym: null, date: null };
 
