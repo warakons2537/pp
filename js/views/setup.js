@@ -1,7 +1,7 @@
-import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js';
-import { ROUNDING } from '../grading.js';
-import { excelRefToRows } from '../assess.js';
-import { clearGrowthRef } from '../data.js';
+import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.27-4';
+import { ROUNDING } from '../grading.js?v=2569.10.27-4';
+import { excelRefToRows } from '../assess.js?v=2569.10.27-4';
+import { clearGrowthRef } from '../data.js?v=2569.10.27-4';
 
 let tab = 'school';
 const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', rooms: 'ห้องเรียน', subjects: 'รายวิชา', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', backup: 'สำรองข้อมูล' };
@@ -202,9 +202,9 @@ function users(pane, ctx, run) {
   const roleOpts = [{ id: 'pending', label: 'รออนุมัติ' }, { id: 'teacher', label: 'ครู' }, { id: 'admin', label: 'ผู้ดูแลระบบ' }];
   pane.innerHTML = `<div class="card">
     <p class="small muted">ครูสมัครใช้งานเองจากหน้าเข้าสู่ระบบ แล้วผู้ดูแลอนุมัติที่นี่ · ผู้ดูแลระบบแก้ไขได้ทุกอย่าง · ครูแก้ได้เฉพาะห้องที่เป็นครูประจำชั้นและวิชาที่สอน</p>
-    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>ชื่อ</th><th>อีเมล</th><th>สิทธิ์</th></tr></thead><tbody>
-      ${ctx.profiles.map((p) => `<tr><td>${esc(p.full_name || '—')}</td><td class="small">${esc(p.email ?? '')}</td>
-        <td>${p.id === ctx.me.id ? '<span class="chip chip-info">ผู้ดูแลระบบ (คุณ)</span>'
+    <div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>ชื่อ</th><th>อีเมล</th><th>สิทธิ์</th></tr></thead><tbody>
+      ${ctx.profiles.map((p) => `<tr><td class="tc-ttl">${esc(p.full_name || '—')}</td><td class="small wrap-any" data-l="อีเมล">${esc(p.email ?? '')}</td>
+        <td data-l="สิทธิ์">${p.id === ctx.me.id ? '<span class="chip chip-info">ผู้ดูแลระบบ (คุณ)</span>'
           : `<select data-role="${p.id}" aria-label="สิทธิ์ของ ${esc(p.full_name)}">${options(roleOpts, p.role)}</select>`}</td></tr>`).join('')}
     </tbody></table></div></div>`;
   pane.querySelectorAll('[data-role]').forEach((s) => s.addEventListener('change', () =>
@@ -241,7 +241,7 @@ async function growth(pane, ctx, run) {
   $('#g-tpl', pane).href = URL.createObjectURL(new Blob(['\ufeff' + tpl], { type: 'text/csv' }));
   const upsertRows = async (rows) => { for (let i = 0; i < rows.length; i += 500) await ctx.db.upsert('growth_reference', rows.slice(i, i + 500), 'ref_set,sex,basis,key,measure'); clearGrowthRef(); };
   $('#load-excel', pane).addEventListener('click', () => run(async () => {
-    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js');
+    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.27-4');
     await upsertRows(excelRefToRows(EXCEL_AGE, EXCEL_HT));
   }, 'โหลดตารางจาก Excel เดิมแล้ว'));
   pane.querySelectorAll('[data-use]').forEach((b) => b.addEventListener('click', () =>

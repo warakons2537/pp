@@ -193,6 +193,8 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
 .row > label, .field { display: flex; flex-direction: column; gap: 4px; font-size: .82rem; color: var(--ink-soft); }
 .muted { color: var(--ink-soft); }
 .small { font-size: .86rem; }
+code { overflow-wrap: anywhere; }
+.tbl td.wrap-any { overflow-wrap: anywhere; }
 input[type=text], input[type=email], input[type=password], input[type=date], input[type=number], input[type=month], select, textarea {
   background: var(--sheet); border: 1px solid var(--outline); border-radius: var(--r); padding: 8px 12px; min-width: 0; color: var(--ink);
   transition: border-color .15s, box-shadow .15s;
