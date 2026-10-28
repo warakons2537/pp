@@ -4,10 +4,10 @@
 //  → หน้าตา สูตร และการแบ่งหน้าเหมือนต้นฉบับทุกหน้า
 //  ไม่แตะเซลล์ที่ไฟล์ต้นฉบับล็อกไว้ (เช่น ชื่อโรงเรียนที่ผู้พัฒนาโปรแกรมล็อก)
 // =====================================================================
-import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.10.27-16';
-import { levelName } from './util.js?v=2569.10.27-16';
-import { getRoster } from './data.js?v=2569.10.27-16';
-import { loadCourse, computeCourse } from './grading.js?v=2569.10.27-16';
+import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.10.28-1';
+import { levelName } from './util.js?v=2569.10.28-1';
+import { getRoster } from './data.js?v=2569.10.28-1';
+import { loadCourse, computeCourse } from './grading.js?v=2569.10.28-1';
 
 export const MONTHS = [['พ.ค.', 5], ['มิ.ย.', 6], ['ก.ค.', 7], ['ส.ค.', 8], ['ก.ย.', 9], ['ต.ค.', 10], ['พ.ย.', 11], ['ธ.ค.', 12], ['ม.ค.', 1], ['ก.พ.', 2], ['มี.ค.', 3], ['เม.ย.', 4]];
 export const SUBJECT_ROWS = [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];   // แถวในแผ่น "รายวิชา" ของวิชาที่ 1–20

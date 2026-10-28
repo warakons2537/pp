@@ -1,13 +1,14 @@
-import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.27-16';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.27-16';
-import { ROUNDING } from '../grading.js?v=2569.10.27-16';
-import { excelRefToRows } from '../assess.js?v=2569.10.27-16';
-import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.27-16';
-import { subjectImportFlow } from './subject-import-view.js?v=2569.10.27-16';
-import { teacherImportFlow } from './teacher-import-view.js?v=2569.10.27-16';
-import { indicatorImportFlow } from './indicator-import-view.js?v=2569.10.27-16';
-import { clearGrowthRef } from '../data.js?v=2569.10.27-16';
-import { teacherKey, displayName } from '../teacher-import.js?v=2569.10.27-16';
+import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.28-1';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.28-1';
+import { ROUNDING } from '../grading.js?v=2569.10.28-1';
+import { excelRefToRows } from '../assess.js?v=2569.10.28-1';
+import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.28-1';
+import { subjectImportFlow } from './subject-import-view.js?v=2569.10.28-1';
+import { teacherImportFlow } from './teacher-import-view.js?v=2569.10.28-1';
+import { indicatorImportFlow } from './indicator-import-view.js?v=2569.10.28-1';
+import { clearGrowthRef } from '../data.js?v=2569.10.28-1';
+import { teacherKey, displayName } from '../teacher-import.js?v=2569.10.28-1';
+import { applyCourseOrder, inheritedOrder } from '../course-order.js?v=2569.10.28-1';
 
 let tab = 'school';
 const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', rooms: 'ห้องเรียน', subjects: 'รายวิชา', roomsubj: 'รายวิชาตามชั้น', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', notify: 'การแจ้งเตือน', backup: 'สำรองข้อมูล' };
@@ -148,18 +149,25 @@ function roomsubj(pane, ctx, run) {
       <label>ห้อง<select id="rs-room">${options(ctx.classrooms.map((c) => ({ id: c.id, label: roomName(c) })), room.id)}</select></label>
       <div class="small muted">ภาคเรียนที่ ${ctx.term ? `${ctx.term.term} ปีการศึกษา ${ctx.term.academic_year}` : '-'}</div></div>
       ${miss ? `<p><span class="chip chip-bad">หน่วยกิตว่าง ${miss} วิชา</span> <span class="small muted">วิชาที่ไม่มีหน่วยกิตจะไม่มีคะแนนและเกรดในใบ ปพ.6</span></p>` : ''}
-      ${list.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th class="n">ที่</th><th>รหัสวิชา</th><th>รายวิชา</th><th class="n">หน่วยกิต</th><th>กลุ่มสาระการเรียนรู้</th><th>ครูประจำวิชา</th></tr></thead><tbody>
+      ${list.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th class="n">ที่</th><th>รหัสวิชา</th><th>รายวิชา</th><th class="n">หน่วยกิต</th><th>กลุ่มสาระการเรียนรู้</th><th>ครูประจำวิชา</th><th>ลำดับ</th></tr></thead><tbody>
         ${list.map((k, i) => { const s = k.subject || {}; return `<tr data-sid="${s.id}"><td class="n" data-l="ที่">${i + 1}</td><td data-l="รหัสวิชา">${esc(s.code ?? '')}</td><td class="tc-ttl">${esc(s.name ?? '')}</td>
           <td class="n" data-l="หน่วยกิต"><input type="number" step="0.5" min="0" data-f="credits" value="${s.credits ?? ''}" placeholder="${s.hours_per_year ? `${s.hours_per_year} ชม.` : ''}" style="width:80px${noWeight(s) ? ';border-color:var(--red)' : ''}" aria-label="หน่วยกิต ${esc(s.code ?? '')}"></td>
           <td data-l="กลุ่มสาระ"><select data-f="subject_group" aria-label="กลุ่มสาระ ${esc(s.code ?? '')}"><option value="">—</option>${options(SUBJECT_GROUPS.map((x) => ({ id: x, label: x })), s.subject_group)}</select></td>
-          <td class="small" data-l="ครูประจำวิชา">${esc(k.teachers.map((t) => t.full_name).join(', ') || '—')}</td></tr>`; }).join('')}
+          <td class="small" data-l="ครูประจำวิชา">${esc(k.teachers.map((t) => t.full_name).join(', ') || '—')}</td>
+          <td class="n tc-act" data-l="ลำดับ" style="white-space:nowrap"><button class="btn btn-sm" data-mv="-1" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="เลื่อนขึ้น ${esc(s.code ?? '')}">▲</button> <button class="btn btn-sm" data-mv="1" data-i="${i}" ${i === list.length - 1 ? 'disabled' : ''} aria-label="เลื่อนลง ${esc(s.code ?? '')}">▼</button></td></tr>`; }).join('')}
       </tbody></table></div>
       <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;margin-top:8px">
-        <p class="muted small" style="margin:0">หน่วยกิตและกลุ่มสาระเป็นของรายวิชา แก้ที่นี่มีผลกับทุกห้องที่เรียนรหัสเดียวกัน · ครูประจำวิชาแก้ที่แท็บรายวิชา → การเปิดสอน</p>
+        <p class="muted small" style="margin:0">หน่วยกิตและกลุ่มสาระเป็นของรายวิชา แก้ที่นี่มีผลกับทุกห้องที่เรียนรหัสเดียวกัน · ครูประจำวิชาแก้ที่แท็บรายวิชา → การเปิดสอน · ปุ่ม ▲▼ จัดลำดับวิชา (ใช้กับทุกห้องของชั้นนี้และทุกภาคเรียนในปีนี้ ปพ.6 พิมพ์ตามลำดับนี้) บันทึกทันที · หน่วยกิตที่พิมพ์ค้างไว้ให้กดบันทึกก่อนเลื่อน</p>
         <button class="btn btn-primary" id="rs-save">บันทึก</button></div>`
       : '<div class="empty">ห้องนี้ยังไม่ได้เปิดสอนวิชาใดในภาคเรียนนี้</div>'}</div>`;
 
   $('#rs-room', pane).addEventListener('change', (e) => { roomSubjRoom = e.target.value; roomsubj(pane, ctx, run); });
+  pane.querySelectorAll('[data-mv]').forEach((b) => b.addEventListener('click', () => {
+    const i = Number(b.dataset.i); const j = i + Number(b.dataset.mv);
+    if (!list[j]) return;
+    const ids = list.map((k) => k.subject_id); [ids[i], ids[j]] = [ids[j], ids[i]];
+    run(() => applyCourseOrder(ctx, room, ids), 'จัดลำดับแล้ว');
+  }));
   $('#rs-save', pane)?.addEventListener('click', () => {
     const changes = [];
     pane.querySelectorAll('tr[data-sid]').forEach((tr) => {
@@ -259,8 +267,11 @@ function subjects(pane, ctx, run) {
     if (dup.length) toast(`ห้อง ${dup.map((cid) => roomName(ctx.classroomById[cid])).join(', ')} เปิดสอนวิชานี้แล้ว จึงข้ามไป`, cids.length ? 'ok' : 'err');
     if (!cids.length) return;
     run(async () => {
-      const made = await ctx.db.insert('courses', cids.map((cid, i) => ({ subject_id: r.subject_id, classroom_id: cid, term_id: ctx.term.id,
-        midterm_ratio: Number(r.midterm_ratio), final_ratio: Number(r.final_ratio), sort_order: ctx.courses.length + i + 1 })));
+      const rows = [];
+      for (const [i, cid] of cids.entries()) rows.push({ subject_id: r.subject_id, classroom_id: cid, term_id: ctx.term.id,
+        midterm_ratio: Number(r.midterm_ratio), final_ratio: Number(r.final_ratio),
+        sort_order: (await inheritedOrder(ctx, ctx.classroomById[cid], ctx.term.id, r.subject_id)) ?? ctx.courses.length + i + 1 });
+      const made = await ctx.db.insert('courses', rows);
       for (const k of made) await setTeachers(k.id, r);
     });
   });
@@ -347,7 +358,7 @@ async function growth(pane, ctx, run) {
   $('#g-tpl', pane).href = URL.createObjectURL(new Blob(['\ufeff' + tpl], { type: 'text/csv' }));
   const upsertRows = async (rows) => { for (let i = 0; i < rows.length; i += 500) await ctx.db.upsert('growth_reference', rows.slice(i, i + 500), 'ref_set,sex,basis,key,measure'); clearGrowthRef(); };
   $('#load-excel', pane).addEventListener('click', () => run(async () => {
-    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.27-16');
+    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.28-1');
     await upsertRows(excelRefToRows(EXCEL_AGE, EXCEL_HT));
   }, 'โหลดตารางจาก Excel เดิมแล้ว'));
   pane.querySelectorAll('[data-use]').forEach((b) => b.addEventListener('click', () =>

@@ -2,11 +2,12 @@
 //  ตั้งค่าระบบ → รายวิชา → นำเข้าจากไฟล์คะแนน (หลายไฟล์)
 //  อ่านไฟล์ → ตารางตรวจ (แก้รหัส/ชื่อ/ห้อง · เลือกทีละไฟล์เมื่อซ้ำ · ปุ่มดูเพื่อเทียบ) → สร้างวิชา + เปิดสอน + นำเข้าคะแนน
 // =====================================================================
-import { esc, toast, roomName, fullName } from '../util.js?v=2569.10.27-16';
-import { getRoster } from '../data.js?v=2569.10.27-16';
-import { sheetMatrix, findAchievementSheet, parseAchievement, nameKey } from '../achievement-import.js?v=2569.10.27-16';
-import { planImport, applyImport } from '../achievement-io.js?v=2569.10.27-16';
-import { buildRows, rowStatus, defaultAction, courseRatio } from '../subject-import.js?v=2569.10.27-16';
+import { esc, toast, roomName, fullName } from '../util.js?v=2569.10.28-1';
+import { getRoster } from '../data.js?v=2569.10.28-1';
+import { sheetMatrix, findAchievementSheet, parseAchievement, nameKey } from '../achievement-import.js?v=2569.10.28-1';
+import { planImport, applyImport } from '../achievement-io.js?v=2569.10.28-1';
+import { inheritedOrder } from '../course-order.js?v=2569.10.28-1';
+import { buildRows, rowStatus, defaultAction, courseRatio } from '../subject-import.js?v=2569.10.28-1';
 
 async function readFiles(files) {
   if (!window.XLSX) throw new Error('โหลดตัวอ่านไฟล์ Excel ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วรีเฟรชหน้า');
@@ -165,7 +166,7 @@ async function save(ctx, rows, progress) {
       let course = courses.find((k) => k.subject_id === subject.id && k.classroom_id === room.id);
       if (!course) {
         const [mid, fin] = courseRatio(r.parsed);
-        const order = courses.filter((k) => k.classroom_id === room.id).reduce((m, k) => Math.max(m, k.sort_order || 0), 0) + 1;
+        const order = (await inheritedOrder(ctx, room, ctx.term.id, subject.id)) ?? courses.filter((k) => k.classroom_id === room.id).reduce((m, k) => Math.max(m, k.sort_order || 0), 0) + 1;
         [course] = await ctx.db.insert('courses', [{ subject_id: subject.id, classroom_id: room.id, term_id: ctx.term.id, midterm_ratio: mid, final_ratio: fin, sort_order: order }]);
         courses.push(course); out.opened++;
       }
