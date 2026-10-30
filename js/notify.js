@@ -1,8 +1,8 @@
 // ---------- การแจ้งเตือน "ตั้งค่าระบบยังไม่ครบ" (เห็นเฉพาะผู้ดูแลระบบ) ----------
 // เพิ่มเรื่องใหม่: เพิ่มออบเจ็กต์ใน ITEMS 1 รายการ — แท็บการแจ้งเตือน จุดแดง และรายการค้าง ใช้ตามนี้เองทั้งหมด
 // check(ctx) คืนข้อความเมื่อค้าง หรือ null เมื่อครบแล้ว · tab = แท็บในหน้าตั้งค่าระบบที่ต้องไปแก้
-import { esc, roomName } from './util.js?v=2569.10.30-2';
-import { loadGrowthRef } from './data.js?v=2569.10.30-2';
+import { esc, roomName } from './util.js?v=2569.10.30-3';
+import { loadGrowthRef } from './data.js?v=2569.10.30-3';
 
 const few = (names) => (names.length > 3 ? `${names.slice(0, 3).join(', ')} และอีก ${names.length - 3}` : names.join(', '));
 

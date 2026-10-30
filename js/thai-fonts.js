@@ -2,7 +2,7 @@
 //  ฟอนต์ราชการที่ฝังในแอป (fonts/*.woff · สัญญาอนุญาต DIP & SIPA: ใช้และแจกจ่ายได้ฟรี)
 //  ใช้กับแบบพิมพ์ ปพ. ทุกหน้า → พิมพ์จากเครื่องไหนก็ได้ตัวอักษรเหมือนกัน ไม่ต้องติดตั้งฟอนต์
 // =====================================================================
-import { setThaiFace } from './xl-render.js?v=2569.10.30-2';
+import { setThaiFace } from './xl-render.js?v=2569.10.30-3';
 
 export const THAI_FONTS = {
   psk: { label: 'TH SarabunPSK', family: 'WL TH SarabunPSK', file: 'sarabun-psk' },

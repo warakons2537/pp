@@ -1,19 +1,19 @@
-import { db } from './db.js?v=2569.10.30-2';
-import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.30-2';
-import { icon } from './icons.js?v=2569.10.30-2';
-import { BRAND, VERSION } from './brand.js?v=2569.10.30-2';
-import { mountNav, labelHtml } from './navbar.js?v=2569.10.30-2';
-import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.30-2';
-import * as home from './views/home.js?v=2569.10.30-2';
-import * as students from './views/students.js?v=2569.10.30-2';
-import * as daily from './views/daily.js?v=2569.10.30-2';
-import * as period from './views/period.js?v=2569.10.30-2';
-import * as reports from './views/reports.js?v=2569.10.30-2';
-import * as setup from './views/setup.js?v=2569.10.30-2';
-import * as scores from './views/scores.js?v=2569.10.30-2';
-import * as health from './views/health.js?v=2569.10.30-2';
-import * as traits from './views/traits.js?v=2569.10.30-2';
-import * as print from './views/print.js?v=2569.10.30-2';
+import { db } from './db.js?v=2569.10.30-3';
+import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.30-3';
+import { icon } from './icons.js?v=2569.10.30-3';
+import { BRAND, VERSION } from './brand.js?v=2569.10.30-3';
+import { mountNav, labelHtml } from './navbar.js?v=2569.10.30-3';
+import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.30-3';
+import * as home from './views/home.js?v=2569.10.30-3';
+import * as students from './views/students.js?v=2569.10.30-3';
+import * as daily from './views/daily.js?v=2569.10.30-3';
+import * as period from './views/period.js?v=2569.10.30-3';
+import * as reports from './views/reports.js?v=2569.10.30-3';
+import * as setup from './views/setup.js?v=2569.10.30-3';
+import * as scores from './views/scores.js?v=2569.10.30-3';
+import * as health from './views/health.js?v=2569.10.30-3';
+import * as traits from './views/traits.js?v=2569.10.30-3';
+import * as print from './views/print.js?v=2569.10.30-3';
 
 const VIEWS = { home, students, daily, period, reports, setup, scores, health, traits, print };
 const root = document.getElementById('app');
@@ -226,7 +226,7 @@ async function route(ctx) {
   const tt = $('#tb-title'); if (tt) tt.textContent = NAV[view] || '';
   if (cleanup) { try { cleanup(); } catch { /* */ } cleanup = null; }
   const el = $('#view');
-  el.innerHTML = '<p class="muted">กำลังโหลด…</p>';
+  el.innerHTML = '<div class="loading" role="status"><i class="bar"></i><span>กำลังโหลด…</span></div>';
   try { cleanup = (await VIEWS[view].render(el, ctx)) || null; }
   catch (err) { console.error(err); el.innerHTML = `<div class="card"><h2>เปิดหน้านี้ไม่สำเร็จ</h2><p>${esc(err.message)}</p></div>`; }
   paintBadges();

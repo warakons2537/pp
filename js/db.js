@@ -2,8 +2,8 @@
 //  ชั้นข้อมูล: ใช้ Supabase จริง หรือ "โหมดทดลอง" (เก็บในเบราว์เซอร์)
 //  หน้าจอทุกหน้าเรียกผ่าน API ชุดเดียวกัน จึงสลับได้โดยไม่ต้องแก้หน้าจอ
 // =====================================================================
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2569.10.30-2';
-import { seedDemo } from './demo-data.js?v=2569.10.30-2';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2569.10.30-3';
+import { seedDemo } from './demo-data.js?v=2569.10.30-3';
 
 const thaiError = (e) => {
   const m = String(e?.message || e);

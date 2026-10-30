@@ -1,6 +1,6 @@
-import { esc, roomName, thaiDate, todayIso, fullName, iso, fromIso, THAI_DOW, levelName } from '../util.js?v=2569.10.30-2';
-import { getRoster, termRange } from '../data.js?v=2569.10.30-2';
-import { icon } from '../icons.js?v=2569.10.30-2';
+import { esc, roomName, thaiDate, todayIso, fullName, iso, fromIso, THAI_DOW, levelName } from '../util.js?v=2569.10.30-3';
+import { getRoster, termRange } from '../data.js?v=2569.10.30-3';
+import { icon } from '../icons.js?v=2569.10.30-3';
 
 export async function render(el, ctx) {
   const { db } = ctx;
