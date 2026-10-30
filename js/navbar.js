@@ -1,8 +1,8 @@
 // แถบเมนูล่างสำหรับจอแคบ + แผง "เพิ่มเติม" + จัดแถบเมนูเอง
 // เลือกเมนูหลักได้ 4 อัน จำเฉพาะเครื่องนี้ (localStorage) ไม่ใช้ฐานข้อมูล
-import { icon } from './icons.js?v=2569.10.28-1';
-import { esc, toast } from './util.js?v=2569.10.28-1';
-import { badge } from './notify.js?v=2569.10.28-1';
+import { icon } from './icons.js?v=2569.10.30-1';
+import { esc, toast } from './util.js?v=2569.10.30-1';
+import { badge } from './notify.js?v=2569.10.30-1';
 
 const KEY = 'wl-bnav', MAX = 4, DEFAULT = ['home', 'daily', 'scores', 'students'];
 // ชื่อเมนูที่มีจุดตัดบรรทัด (\u200b) → ห่อแต่ละท่อนไม่ให้ตัดกลางคำ
@@ -30,7 +30,7 @@ export function mountNav(host, { labels, ok, version }) {
          <p class="small muted" style="margin:0">เลือกเมนูที่ใช้บ่อย 4 อัน (เลือกแล้ว ${bar.length}/${MAX}) · จำเฉพาะเครื่องนี้</p>
          <div class="sheet-list">${ok.map(pick).join('')}</div>
          <div class="sheet-foot"><span></span><button type="button" class="btn btn-primary" data-act="done">เสร็จสิ้น</button></div>`
-      : `<div class="sheet-list">${ok.filter((v) => !bar.includes(v)).map(link).join('')}</div>
+      : `<div class="sheet-list">${ok.filter((v) => !bar.includes(v)).map(link).join('')}<a href="../">${icon('link')}<span>ทางเข้า WL (ทุกแอป)</span></a></div>
          <div class="sheet-foot"><button type="button" class="btn btn-sm" data-act="edit">จัดแถบเมนู</button><small class="muted">เวอร์ชัน ${esc(version)}</small></div>`;
     host.innerHTML = `
       <nav class="bnav no-print" aria-label="เมนูหลัก">

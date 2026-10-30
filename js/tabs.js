@@ -1,8 +1,8 @@
 // ---------- แท็บแบบกลุ่ม (ใช้ร่วมทุกหน้า) ----------
 // groups = [{ label, icon, tabs: [{ key, label (HTML ได้), disabled, title }] }]
 // แต่ละกลุ่ม: ป้ายหัวกลุ่ม + ไอคอน → แถวแท็บเลื่อนแนวนอน · ปุ่ม › ที่ขอบขวาเมื่อยังมีแท็บต่อไป (กดเพื่อเลื่อน)
-import { esc } from './util.js?v=2569.10.28-1';
-import { icon } from './icons.js?v=2569.10.28-1';
+import { esc } from './util.js?v=2569.10.30-1';
+import { icon } from './icons.js?v=2569.10.30-1';
 
 export const tabGroups = (groups, cur, attr = 'tab', cls = '') => `<div class="tabgroups ${cls}">${groups.map((g) => `
   <section class="tg" aria-label="${esc(g.label)}">

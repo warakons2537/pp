@@ -1,19 +1,19 @@
-import { db } from './db.js?v=2569.10.28-1';
-import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.28-1';
-import { icon } from './icons.js?v=2569.10.28-1';
-import { BRAND, VERSION } from './brand.js?v=2569.10.28-1';
-import { mountNav, labelHtml } from './navbar.js?v=2569.10.28-1';
-import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.28-1';
-import * as home from './views/home.js?v=2569.10.28-1';
-import * as students from './views/students.js?v=2569.10.28-1';
-import * as daily from './views/daily.js?v=2569.10.28-1';
-import * as period from './views/period.js?v=2569.10.28-1';
-import * as reports from './views/reports.js?v=2569.10.28-1';
-import * as setup from './views/setup.js?v=2569.10.28-1';
-import * as scores from './views/scores.js?v=2569.10.28-1';
-import * as health from './views/health.js?v=2569.10.28-1';
-import * as traits from './views/traits.js?v=2569.10.28-1';
-import * as print from './views/print.js?v=2569.10.28-1';
+import { db } from './db.js?v=2569.10.30-1';
+import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.30-1';
+import { icon } from './icons.js?v=2569.10.30-1';
+import { BRAND, VERSION } from './brand.js?v=2569.10.30-1';
+import { mountNav, labelHtml } from './navbar.js?v=2569.10.30-1';
+import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.30-1';
+import * as home from './views/home.js?v=2569.10.30-1';
+import * as students from './views/students.js?v=2569.10.30-1';
+import * as daily from './views/daily.js?v=2569.10.30-1';
+import * as period from './views/period.js?v=2569.10.30-1';
+import * as reports from './views/reports.js?v=2569.10.30-1';
+import * as setup from './views/setup.js?v=2569.10.30-1';
+import * as scores from './views/scores.js?v=2569.10.30-1';
+import * as health from './views/health.js?v=2569.10.30-1';
+import * as traits from './views/traits.js?v=2569.10.30-1';
+import * as print from './views/print.js?v=2569.10.30-1';
 
 const VIEWS = { home, students, daily, period, reports, setup, scores, health, traits, print };
 const root = document.getElementById('app');
@@ -172,6 +172,8 @@ function renderShell(ctx) {
           ${item('traits')}
           ${item('print')}
           ${ctx.isAdmin ? `<div class="sec">ผู้ดูแล</div>${item('setup')}` : ''}
+          <div class="sec">แอปในเครือ</div>
+          <a href="../">${icon('link')}<span>ทางเข้า WL (ทุกแอป)</span></a>
         </nav>
       </aside>
       <main class="main">
