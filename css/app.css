@@ -537,3 +537,8 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
 .loading .bar { width: 120px; height: 4px; border-radius: 99px; background: color-mix(in srgb, currentColor 18%, transparent); overflow: hidden; position: relative; }
 .loading .bar::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 40%; border-radius: 99px; background: #d9a531; animation: splash-run 1.1s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .loading .bar::after { animation: none; width: 100%; opacity: .6; } }
+
+/* ปุ่มกลับหน้าทางเข้า Wangluek (Y.N.) Connected บนหน้าเข้าสู่ระบบ (ทุกแอปในเครือ) */
+.login-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 3px 14px; border-radius: 99px;
+  font-size: .84rem; font-weight: 600; text-decoration: none; white-space: nowrap; color: #fff; border: 1px solid rgba(255,255,255,.5); transition: background .15s; }
+.login-back:hover { background: rgba(255,255,255,.14); }

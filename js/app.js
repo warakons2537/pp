@@ -1,19 +1,19 @@
-import { db } from './db.js?v=2569.10.30-3';
-import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.30-3';
-import { icon } from './icons.js?v=2569.10.30-3';
-import { BRAND, VERSION } from './brand.js?v=2569.10.30-3';
-import { mountNav, labelHtml } from './navbar.js?v=2569.10.30-3';
-import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.30-3';
-import * as home from './views/home.js?v=2569.10.30-3';
-import * as students from './views/students.js?v=2569.10.30-3';
-import * as daily from './views/daily.js?v=2569.10.30-3';
-import * as period from './views/period.js?v=2569.10.30-3';
-import * as reports from './views/reports.js?v=2569.10.30-3';
-import * as setup from './views/setup.js?v=2569.10.30-3';
-import * as scores from './views/scores.js?v=2569.10.30-3';
-import * as health from './views/health.js?v=2569.10.30-3';
-import * as traits from './views/traits.js?v=2569.10.30-3';
-import * as print from './views/print.js?v=2569.10.30-3';
+import { db } from './db.js?v=2569.10.30-4';
+import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.30-4';
+import { icon } from './icons.js?v=2569.10.30-4';
+import { BRAND, VERSION } from './brand.js?v=2569.10.30-4';
+import { mountNav, labelHtml } from './navbar.js?v=2569.10.30-4';
+import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.30-4';
+import * as home from './views/home.js?v=2569.10.30-4';
+import * as students from './views/students.js?v=2569.10.30-4';
+import * as daily from './views/daily.js?v=2569.10.30-4';
+import * as period from './views/period.js?v=2569.10.30-4';
+import * as reports from './views/reports.js?v=2569.10.30-4';
+import * as setup from './views/setup.js?v=2569.10.30-4';
+import * as scores from './views/scores.js?v=2569.10.30-4';
+import * as health from './views/health.js?v=2569.10.30-4';
+import * as traits from './views/traits.js?v=2569.10.30-4';
+import * as print from './views/print.js?v=2569.10.30-4';
 
 const VIEWS = { home, students, daily, period, reports, setup, scores, health, traits, print };
 const root = document.getElementById('app');
@@ -68,6 +68,7 @@ async function loadContext(userId) {
 // ---------------------------------------------------------------------
 function loginCover(sub) {
   return `<div class="login-cover">
+    <a class="login-back" href="../" title="กลับหน้าทางเข้า Wangluek (Y.N.) Connected">← กลับหน้าทางเข้า</a>
     <div class="plate"><img class="logo" src="${BRAND.logo}" alt=""><div><b>${esc(BRAND.name)}</b><span>${esc(BRAND.tagline)}</span></div></div>
     <ul><li>เช็กชื่อรายวันและรายคาบ เห็นพร้อมกันทุกเครื่อง</li><li>กรอกคะแนน ตัดเกรด คิด มส ให้อัตโนมัติ</li>
       <li>น้ำหนัก-ส่วนสูงตามเกณฑ์กรมอนามัย</li><li>พิมพ์ ปพ.6 ทั้งห้องในครั้งเดียว</li></ul>
