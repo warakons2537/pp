@@ -25,7 +25,8 @@
   --plate: #ffffff;          /* พื้นโลโก้ */
   --shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 6px 18px rgba(0, 0, 0, .06);   /* ใช้กับแผ่น A4 / ตัวอย่างพิมพ์ */
   --font-ui: "Noto Sans Thai", "Leelawadee UI", "Tahoma", sans-serif;
-  --font-display: var(--font-ui);
+  --font-display: "Pridi", "Sarabun", "Tahoma", serif;
+  --gold: #d9a531;                /* ทองตามสีโรงเรียน ใช้เป็นสีเน้นเล็กๆ ร่วมกับทุกแอปในเครือ */
   --font-doc: "Sarabun", "TH Sarabun New", "TH SarabunPSK", "Tahoma", serif;
   --r: 8px;
   --r-lg: 12px;
@@ -70,7 +71,7 @@ h2 { font-size: 1.2rem; }
 h3 { font-size: 1.05rem; }
 a { color: var(--pen); }
 button, input, select, textarea { font: inherit; color: inherit; }
-:focus-visible { outline: 2px solid var(--pen); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .num, td.n, .tabular { font-variant-numeric: tabular-nums; }
 svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -126,6 +127,7 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
 .main-pad { padding-top: 24px; padding-left: 24px; padding-right: max(20px, env(safe-area-inset-right, 0px)); }
 .main-inner { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
 .page-head { display: flex; flex-direction: column; gap: 14px; align-items: stretch; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
+.page-head h1::after { content: ""; display: block; width: 36px; height: 3px; border-radius: 99px; background: var(--gold); margin-top: 8px; }
 .page-head p { margin: 6px 0 0; color: var(--ink-soft); font-size: .92rem; }
 
 .demo-bar { max-width: 1200px; margin: 0 auto 18px; background: var(--amber-wash); color: var(--ink); border-radius: var(--r);

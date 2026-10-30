@@ -4,7 +4,7 @@
 //  - ใส่ลงแต่ละห้อง (assessment_items kind = indicator) เฉพาะตัวที่ห้องนั้นยังไม่มี ไม่ลบ/แทนของเดิม
 //  - จัดรูปแบบรหัสให้สม่ำเสมอ และอ่านรายการจากเล่ม ปพ.5-6 เดิม (แผ่น "รายวิชา" + "วิชาที่ n" แถว 5)
 // =====================================================================
-import { codeLevel } from './subject-import.js?v=2569.10.30-1';
+import { codeLevel } from './subject-import.js?v=2569.10.30-2';
 
 const DIGIT = '0-9๐-๙';
 const arabic = (s) => String(s).replace(/[๐-๙]/g, (d) => String(d.charCodeAt(0) - 0x0E50));
