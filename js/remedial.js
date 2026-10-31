@@ -1,7 +1,7 @@
 // ติดตามการแก้ 0 ร มส (เฉพาะ ม.1–ม.3): ค่าคงที่ + รวมรายการจากเกรดที่คำนวณได้กับรายการที่ครูบันทึกไว้
 // ไม่แก้เกรดใน ปพ.5: ผลหลังแก้เก็บในตาราง remedial_cases เท่านั้น
-import { getRoster } from './data.js?v=2569.10.31-13';
-import { loadCourse, computeCourse, fmtGrade } from './grading.js?v=2569.10.31-13';
+import { getRoster } from './data.js?v=2569.10.31-14';
+import { loadCourse, computeCourse, fmtGrade } from './grading.js?v=2569.10.31-14';
 
 export const CAUSES = { absent: 'ขาดเรียน / เวลาเรียนไม่ถึง', low_score: 'คะแนนไม่ถึงเกณฑ์', missing_work: 'ไม่ส่งงาน',
   missed_exam: 'ขาดสอบ', other: 'อื่น ๆ' };
@@ -25,8 +25,11 @@ export function visibleCourses(ctx) {
     : [...new Set([...ctx.myCourses, ...ctx.courses.filter((k) => ctx.myClassrooms.some((c) => c.id === k.classroom_id))])];
   return list.filter((k) => isSecondary(k.classroom));
 }
-export const canEditCase = (ctx, course, row) =>
-  ctx.isAdmin || (ctx.myCourses.some((k) => k.id === course.id) && row?.status !== 'approved');
+// รายการค้างจากปีก่อนไม่มีรายวิชาในระบบ: ผู้ดูแลระบบ และครูประจำชั้นของห้องปัจจุบันของนักเรียน จัดการได้
+export const canEditCase = (ctx, course, row) => (course.legacy
+  ? ctx.isAdmin || (ctx.myClassrooms.some((c) => c.id === course.classroom_id) && row?.status !== 'approved')
+  : ctx.isAdmin || (ctx.myCourses.some((k) => k.id === course.id) && row?.status !== 'approved'));
+export const legacyLabel = (course) => (course?.legacy ? `ค้างจากปี ${course.legacyYear ?? '?'}${course.legacyTerm ? ` ภาค ${course.legacyTerm}` : ''}` : '');
 
 /**
  * รายการติดตามของวิชาที่ระบุ: นักเรียนที่เกรดที่คำนวณได้เป็น 0 / ร / มส (ไม่นับ 0 ที่เกิดจากคะแนนยังไม่ครบ)
@@ -51,6 +54,15 @@ export async function loadRemedial(ctx, courses) {
       if (!bad && !row) continue;
       out.push({ key: `${course.id}|${s.id}`, course, student: s, grade: bad ? fmtGrade(r.grade) : null, case: row });
     }
+  }
+  // วิชาค้างจากปีก่อน/ภาคก่อน (ไม่มีรายวิชาในระบบ): เก็บรหัสวิชาไว้ในแถวเอง ผูกกับห้องปัจจุบันของนักเรียน
+  const roomIds = [...rosters.keys()];
+  const legacy = roomIds.length ? (await ctx.db.select('remedial_cases', { in: { classroom_id: roomIds } })).filter((r) => !r.course_id) : [];
+  for (const r of legacy) {
+    const student = rosters.get(r.classroom_id)?.find((s) => s.id === r.student_id); const classroom = ctx.classroomById[r.classroom_id];
+    if (!student || !classroom) continue;
+    out.push({ key: `L:${r.id}`, student, grade: null, case: r,
+      course: { id: null, legacy: true, classroom_id: r.classroom_id, classroom, subject: { code: r.legacy_code, name: r.legacy_name }, legacyYear: r.legacy_year, legacyTerm: r.legacy_term } });
   }
   return out;
 }

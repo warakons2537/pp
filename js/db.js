@@ -2,9 +2,9 @@
 //  ชั้นข้อมูล: ใช้ Supabase จริง หรือ "โหมดทดลอง" (เก็บในเบราว์เซอร์)
 //  หน้าจอทุกหน้าเรียกผ่าน API ชุดเดียวกัน จึงสลับได้โดยไม่ต้องแก้หน้าจอ
 // =====================================================================
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2569.10.31-13';
-import { createOffline, idbKv } from './offline.js?v=2569.10.31-13';
-import { seedDemo } from './demo-data.js?v=2569.10.31-13';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2569.10.31-14';
+import { createOffline, idbKv } from './offline.js?v=2569.10.31-14';
+import { seedDemo } from './demo-data.js?v=2569.10.31-14';
 
 const thaiError = (e) => {
   const m = String(e?.message || e);
@@ -203,8 +203,8 @@ function demoDb() {
       const st = hit[0];
       return T('remedial_cases').filter((r) => r.student_id === st.id).map((r) => {
         const c = T('courses').find((x) => x.id === r.course_id); const sj = T('subjects').find((x) => x.id === c?.subject_id);
-        const cl = T('classrooms').find((x) => x.id === c?.classroom_id); const t = T('terms').find((x) => x.id === c?.term_id);
-        return { matches: 1, academic_year: t?.academic_year, term: t?.term, subject_code: sj?.code, subject_name: sj?.name, level: cl?.level,
+        const cl = T('classrooms').find((x) => x.id === (c?.classroom_id ?? r.classroom_id)); const t = T('terms').find((x) => x.id === c?.term_id);
+        return { matches: 1, academic_year: t?.academic_year ?? r.legacy_year, term: t?.term ?? r.legacy_term, subject_code: sj?.code ?? r.legacy_code, subject_name: sj?.name ?? r.legacy_name, level: cl?.level,
           original_grade: r.original_grade, cause: r.cause, plan: r.plan, due_date: r.due_date, status: r.status,
           new_grade: r.status === 'approved' ? r.new_grade : null };
       });

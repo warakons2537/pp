@@ -1,7 +1,7 @@
 // รายงานสรุปติดตามการแก้ 0 ร มส รายห้อง (เฉพาะ ม.1–ม.3) — ผลหลังแก้แสดงเมื่อผู้ดูแลระบบยืนยันแล้วเท่านั้น
-import { esc, fullName, levelName, thaiDate } from '../util.js?v=2569.10.31-13';
-import { CAUSES, PLANS, STATUS, isSecondary, loadRemedial, statusOf, originalOf } from '../remedial.js?v=2569.10.31-13';
-import { head, signs, termText } from './report-common.js?v=2569.10.31-13';
+import { esc, fullName, levelName, thaiDate } from '../util.js?v=2569.10.31-14';
+import { CAUSES, PLANS, STATUS, isSecondary, loadRemedial, statusOf, originalOf, legacyLabel } from '../remedial.js?v=2569.10.31-14';
+import { head, signs, termText } from './report-common.js?v=2569.10.31-14';
 
 export async function remedialReport(ctx, room) {
   if (!isSecondary(room)) return '<div class="empty">รายงานนี้ใช้กับนักเรียนมัธยม (ม.1–ม.3) เท่านั้น</div>';
@@ -17,7 +17,7 @@ export async function remedialReport(ctx, room) {
       <th class="l">วิธีแก้</th><th>กำหนด</th><th>สถานะ</th><th>ผลหลังแก้</th></tr></thead>
       <tbody>${items.map((it) => { const c = it.case;
         return `<tr><td>${it.student.number ?? ''}</td><td class="l">${esc(fullName(it.student))}</td>
-          <td class="l">${esc(it.course.subject?.code ?? '')} ${esc(it.course.subject?.name ?? '')}</td><td>${esc(originalOf(it))}</td>
+          <td class="l">${esc(it.course.subject?.code ?? '')} ${esc(it.course.subject?.name ?? '')}${it.course.legacy ? ` <small>(${esc(legacyLabel(it.course))})</small>` : ''}</td><td>${esc(originalOf(it))}</td>
           <td class="l">${esc(CAUSES[c?.cause] ?? '')}</td><td class="l">${esc(PLANS[c?.plan] ?? '')}</td>
           <td>${c?.due_date ? esc(thaiDate(c.due_date, true)) : ''}</td><td>${STATUS[statusOf(it)].label}</td>
           <td>${c?.status === 'approved' ? esc(c.new_grade) : ''}</td></tr>`; }).join('')}</tbody></table>

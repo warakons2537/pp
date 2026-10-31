@@ -1,7 +1,8 @@
 // ติดตามการแก้ 0 ร มส (เฉพาะ ม.1–ม.3)
 // ครูผู้สอน: วางแผน บันทึกผลแก้ แล้วส่งยืนยัน · ผู้ดูแลระบบ: ยืนยัน/ส่งกลับ · ไม่แก้เกรดใน ปพ.5
-import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso } from '../util.js?v=2569.10.31-13';
-import { CAUSES, PLANS, STATUS, NEW_GRADES, visibleCourses, canEditCase, loadRemedial, statusOf, originalOf } from '../remedial.js?v=2569.10.31-13';
+import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso } from '../util.js?v=2569.10.31-14';
+import { CAUSES, PLANS, STATUS, NEW_GRADES, visibleCourses, canEditCase, loadRemedial, statusOf, originalOf, legacyLabel } from '../remedial.js?v=2569.10.31-14';
+import { importFlow } from './remedial-import-view.js?v=2569.10.31-14';
 
 const pref = { room: '', status: '', grade: '' };
 const gradeChip = (g) => `<span class="chip ${g === 'ร' ? 'chip-warn' : 'chip-bad'}">${esc(g)}</span>`;
@@ -38,6 +39,7 @@ export async function render(el, ctx) {
           <label class="field">ห้อง<select id="f-room"><option value="">ทุกห้อง</option>${options(rooms, pref.room, (r) => `ห้อง ${roomName(r)}`)}</select></label>
           <label class="field">ผลเดิม<select id="f-grade"><option value="">ทั้งหมด</option>
             ${['0', 'ร', 'มส'].map((g) => `<option value="${g}" ${pref.grade === g ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
+          ${ctx.isAdmin ? '<button class="btn" id="imp">นำเข้ารายการจากไฟล์</button>' : ''}
         </div></div>
       <div class="stat-row">${stats}</div>
       ${todo.length ? `<div class="notice row" style="align-items:center;justify-content:space-between"><span>มี ${todo.length} รายการที่ยังไม่เปิด — นักเรียนจะเห็นผลของตัวเองในหน้า "นักเรียนตรวจสอบผล" ต่อเมื่อเปิดรายการแล้ว</span>
@@ -50,7 +52,7 @@ export async function render(el, ctx) {
           const c = it.case; const edit = canEditCase(ctx, it.course, c);
           return `<tr><td class="tabular">${esc(roomName(it.course.classroom))}</td><td class="n tabular">${it.student.number ?? ''}</td>
             <td class="w">${esc(fullName(it.student))}</td>
-            <td>${esc(it.course.subject?.code ?? '')}<br><span class="muted small">${esc(it.course.subject?.name ?? '')}</span></td>
+            <td>${esc(it.course.subject?.code ?? '')}<br><span class="muted small">${esc(it.course.subject?.name ?? '')}</span>${it.course.legacy ? `<br><span class="chip">${esc(legacyLabel(it.course))}</span>` : ''}</td>
             <td class="c">${gradeChip(originalOf(it))}</td>
             <td class="hide-sm">${esc(CAUSES[c?.cause] ?? '–')}</td><td class="hide-sm">${esc(PLANS[c?.plan] ?? '–')}</td>
             <td class="hide-sm">${dateOrDash(c?.due_date)}</td>
@@ -63,6 +65,7 @@ export async function render(el, ctx) {
 
     $('#f-room', el).addEventListener('change', (e) => { pref.room = e.target.value; draw(); });
     $('#f-grade', el).addEventListener('change', (e) => { pref.grade = e.target.value; draw(); });
+    $('#imp', el)?.addEventListener('click', async () => { if (await importFlow(ctx)) { await load(); draw(); } });
     $('#open-all', el)?.addEventListener('click', async () => {
       try {
         await ctx.db.upsert('remedial_cases', todo.map((it) => ({ course_id: it.course.id, student_id: it.student.id, original_grade: originalOf(it), status: 'planned' })), 'course_id,student_id');
@@ -92,7 +95,7 @@ async function editCase(ctx, it) {
   const dis = edit ? '' : 'disabled';
   const body = `
     <p style="margin:0"><b>${esc(fullName(it.student))}</b> · ${esc(roomName(it.course.classroom))} เลขที่ ${it.student.number ?? ''}<br>
-      ${esc(it.course.subject?.code ?? '')} ${esc(it.course.subject?.name ?? '')} · ผลเดิม ${gradeChip(originalOf(it))}</p>
+      ${esc(it.course.subject?.code ?? '')} ${esc(it.course.subject?.name ?? '')}${it.course.legacy ? ` <span class="chip">${esc(legacyLabel(it.course))}</span>` : ''} · ผลเดิม ${gradeChip(originalOf(it))}</p>
     ${c.status === 'approved' ? `<p class="small muted" style="margin:0">ยืนยันแล้ว${c.reviewed_on ? ` เมื่อ ${esc(thaiDate(c.reviewed_on, true))}` : ''}${ctx.isAdmin ? '' : ' — ครูแก้ไขไม่ได้'}</p>` : ''}
     <label>สาเหตุ${sel('cause', CAUSES, c.cause)}</label>
     <label>วิธีแก้${sel('plan', PLANS, c.plan)}</label>
@@ -115,6 +118,10 @@ async function editCase(ctx, it) {
   if (['submitted', 'approved'].includes(row.status) && !(row.new_grade && row.done_on)) {
     toast('ส่งยืนยันต้องระบุ "ผลหลังแก้" และ "วันที่แก้เสร็จ"', 'err'); return false;
   }
-  try { await ctx.db.upsert('remedial_cases', [row], 'course_id,student_id'); toast('บันทึกแล้ว'); return true; }
+  try {
+    if (it.course.legacy) { const { course_id, student_id, original_grade, ...rest } = row; await ctx.db.update('remedial_cases', { id: it.case.id }, rest); }
+    else await ctx.db.upsert('remedial_cases', [row], 'course_id,student_id');
+    toast('บันทึกแล้ว'); return true;
+  }
   catch (err) { toast(err.message, 'err'); return false; }
 }
