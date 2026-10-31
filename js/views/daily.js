@@ -1,6 +1,7 @@
 import { esc, $, toast, options, roomName, fullName, iso, todayIso, thaiDate, daysInMonth,
-  THAI_MONTHS, THAI_DOW, STATUS, nextStatus } from '../util.js?v=2569.10.31-5';
-import { getRoster, termMonths } from '../data.js?v=2569.10.31-5';
+  THAI_MONTHS, THAI_DOW, STATUS, nextStatus } from '../util.js?v=2569.10.31-6';
+import { attachSheet } from '../sheet.js?v=2569.10.31-6';
+import { getRoster, termMonths } from '../data.js?v=2569.10.31-6';
 
 const pref = { room: null, mode: null, ym: null, date: null };
 
@@ -110,6 +111,33 @@ export async function render(el, ctx) {
     out.innerHTML = `บันทึกแล้ว ${n}/${roster.length} คน · ${Object.entries(STATUS).map(([k, s]) => `${s.label} ${c[k] || 0}`).join(' · ')}`;
   }
 
+  // ใช้กับลากคลุม/วาง/เติม/ลบ หลายช่อง: ตรวจค่าก่อน แล้วบันทึกครั้งเดียว (ค่าที่ไม่รู้จักจะไม่ถูกบันทึก)
+  const LBL = Object.fromEntries(Object.entries(STATUS).flatMap(([k, v]) => [[v.label, k], [v.mark, k]]));
+  const parseSt = (v) => { const t = String(v).trim(); return t === '' ? null : LBL[t]; };
+  function saveMany(list) {
+    const res = []; const ups = []; const dels = []; const olds = [];
+    for (const { el, value } of list) {
+      const st = parseSt(value);
+      if (st === undefined) { res.push(false); continue; }
+      res.push(true);
+      const key = el.dataset.k; const [sid, date] = key.split('|'); const prev = marks.get(key);
+      olds.push([key, prev]);
+      if (st) { marks.set(key, { ...(prev || {}), student_id: sid, date, status: st }); ups.push({ student_id: sid, classroom_id: room.id, date, status: st }); }
+      else { marks.delete(key); if (prev) dels.push({ student_id: sid, date }); }
+      paint(key);
+    }
+    (async () => {
+      try {
+        if (ups.length) { const saved = await ctx.db.upsert('daily_attendance', ups, 'student_id,date'); saved.forEach((r) => marks.set(`${r.student_id}|${r.date}`, r)); }
+        for (let i = 0; i < dels.length; i += 10) await Promise.all(dels.slice(i, i + 10).map((d) => ctx.db.remove('daily_attendance', d)));
+      } catch (err) {
+        olds.forEach(([k, p]) => { if (p) marks.set(k, p); else marks.delete(k); paint(k); });
+        toast(err.message, 'err');
+      }
+    })();
+    return res;
+  }
+
   function drawMonth(box, students, m, edit) {
     const [y, m0] = pref.ym.split('-').map(Number);
     const nd = daysInMonth(y, m0);
@@ -119,12 +147,13 @@ export async function render(el, ctx) {
       <thead><tr><th class="no">ที่</th><th class="name">ชื่อ-สกุล</th>
         ${days.map((d) => `<th class="${wk(d) ? 'wk' : ''}" title="${esc(thaiDate(iso(d)))}">${edit ? `<button class="day" data-day="${iso(d)}">` : ''}${d.getDate()}<br><span style="font-weight:400">${THAI_DOW[d.getDay()]}</span>${edit ? '</button>' : ''}</th>`).join('')}
         <th>มา</th><th>ป่วย</th><th>ลา</th><th>ขาด</th></tr></thead>
-      <tbody>${students.map((s) => `<tr data-sid="${esc(s.id)}"><td class="no">${s.number ?? ''}</td><td class="name">${esc(fullName(s))}</td>
-        ${days.map((d) => { const k = `${s.id}|${iso(d)}`; const st = m.get(k)?.status;
-          return `<td class="${wk(d) ? 'wk' : ''}"><button class="cell ${st ? STATUS[st].cls : ''}" data-k="${k}" ${edit ? '' : 'disabled'} aria-label="${esc(fullName(s))} ${d.getDate()}">${st ? STATUS[st].mark : ''}</button></td>`; }).join('')}
+      <tbody>${students.map((s, ri) => `<tr data-sid="${esc(s.id)}"><td class="no">${s.number ?? ''}</td><td class="name">${esc(fullName(s))}</td>
+        ${days.map((d, ci) => { const k = `${s.id}|${iso(d)}`; const st = m.get(k)?.status;
+          return `<td class="${wk(d) ? 'wk' : ''}"><button class="cell ${st ? STATUS[st].cls : ''}" data-k="${k}" data-r="${ri}" data-c="${ci}" ${edit ? '' : 'disabled'} aria-label="${esc(fullName(s))} ${d.getDate()}">${st ? STATUS[st].mark : ''}</button></td>`; }).join('')}
         <td class="tot t-came st-present"></td><td class="tot t-sick"></td><td class="tot t-leave"></td><td class="tot t-absent" style="color:var(--red)"></td></tr>`).join('')}
       </tbody></table></div>`;
     students.forEach((s) => updateTotals(s.id));
+    attachSheet(box.querySelector('table'), { cell: 'button.cell', canEdit: edit, get: (el) => STATUS[marks.get(el.dataset.k)?.status]?.label ?? '', setBatch: saveMany });
     if (!edit) return;
     box.addEventListener('click', (e) => {
       const b = e.target.closest('button.cell');

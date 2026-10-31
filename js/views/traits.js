@@ -1,11 +1,12 @@
-import { esc, $, toast, modal, options, roomName, fullName } from '../util.js?v=2569.10.31-5';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-5';
-import { getRoster } from '../data.js?v=2569.10.31-5';
-import { attachGrid } from '../grid.js?v=2569.10.31-5';
-import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.10.31-5';
-import { detailPane } from './assess-detail.js?v=2569.10.31-5';
-import { FORMS } from '../assess-forms.js?v=2569.10.31-5';
-import { assessImportFlow } from './assess-import-view.js?v=2569.10.31-5';
+import { esc, $, toast, modal, options, roomName, fullName } from '../util.js?v=2569.10.31-6';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-6';
+import { getRoster } from '../data.js?v=2569.10.31-6';
+import { attachSheet } from '../sheet.js?v=2569.10.31-6';
+import { attachGrid } from '../grid.js?v=2569.10.31-6';
+import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.10.31-6';
+import { detailPane } from './assess-detail.js?v=2569.10.31-6';
+import { FORMS } from '../assess-forms.js?v=2569.10.31-6';
+import { assessImportFlow } from './assess-import-view.js?v=2569.10.31-6';
 
 const pref = { room: null, tab: 'trait8' };
 const TABS = { ...Object.fromEntries(Object.entries(TRAIT_KINDS).map(([k, v]) => [k, v.short])),
@@ -104,6 +105,7 @@ async function traitGrid(pane, ctx, roster, ids, canEdit, kind) {
     put(inp.dataset.sid, item, v); refresh(inp.dataset.sid);
     return true;
   };
+  attachSheet(grid, { cell: 'input.gc', canEdit, get: (el) => el.value, set: (el, v) => commit(el, v) });
   if (canEdit) {
     attachGrid(grid, commit);
     grid.addEventListener('input', (e) => {           // พิมพ์ตัวเลขแล้วเลื่อนไปช่องขวาทันที (กรอกเร็ว)

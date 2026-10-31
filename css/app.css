@@ -554,3 +554,17 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
 .rem-card dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; margin: 0; font-size: .9rem; }
 .rem-card dt { color: var(--ink-soft); }
 .rem-card dd { margin: 0; }
+
+/* ---------- ตารางแบบ Excel: เลือกช่วง / เติม ---------- */
+.sheet-bar { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; justify-content: space-between; margin: 6px 0; min-height: 34px; }
+.sheet-bar .sb-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.sheet-bar button:disabled { opacity: .4; cursor: default; }
+.reg td.sel { position: relative; }
+.reg td.sel::after { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--pen) 16%, transparent); box-shadow: inset 0 0 0 1px var(--pen); pointer-events: none; }
+.reg td.fillprev { position: relative; }
+.reg td.fillprev::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 2px var(--pen); background: color-mix(in srgb, var(--pen) 8%, transparent); border-style: dashed; pointer-events: none; }
+.reg.sheet-drag, .reg.sheet-drag * { user-select: none; cursor: cell; }
+.reg button.cell:disabled { pointer-events: none; }
+.sheet-handle { position: absolute; width: 10px; height: 10px; background: var(--pen); border: 2px solid var(--sheet); border-radius: 2px; cursor: crosshair; z-index: 3; box-sizing: content-box; }
+.sheet-handle[hidden] { display: none; }
+@media (max-width: 700px) { .sheet-handle { width: 16px; height: 16px; } }

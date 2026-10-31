@@ -3,13 +3,14 @@
 //  บันทึกคะแนนรายข้อใน assess_detail แล้วเขียนผลสรุปรายข้อลง trait_scores ให้อัตโนมัติ
 //  (ปพ.6 และแท็บสรุปเดิมจึงได้ผลเดียวกัน)
 // =====================================================================
-import { esc, $, toast, modal, fullName, levelName, roomName } from '../util.js?v=2569.10.31-5';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-5';
-import { attachGrid } from '../grid.js?v=2569.10.31-5';
-import { TRAITS, SUBS, subResult, traitResult, traitOverall, LV4, COMPETENCIES, compResult, compOverall, COMP_LV, FORMS } from '../assess-forms.js?v=2569.10.31-5';
-import { traitWorkbook, competencyWorkbook } from '../assess-export.js?v=2569.10.31-5';
-import { buildXlsx, downloadBytes } from '../xlsx-write.js?v=2569.10.31-5';
-import { sheetName as stuName } from '../achievement.js?v=2569.10.31-5';
+import { esc, $, toast, modal, fullName, levelName, roomName } from '../util.js?v=2569.10.31-6';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-6';
+import { attachSheet } from '../sheet.js?v=2569.10.31-6';
+import { attachGrid } from '../grid.js?v=2569.10.31-6';
+import { TRAITS, SUBS, subResult, traitResult, traitOverall, LV4, COMPETENCIES, compResult, compOverall, COMP_LV, FORMS } from '../assess-forms.js?v=2569.10.31-6';
+import { traitWorkbook, competencyWorkbook } from '../assess-export.js?v=2569.10.31-6';
+import { buildXlsx, downloadBytes } from '../xlsx-write.js?v=2569.10.31-6';
+import { sheetName as stuName } from '../achievement.js?v=2569.10.31-6';
 
 const pref = { trait8: '1.1', competency5: '1' };
 const chip = (label, lv) => `<span class="chip ${lv === 0 ? 'chip-bad' : lv === 3 ? 'chip-ok' : 'chip-info'}">${esc(label)}</span>`;
@@ -147,6 +148,7 @@ export async function detailPane(pane, ctx, room, roster, ids, canEdit, form) {
     put(inp.dataset.sid, inp.dataset.code, v); refresh(inp.dataset.sid);
     return true;
   };
+  attachSheet(grid, { cell: 'input.gc', canEdit, get: (el) => el.value, set: (el, v) => commit(el, v) });
   if (canEdit) {
     attachGrid(grid, commit);
     grid.addEventListener('input', (e) => {           // พิมพ์ตัวเลขแล้วเลื่อนไปช่องถัดไป

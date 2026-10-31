@@ -1,7 +1,8 @@
-import { esc, $, toast, options, roomName, fullName, todayIso, thaiDate } from '../util.js?v=2569.10.31-5';
-import { getRoster, loadGrowthRef, getBirthDates } from '../data.js?v=2569.10.31-5';
-import { attachGrid } from '../grid.js?v=2569.10.31-5';
-import { classify, ageMonths, ageText, severity, WH, HA, OUT_OF_TABLE } from '../assess.js?v=2569.10.31-5';
+import { esc, $, toast, options, roomName, fullName, todayIso, thaiDate } from '../util.js?v=2569.10.31-6';
+import { getRoster, loadGrowthRef, getBirthDates } from '../data.js?v=2569.10.31-6';
+import { attachSheet } from '../sheet.js?v=2569.10.31-6';
+import { attachGrid } from '../grid.js?v=2569.10.31-6';
+import { classify, ageMonths, ageText, severity, WH, HA, OUT_OF_TABLE } from '../assess.js?v=2569.10.31-6';
 
 const pref = { room: null, round: 1, date: null };
 const chip = (label) => {
@@ -115,6 +116,7 @@ export async function render(el, ctx) {
   };
   const grid = $('#hgrid', el);
   if (grid && canEdit) attachGrid(grid, commit);
+  if (grid) attachSheet(grid, { cell: 'input.gc', canEdit, get: (el) => el.value, set: (el, v) => commit(el, v) });
 
   $('#room', el).addEventListener('change', (e) => { pref.room = e.target.value; render(el, ctx); });
   $('#round', el).addEventListener('change', (e) => { pref.round = Number(e.target.value); pref.date = null; render(el, ctx); });
