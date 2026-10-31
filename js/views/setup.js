@@ -1,15 +1,15 @@
-import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.31-3';
-import { GRANTABLE, MENU_GROUPS, plain } from '../menus.js?v=2569.10.31-3';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-3';
-import { ROUNDING } from '../grading.js?v=2569.10.31-3';
-import { excelRefToRows } from '../assess.js?v=2569.10.31-3';
-import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.31-3';
-import { subjectImportFlow } from './subject-import-view.js?v=2569.10.31-3';
-import { teacherImportFlow } from './teacher-import-view.js?v=2569.10.31-3';
-import { indicatorImportFlow } from './indicator-import-view.js?v=2569.10.31-3';
-import { clearGrowthRef } from '../data.js?v=2569.10.31-3';
-import { teacherKey, displayName } from '../teacher-import.js?v=2569.10.31-3';
-import { applyCourseOrder, inheritedOrder } from '../course-order.js?v=2569.10.31-3';
+import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.31-4';
+import { GRANTABLE, MENU_GROUPS, plain } from '../menus.js?v=2569.10.31-4';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-4';
+import { ROUNDING } from '../grading.js?v=2569.10.31-4';
+import { excelRefToRows } from '../assess.js?v=2569.10.31-4';
+import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.31-4';
+import { subjectImportFlow } from './subject-import-view.js?v=2569.10.31-4';
+import { teacherImportFlow } from './teacher-import-view.js?v=2569.10.31-4';
+import { indicatorImportFlow } from './indicator-import-view.js?v=2569.10.31-4';
+import { clearGrowthRef } from '../data.js?v=2569.10.31-4';
+import { teacherKey, displayName } from '../teacher-import.js?v=2569.10.31-4';
+import { applyCourseOrder, inheritedOrder } from '../course-order.js?v=2569.10.31-4';
 
 let tab = 'school';
 const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', rooms: 'ห้องเรียน', subjects: 'รายวิชา', roomsubj: 'รายวิชาตามชั้น', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', notify: 'การแจ้งเตือน', backup: 'สำรองข้อมูล' };
@@ -386,7 +386,7 @@ async function growth(pane, ctx, run) {
   $('#g-tpl', pane).href = URL.createObjectURL(new Blob(['\ufeff' + tpl], { type: 'text/csv' }));
   const upsertRows = async (rows) => { for (let i = 0; i < rows.length; i += 500) await ctx.db.upsert('growth_reference', rows.slice(i, i + 500), 'ref_set,sex,basis,key,measure'); clearGrowthRef(); };
   $('#load-excel', pane).addEventListener('click', () => run(async () => {
-    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.31-3');
+    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.31-4');
     await upsertRows(excelRefToRows(EXCEL_AGE, EXCEL_HT));
   }, 'โหลดตารางจาก Excel เดิมแล้ว'));
   pane.querySelectorAll('[data-use]').forEach((b) => b.addEventListener('click', () =>

@@ -1,6 +1,6 @@
 // ตัวช่วยตารางกรอกข้อมูลแบบ Excel: ลูกศร/Enter เลื่อนช่อง, เลือกข้อความเมื่อเข้าช่อง, วางหลายช่องจาก Excel
 // ช่องกรอกต้องมี class="gc" และ data-r / data-c
-import { toast } from './util.js?v=2569.10.31-3';
+import { toast } from './util.js?v=2569.10.31-4';
 
 export function attachGrid(table, onCommit) {
   const cell = (r, c) => table.querySelector(`input.gc[data-r="${r}"][data-c="${c}"]`);
