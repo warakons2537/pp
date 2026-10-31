@@ -1,6 +1,6 @@
 // ข้อมูลตัวอย่างสำหรับโหมดทดลอง (ชื่อทั้งหมดสมมติ)
-import { EXCEL_AGE, EXCEL_HT } from './data/growth-excel.js?v=2569.10.30-4';
-import { excelRefToRows } from './assess.js?v=2569.10.30-4';
+import { EXCEL_AGE, EXCEL_HT } from './data/growth-excel.js?v=2569.10.31-1';
+import { excelRefToRows } from './assess.js?v=2569.10.31-1';
 export function seedDemo() {
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -112,6 +112,9 @@ export function seedDemo() {
   }
   course_results.push({ course_id: 'k-th', student_id: m11.find((e) => e.number === 6).student_id, special: 'ร', ms_waived: false });
 
+  const remedial_cases = [{ id: 'rc-1', course_id: 'k-th', student_id: m11.find((e) => e.number === 6).student_id, original_grade: 'ร',
+    cause: 'missed_exam', plan: 'retest', due_date: '2026-11-15', done_on: null, new_grade: null, status: 'in_progress', note: null }];
+
   // น้ำหนัก-ส่วนสูง 2 ครั้ง · คุณลักษณะฯ · กิจกรรม
   const health_measurements = []; const trait_scores = []; const activity_results = []; const homeroom_comments = [];
   const body = { 1: [44, 152], 2: [38, 149], 3: [62, 156], 4: [31, 141], 5: [47, 160], 6: [58, 172], 7: [41, 150], 8: [36, 155], 9: [49, 147], 10: [43, 153], 11: [57, 171], 12: [33, 150] };
@@ -140,7 +143,7 @@ export function seedDemo() {
 
   return {
     health_measurements, trait_scores, activity_results, homeroom_comments, growth_reference: excelRefToRows(EXCEL_AGE, EXCEL_HT),
-    assessment_items, item_scores, course_results,
+    assessment_items, item_scores, course_results, remedial_cases,
     profiles, terms, classrooms, classroom_teachers, students, student_private, enrollments,
     subjects, courses, course_teachers, daily_attendance, period_attendance, behavior_notes: [],
     school_settings: [{ id: 1, school_name: 'ตัวอย่างวิทยา', score_rounding: 'floor', growth_ref_set: 'excel', school_code: '00000000',

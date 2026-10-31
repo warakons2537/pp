@@ -1,14 +1,15 @@
 import { esc, $, options, roomName, fullName, levelName, iso, fromIso, daysInMonth, thaiDate, todayIso,
-  THAI_MONTHS, THAI_MONTHS_SHORT, STATUS } from '../util.js?v=2569.10.30-4';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.30-4';
-import { getRoster, termMonths, termRange } from '../data.js?v=2569.10.30-4';
-import { head, signs, termText } from './report-common.js?v=2569.10.30-4';
-import { p5Report, gradesReport, achieveReport } from './report-grades.js?v=2569.10.30-4';
-import { nutritionReport, traitReport } from './report-assess.js?v=2569.10.30-4';
+  THAI_MONTHS, THAI_MONTHS_SHORT, STATUS } from '../util.js?v=2569.10.31-1';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-1';
+import { getRoster, termMonths, termRange } from '../data.js?v=2569.10.31-1';
+import { head, signs, termText } from './report-common.js?v=2569.10.31-1';
+import { p5Report, gradesReport, achieveReport } from './report-grades.js?v=2569.10.31-1';
+import { remedialReport } from './report-remedial.js?v=2569.10.31-1';
+import { nutritionReport, traitReport } from './report-assess.js?v=2569.10.31-1';
 
 const pref = { tab: 'month', room: null, ym: null, course: null, round: 1 };
 const TABS = { month: 'เวลาเรียนประจำเดือน', term: 'สรุปเวลาเรียนภาคเรียน', course: 'เวลาเรียนรายวิชา (มส)', list: 'รายชื่อนักเรียน',
-  p5: 'ปพ.5 รายวิชา', grades: 'ผลการเรียนรายชั้น', achieve: 'สรุปผลสัมฤทธิ์', nutrition: 'ภาวะโภชนาการ', traitsum: 'คุณลักษณะ/กิจกรรม' };
+  p5: 'ปพ.5 รายวิชา', grades: 'ผลการเรียนรายชั้น', remedial: 'ติดตามแก้ 0 ร มส (ม.)', achieve: 'สรุปผลสัมฤทธิ์', nutrition: 'ภาวะโภชนาการ', traitsum: 'คุณลักษณะ/กิจกรรม' };
 const COURSE_TABS = ['course', 'p5'];
 
 export async function render(el, ctx) {
@@ -37,7 +38,7 @@ export async function render(el, ctx) {
       <button class="btn btn-primary" id="print">พิมพ์ / บันทึก PDF</button>
       ${inFrame ? '<span class="print-note muted">หน้าทดลองนี้เปิดหน้าต่างพิมพ์ไม่ได้ เมื่อติดตั้งแอปจริงจะพิมพ์ได้ทันที</span>' : ''}
     </div></div>
-    ${tabGroups([['ธุรการ', 'daily', ['month', 'term', 'course', 'list']], ['ปพ.5', 'scores', ['p5', 'grades', 'achieve']], ['สุขภาพ / คุณลักษณะ', 'health', ['nutrition', 'traitsum']]]
+    ${tabGroups([['ธุรการ', 'daily', ['month', 'term', 'course', 'list']], ['ปพ.5', 'scores', ['p5', 'grades', 'achieve', 'remedial']], ['สุขภาพ / คุณลักษณะ', 'health', ['nutrition', 'traitsum']]]
     .map(([label, ic, keys]) => ({ label, icon: ic, tabs: keys.map((k) => ({ key: k, label: esc(TABS[k]) })) })), pref.tab, 'tab', 'no-print')}
     <div class="card print-area" style="background:var(--paper)"><div class="a4-scroll" id="paper"><p class="muted">กำลังจัดหน้า…</p></div></div>`;
 
@@ -56,6 +57,7 @@ export async function render(el, ctx) {
   else if (pref.tab === 'course') paper.innerHTML = pref.course ? await courseReport(ctx, ctx.courseById[pref.course]) : '<div class="empty">ยังไม่มีรายวิชา</div>';
   else if (pref.tab === 'p5') paper.innerHTML = pref.course ? await p5Report(ctx, ctx.courseById[pref.course]) : '<div class="empty">ยังไม่มีรายวิชา</div>';
   else if (pref.tab === 'grades') paper.innerHTML = await gradesReport(ctx, room);
+  else if (pref.tab === 'remedial') paper.innerHTML = await remedialReport(ctx, room);
   else if (pref.tab === 'achieve') paper.innerHTML = await achieveReport(ctx, room);
   else if (pref.tab === 'nutrition') paper.innerHTML = await nutritionReport(ctx, room, pref.round);
   else if (pref.tab === 'traitsum') paper.innerHTML = await traitReport(ctx, room);

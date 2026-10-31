@@ -1,21 +1,24 @@
-import { db } from './db.js?v=2569.10.30-4';
-import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.30-4';
-import { icon } from './icons.js?v=2569.10.30-4';
-import { BRAND, VERSION } from './brand.js?v=2569.10.30-4';
-import { mountNav, labelHtml } from './navbar.js?v=2569.10.30-4';
-import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.30-4';
-import * as home from './views/home.js?v=2569.10.30-4';
-import * as students from './views/students.js?v=2569.10.30-4';
-import * as daily from './views/daily.js?v=2569.10.30-4';
-import * as period from './views/period.js?v=2569.10.30-4';
-import * as reports from './views/reports.js?v=2569.10.30-4';
-import * as setup from './views/setup.js?v=2569.10.30-4';
-import * as scores from './views/scores.js?v=2569.10.30-4';
-import * as health from './views/health.js?v=2569.10.30-4';
-import * as traits from './views/traits.js?v=2569.10.30-4';
-import * as print from './views/print.js?v=2569.10.30-4';
+import { db } from './db.js?v=2569.10.31-1';
+import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.31-1';
+import { icon } from './icons.js?v=2569.10.31-1';
+import { BRAND, VERSION } from './brand.js?v=2569.10.31-1';
+import { mountNav, labelHtml } from './navbar.js?v=2569.10.31-1';
+import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.31-1';
+import * as home from './views/home.js?v=2569.10.31-1';
+import * as students from './views/students.js?v=2569.10.31-1';
+import * as daily from './views/daily.js?v=2569.10.31-1';
+import * as period from './views/period.js?v=2569.10.31-1';
+import * as reports from './views/reports.js?v=2569.10.31-1';
+import * as setup from './views/setup.js?v=2569.10.31-1';
+import * as scores from './views/scores.js?v=2569.10.31-1';
+import * as health from './views/health.js?v=2569.10.31-1';
+import * as traits from './views/traits.js?v=2569.10.31-1';
+import * as remedial from './views/remedial.js?v=2569.10.31-1';
+import { renderStudentCheck } from './views/student-check.js?v=2569.10.31-1';
+import { hasSecondary } from './remedial.js?v=2569.10.31-1';
+import * as print from './views/print.js?v=2569.10.31-1';
 
-const VIEWS = { home, students, daily, period, reports, setup, scores, health, traits, print };
+const VIEWS = { home, students, daily, period, reports, setup, scores, health, traits, remedial, print };
 const root = document.getElementById('app');
 let cleanup = null;
 let navCtl = null;
@@ -76,6 +79,11 @@ function loginCover(sub) {
     <small style="opacity:.6">เวอร์ชัน ${VERSION}</small></div>`;
 }
 
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('[data-student]'); if (!a) return;
+  e.preventDefault(); location.hash = 'student'; boot();
+});
+
 function renderLogin() {
   if (db.mode === 'demo') {
     const users = db.auth.demoUsers().filter((u) => u.has_account !== false);
@@ -89,6 +97,7 @@ function renderLogin() {
             ${users.map((u) => `<button class="btn" data-u="${esc(u.id)}"><span>${esc(u.full_name)}</span>
               <span class="chip ${u.role === 'admin' ? 'chip-info' : u.role === 'pending' ? 'chip-warn' : ''}">${esc(roleText[u.role])}</span></button>`).join('')}
           </div>
+          <a href="#student" class="btn btn-ghost" data-student style="justify-content:center">นักเรียน: ตรวจสอบผล 0 ร มส</a>
         </div></div></div>`;
     $$('[data-u]', root).forEach((b) => b.addEventListener('click', async () => { await db.auth.signIn(b.dataset.u); boot(); }));
     return;
@@ -108,6 +117,7 @@ function renderLogin() {
             <button class="btn btn-primary" type="submit" style="justify-content:center;padding-block:10px">${mode === 'in' ? 'เข้าสู่ระบบ' : 'สมัครใช้งาน'}</button>
             ${mode === 'up' ? '<p class="muted small" style="margin:0">สมัครแล้วต้องรอฝ่ายวิชาการอนุมัติก่อนจึงจะเห็นข้อมูล ผู้สมัครคนแรกของระบบจะเป็นผู้ดูแลระบบอัตโนมัติ</p>' : ''}
           </form>
+          <a href="#student" class="btn btn-ghost" data-student style="justify-content:center">นักเรียน: ตรวจสอบผล 0 ร มส</a>
         </div></div></div>`;
     $$('[data-m]', root).forEach((b) => b.addEventListener('click', () => { mode = b.dataset.m; draw(); }));
     $('#f-login').addEventListener('submit', async (e) => {
@@ -134,7 +144,7 @@ const termLine = (ctx) => (ctx.term ? `ภาคเรียนที่ ${ctx.t
 
 // \u200b = จุดตัดบรรทัดที่ระบุเอง (ตัวตัดคำของเบราว์เซอร์ตัด "เช็กชื่อ" ผิดที่)
 const NAV = { home: 'วันนี้', students: 'นักเรียน', daily: 'เช็กชื่อ\u200bประจำวัน', period: 'เช็กชื่อ\u200bรายคาบ', reports: 'รายงาน A4',
-  scores: 'คะแนน\u200bรายวิชา', health: 'น้ำหนัก-\u200bส่วนสูง', traits: 'คุณลักษณะ/\u200bกิจกรรม', print: 'พิมพ์\u200bปพ.6 / ปพ.5', setup: 'ตั้งค่าระบบ' };
+  scores: 'คะแนน\u200bรายวิชา', health: 'น้ำหนัก-\u200bส่วนสูง', traits: 'คุณลักษณะ/\u200bกิจกรรม', remedial: 'ติดตาม\u200b0 ร มส', print: 'พิมพ์\u200bปพ.6 / ปพ.5', setup: 'ตั้งค่าระบบ' };
 let clockTimer = null;
 const THAI_DAYS = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
 function tickClock() {
@@ -171,6 +181,7 @@ function renderShell(ctx) {
           ${item('scores')}
           ${item('health')}
           ${item('traits')}
+          ${hasSecondary(ctx) ? item('remedial') : ''}
           ${item('print')}
           ${ctx.isAdmin ? `<div class="sec">ผู้ดูแล</div>${item('setup')}` : ''}
           <div class="sec">แอปในเครือ</div>
@@ -191,7 +202,7 @@ function renderShell(ctx) {
     </div>
     <div id="bnav-root"></div>`;
   navCtl = mountNav($('#bnav-root'), { labels: NAV, version: VERSION,
-    ok: ['home', 'students', 'daily', 'period', 'reports', 'scores', 'health', 'traits', 'print', ...(ctx.isAdmin ? ['setup'] : [])] });
+    ok: ['home', 'students', 'daily', 'period', 'reports', 'scores', 'health', 'traits', ...(hasSecondary(ctx) ? ['remedial'] : []), 'print', ...(ctx.isAdmin ? ['setup'] : [])] });
   $('#logout').addEventListener('click', async () => { await db.auth.signOut(); boot(); });
   $('#demo-reset')?.addEventListener('click', async () => { db.resetDemo(); await db.auth.signOut(); boot(); });
   clearInterval(clockTimer); tickClock(); clockTimer = setInterval(tickClock, 1000);
@@ -270,6 +281,7 @@ async function boot() {
   if (hashHandler) window.removeEventListener('hashchange', hashHandler);
   structureOffs.forEach((f) => { try { f(); } catch { /* */ } }); structureOffs = [];
   const s = await db.auth.session();
+  if (!s && location.hash === '#student') return renderStudentCheck(root, db, () => { location.hash = ''; boot(); });
   if (!s) return renderLogin();
   let ctx;
   try { ctx = await loadContext(s.user.id); }

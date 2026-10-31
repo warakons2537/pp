@@ -542,3 +542,15 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
 .login-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 3px 14px; border-radius: 99px;
   font-size: .84rem; font-weight: 600; text-decoration: none; white-space: nowrap; color: #fff; border: 1px solid rgba(255,255,255,.5); transition: background .15s; }
 .login-back:hover { background: rgba(255,255,255,.14); }
+
+/* ---------- ติดตาม 0 ร มส ---------- */
+.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.stat-btn { cursor: pointer; text-align: left; font: inherit; color: inherit; padding: 12px 14px; }
+.stat-btn:hover { border-color: var(--pen); }
+.stat-btn.on { border-color: var(--pen); background: var(--pen-wash); }
+.notice { background: var(--amber-wash); border-radius: var(--r); padding: 10px 14px; font-size: .9rem; }
+.rem-card { border: 1px solid var(--rule); border-radius: var(--r-lg); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; background: var(--sheet); }
+.rem-card h3 { margin: 0; font-size: 1rem; }
+.rem-card dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; margin: 0; font-size: .9rem; }
+.rem-card dt { color: var(--ink-soft); }
+.rem-card dd { margin: 0; }
