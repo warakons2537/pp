@@ -1,7 +1,7 @@
 // Service worker ของ WL Admin: เก็บไฟล์ของแอปไว้ในเครื่องให้เปิดเร็วและเปิดได้แม้สัญญาณหลุด
 // - ข้อมูลจากฐานข้อมูล (Supabase) ไม่ผ่านที่นี่เลย จึงสดเสมอ
 // - เลขเวอร์ชันด้านล่างเปลี่ยนพร้อม js/brand.js ทุกครั้ง (มีชุดทดสอบตรวจ) แคชเวอร์ชันเก่าจะถูกล้างอัตโนมัติ
-const VERSION = '2569.10.31-12';
+const VERSION = '2569.10.31-13';
 const APP = `wl-pp-${VERSION}`;
 const EXT = 'wl-pp-ext';                                       // ไลบรารี/ฟอนต์จากภายนอก (เวอร์ชันตายตัว เก็บข้ามเวอร์ชันแอปได้)
 const EXT_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];

@@ -1,5 +1,5 @@
 // ลงทะเบียน service worker + แถบ "มีเวอร์ชันใหม่" (กดแล้วค่อยอัปเดต จะได้ไม่รีเฟรชกลางการกรอกข้อมูล)
-import { esc } from './util.js?v=2569.10.31-12';
+import { esc } from './util.js?v=2569.10.31-13';
 
 export function initPwa() {
   if (!('serviceWorker' in navigator)) return;

@@ -1,6 +1,9 @@
-import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.10.31-12';
-import { getRoster } from '../data.js?v=2569.10.31-12';
-import { readDmcFile } from '../dmc.js?v=2569.10.31-12';
+import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.10.31-13';
+import { getRoster } from '../data.js?v=2569.10.31-13';
+import { readDmcFile } from '../dmc.js?v=2569.10.31-13';
+import { icon } from '../icons.js?v=2569.10.31-13';
+import { sortableRows } from '../reorder.js?v=2569.10.31-13';
+import { reorderPlan } from '../reorder-core.js?v=2569.10.31-13';
 
 let selected = null;   // ห้องที่เลือกค้างไว้ระหว่างเปลี่ยนหน้า
 
@@ -20,6 +23,7 @@ export async function render(el, ctx) {
   const room = ctx.classroomById[selected];
   const roster = await getRoster(ctx.db, selected, { includeLeft: true });
   const active = roster.filter((s) => s.enroll_status !== 'left');
+  const shown = [...active, ...roster.filter((s) => s.enroll_status === 'left')];     // ที่ย้ายออกแล้วอยู่ท้ายรายการ (ลากเรียงเฉพาะที่ยังเรียนอยู่)
   const boys = active.filter((s) => s.gender === 'ช').length;
 
   el.innerHTML = `
@@ -35,9 +39,12 @@ export async function render(el, ctx) {
       <button class="btn" id="renum">เรียงเลขที่ใหม่</button>
       <span class="muted small">ชาย ${boys} · หญิง ${active.length - boys} · รวม ${active.length} คน</span>
     </div>
+    ${active.length > 1 ? `<div class="ord-bar small muted" id="ord-bar" role="status"><span id="ord-msg">${icon('grip')} ลากที่ไอคอนหน้าชื่อเพื่อเรียงลำดับ แล้วเลขที่จะเปลี่ยนตามทันที (ใช้ลูกศรขึ้น/ลงแทนการลากได้)</span>
+      <button class="btn btn-sm" id="ord-undo" hidden>เลิกทำ</button></div>` : ''}
     ${roster.length ? `<div class="tbl-wrap"><table class="tbl stu-tbl">
-      <thead><tr><th class="n">เลขที่</th><th class="hide-sm">เลขประจำตัว</th><th>ชื่อ-สกุล</th><th class="c hide-sm">เพศ</th><th>สถานะ</th><th></th></tr></thead>
-      <tbody>${roster.map((s) => `<tr data-sid="${esc(s.id)}">
+      <thead><tr><th class="drag-h" aria-label="เรียงลำดับ"></th><th class="n">เลขที่</th><th class="hide-sm">เลขประจำตัว</th><th>ชื่อ-สกุล</th><th class="c hide-sm">เพศ</th><th>สถานะ</th><th></th></tr></thead>
+      <tbody>${shown.map((s) => `<tr data-sid="${esc(s.id)}" data-eid="${esc(s.enrollment_id)}" ${s.enroll_status === 'left' ? '' : 'data-sortable'}>
+        <td class="drag-cell">${s.enroll_status === 'left' ? '' : `<button type="button" class="drag" title="ลากเพื่อเรียงลำดับ" aria-label="ย้ายลำดับของ ${esc(fullName(s))} (ลากหรือกดลูกศรขึ้นลง)">${icon('grip')}</button>`}</td>
         <td class="n">${s.number ?? ''}</td><td class="tabular hide-sm">${esc(s.student_code ?? '')}</td>
         <td class="w">${esc(fullName(s))}</td><td class="c hide-sm">${esc(s.gender ?? '')}</td>
         <td>${s.enroll_status === 'left' ? `<span class="chip chip-warn">ออก ${esc(thaiDate(s.left_on, true))}</span>` : '<span class="chip chip-ok">กำลังเรียน</span>'}</td>
@@ -52,6 +59,7 @@ export async function render(el, ctx) {
   $('#room', el).addEventListener('change', (e) => { selected = e.target.value; again(); });
   if (focusSid) { const tr = el.querySelector(`tr[data-sid="${CSS.escape(focusSid)}"]`); if (tr) { tr.scrollIntoView({ block: 'center' }); tr.classList.add('flash'); setTimeout(() => tr.classList.remove('flash'), 1800); } }
   $('#dmc-file', el).addEventListener('change', (e) => importFlow(e.target, ctx, room, again));
+  wireReorder(el, ctx, active, again);
   $('#add', el).addEventListener('click', () => editStudent(ctx, room, null, active.length + 1, again));
   $('#renum', el).addEventListener('click', () => renumber(ctx, active, again));
   el.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () =>
@@ -108,6 +116,42 @@ async function showDmc(ctx, sid) {
     ? `<div class="tbl-wrap"><table class="tbl"><tbody>${keys.map((k) => `<tr><th>${esc(k)}</th><td>${esc(raw[k])}</td></tr>`).join('')}</tbody></table></div>`
     : `<p>วันเกิด: ${esc(thaiDate(p.birth_date))}<br>ศาสนา: ${esc(p.religion ?? '-')}</p><p class="muted small">นักเรียนคนนี้ไม่ได้นำเข้าจาก DMC</p>`,
   { okText: 'ปิด', cancelText: '', wide: true });
+}
+
+// ลากเรียงลำดับ: เปลี่ยนเลขที่ของคนที่ยังเรียนอยู่เป็น 1..N ตามลำดับใหม่ (เฉพาะคนที่เลขที่เปลี่ยนจริง) · เลิกทำได้
+function wireReorder(el, ctx, active, again) {
+  const tbody = el.querySelector('.stu-tbl tbody'); if (!tbody || active.length < 2) return;
+  const bar = $('#ord-msg', el); const undoBtn = $('#ord-undo', el); const hint = bar.innerHTML;
+  let busy = Promise.resolve(); let prev = null;
+  const paint = (rows) => rows.forEach((r, i) => { const c = r.querySelector('td.n'); if (c) c.textContent = i + 1; });
+  const apply = (changes, key) => {                                      // changes: [{ id, to }] · เขียนทีละกลุ่มเล็ก ๆ
+    return (async () => { for (let i = 0; i < changes.length; i += 8) await Promise.all(changes.slice(i, i + 8).map((c) => ctx.db.update('enrollments', { id: c.id }, { number: c[key] }))); })();
+  };
+  sortableRows(tbody, {
+    onMove: paint,
+    say: (row, n) => { bar.textContent = `ย้าย ${row.querySelector('.w')?.textContent} ไปเลขที่ ${n}`; },
+    onChange: (rows) => {
+      const ids = rows.map((r) => r.dataset.eid);
+      let plan; try { plan = reorderPlan(active, ids); } catch (err) { toast(err.message, 'err'); again(); return; }
+      paint(rows);
+      if (!plan.length) { bar.innerHTML = hint; return; }
+      const done = plan.map((c) => ({ id: c.id, from: c.from, to: c.to }));
+      busy = busy.then(async () => {
+        try {
+          await apply(done, 'to');
+          const byEid = new Map(active.map((s) => [s.enrollment_id, s])); done.forEach((c) => { byEid.get(c.id).number = c.to; });   // ให้ปุ่มแก้ไข ฯลฯ ใช้เลขที่ใหม่
+          prev = done; bar.textContent = `จัดลำดับใหม่แล้ว (เปลี่ยนเลขที่ ${done.length} คน)`; undoBtn.hidden = false;
+        } catch (err) { toast(`บันทึกลำดับไม่สำเร็จ: ${err.message}`, 'err'); again(); }
+      });
+    },
+  });
+  undoBtn.addEventListener('click', () => {
+    if (!prev) return; const back = prev; prev = null; undoBtn.hidden = true;
+    busy = busy.then(async () => {
+      try { await apply(back.map((c) => ({ id: c.id, from: c.to, to: c.from })), 'to'); toast('เลิกทำแล้ว'); } catch (err) { toast(err.message, 'err'); }
+      again();
+    });
+  });
 }
 
 async function renumber(ctx, active, done) {

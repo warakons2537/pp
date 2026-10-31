@@ -489,7 +489,7 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
 @media (max-width: 600px) {
   .stu-tbl, .stu-tbl tbody { display: block; }
   .stu-tbl thead { display: none; }
-  .stu-tbl tr { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 6px 8px; padding: 10px 12px; border-bottom: 1px solid var(--rule); }
+  .stu-tbl tr { display: grid; grid-template-columns: 40px 32px minmax(0, 1fr) auto; align-items: center; gap: 6px 8px; padding: 10px 12px; border-bottom: 1px solid var(--rule); }
   .stu-tbl tr:last-child { border-bottom: 0; }
   .stu-tbl td { border: 0; padding: 0; }
   .stu-tbl .stu-act { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; white-space: normal; }
@@ -632,3 +632,16 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
 }
 @media (prefers-reduced-motion: reduce) { .cmdk-wrap, .cmdk, .skip-link { animation: none; transition: none; } }
 .cmdk-in:focus { border-color: var(--rule); }
+
+/* ---------- ลากเรียงรายชื่อ ---------- */
+.ord-bar { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; justify-content: space-between; min-height: 34px; }
+.ord-bar svg.i { width: 16px; height: 16px; vertical-align: -3px; }
+.stu-tbl .drag-h, .stu-tbl .drag-cell { width: 44px; padding: 0 2px; text-align: center; }
+.stu-tbl .drag { border: 0; background: transparent; color: var(--ink-soft); cursor: grab; width: 40px; height: 40px; border-radius: 10px; display: inline-grid; place-items: center; touch-action: none; }
+.stu-tbl .drag:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
+.stu-tbl .drag:focus-visible { outline: 2px solid var(--gold); }
+.stu-tbl tr.dragging { position: relative; z-index: 5; background: var(--surface-high); box-shadow: 0 6px 20px rgba(0, 0, 0, .25); opacity: .97; }
+.stu-tbl tr.dragging .drag { cursor: grabbing; }
+.stu-tbl.sorting, .stu-tbl.sorting * { user-select: none; cursor: grabbing; }
+.stu-tbl tr.dragging td { background: var(--surface-high); }
+.btn[hidden] { display: none; }

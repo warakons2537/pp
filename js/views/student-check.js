@@ -2,9 +2,9 @@
 //  - 0 ร มส: กรอกช่องใดช่องหนึ่งก็ได้ (ชื่อ / นามสกุล / เลขประจำตัว)
 //  - ผลการเรียน: กรอกอย่างน้อย 2 ช่อง (เข้มกว่า เพราะเป็นผลทั้งหมด) และต้องเป็นภาคเรียนที่ผู้ดูแลระบบเปิดให้ดู
 //  - ที่กรอกตรงกับนักเรียนหลายคน = ไม่แสดงข้อมูลใคร ให้กรอกช่องอื่นเพิ่ม
-import { esc, $, toast } from '../util.js?v=2569.10.31-12';
-import { CAUSES, PLANS, STATUS } from '../remedial.js?v=2569.10.31-12';
-import { computeStudent, fmtGrade, gpa, weightOf } from '../grading.js?v=2569.10.31-12';
+import { esc, $, toast } from '../util.js?v=2569.10.31-13';
+import { CAUSES, PLANS, STATUS } from '../remedial.js?v=2569.10.31-13';
+import { computeStudent, fmtGrade, gpa, weightOf } from '../grading.js?v=2569.10.31-13';
 
 const FIELDS = ['first', 'last', 'code'];
 const filled = (f) => FIELDS.filter((k) => String(f[k] || '').trim()).length;
