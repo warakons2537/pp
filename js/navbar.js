@@ -1,8 +1,8 @@
 // แถบเมนูล่างสำหรับจอแคบ + แผง "เพิ่มเติม" + จัดแถบเมนูเอง
 // เลือกเมนูหลักได้ 4 อัน จำเฉพาะเครื่องนี้ (localStorage) ไม่ใช้ฐานข้อมูล
-import { icon } from './icons.js?v=2569.10.31-7';
-import { esc, toast } from './util.js?v=2569.10.31-7';
-import { badge } from './notify.js?v=2569.10.31-7';
+import { icon } from './icons.js?v=2569.10.31-8';
+import { esc, toast } from './util.js?v=2569.10.31-8';
+import { badge } from './notify.js?v=2569.10.31-8';
 
 const KEY = 'wl-bnav', MAX = 4, DEFAULT = ['home', 'daily', 'scores', 'students'];
 // ชื่อเมนูที่มีจุดตัดบรรทัด (\u200b) → ห่อแต่ละท่อนไม่ให้ตัดกลางคำ

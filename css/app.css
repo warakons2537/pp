@@ -209,8 +209,9 @@ textarea { width: 100%; min-height: 70px; }
 .btn {
   border: 1px solid var(--outline); background: transparent; color: var(--pen); border-radius: 99px; font-weight: 500;
   min-height: 40px; justify-content: center; padding: 7px 20px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; text-decoration: none; white-space: nowrap;
-  transition: background .15s, border-color .15s;
+  transition: background .15s, border-color .15s, transform .08s;
 }
+.btn:active { transform: scale(.97); }
 .btn:hover { background: color-mix(in srgb, var(--pen) 8%, transparent); }
 .btn-primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 600; }
 .btn-primary:hover { background: var(--primary); filter: brightness(1.08); }
@@ -568,3 +569,25 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
 .sheet-handle { position: absolute; width: 10px; height: 10px; background: var(--pen); border: 2px solid var(--sheet); border-radius: 2px; cursor: crosshair; z-index: 3; box-sizing: content-box; }
 .sheet-handle[hidden] { display: none; }
 @media (max-width: 700px) { .sheet-handle { width: 16px; height: 16px; } }
+
+/* ---------- โมชั่นชุดเล็ก: ทุกอย่างสั้นกว่า 200 ms ใช้เฉพาะ opacity/transform และปิดเมื่อเครื่องตั้ง "ลดการเคลื่อนไหว" ---------- */
+@keyframes page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes skel-run { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+#view.enter > * { animation: page-in .15s ease-out backwards; }
+.modal-wrap { animation: fade-in .12s ease-out; }
+.modal { animation: pop-in .16s ease-out; }
+.nav a:active, .bnav a:active { transform: scale(.96); }
+.reg button.cell:active { transform: scale(.88); }
+.skel-page { display: flex; flex-direction: column; padding: 8px 0 24px; }
+.skel-rows { display: flex; flex-direction: column; gap: 10px; margin-top: 26px; }
+.skel { display: block; height: 36px; border-radius: 10px; position: relative; overflow: hidden; background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.skel-rows .skel:nth-child(odd) { width: 100%; } .skel-rows .skel:nth-child(even) { width: 92%; }
+.skel::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface-high, #fff) 70%, transparent), transparent); animation: skel-run 1.2s ease-in-out infinite; }
+.tb-net.busy { color: var(--amber); }
+.update-bar { position: fixed; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 70; display: flex; gap: 12px; align-items: center;
+  background: var(--inv); color: var(--on-inv); padding: 8px 8px 8px 18px; border-radius: 99px; box-shadow: 0 8px 24px rgba(0, 0, 0, .25); animation: pop-in .16s ease-out; max-width: calc(100% - 24px); }
+.update-bar .btn { background: var(--surface-high, #fff); color: var(--pen); border-color: transparent; }
+@media (min-width: 701px) { .update-bar { bottom: 24px; } }
+@media (prefers-reduced-motion: reduce) { #view.enter > *, .modal-wrap, .modal, .update-bar, .skel::after { animation: none; } .btn:active, .nav a:active, .bnav a:active, .reg button.cell:active { transform: none; } }

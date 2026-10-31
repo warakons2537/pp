@@ -5,10 +5,10 @@
 //  - แอปคำนวณทุกช่องเองจากข้อมูลในระบบ (buildBookData) แล้วใส่ลงช่องของแบบพิมพ์
 //    กติกาการคำนวณตรงกับไฟล์โปรแกรม ปพ.5-6 เดิมของโรงเรียน (ตรวจด้วย tests/pp-forms.test.mjs)
 // =====================================================================
-import { Workbook, key } from './xl-model.js?v=2569.10.31-7';
-import { Engine } from './xl-formula.js?v=2569.10.31-7';
-import { levelName, thaiDate } from './util.js?v=2569.10.31-7';
-import { toGrade } from './grading.js?v=2569.10.31-7';
+import { Workbook, key } from './xl-model.js?v=2569.10.31-8';
+import { Engine } from './xl-formula.js?v=2569.10.31-8';
+import { levelName, thaiDate } from './util.js?v=2569.10.31-8';
+import { toGrade } from './grading.js?v=2569.10.31-8';
 
 export const FORMS_URL = new URL('../pp/forms.xlsx', import.meta.url).href;
 let formsBytes = null;

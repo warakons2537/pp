@@ -1,23 +1,25 @@
-import { db } from './db.js?v=2569.10.31-7';
-import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.31-7';
-import { icon } from './icons.js?v=2569.10.31-7';
-import { BRAND, VERSION } from './brand.js?v=2569.10.31-7';
-import { mountNav, labelHtml } from './navbar.js?v=2569.10.31-7';
-import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.31-7';
-import * as home from './views/home.js?v=2569.10.31-7';
-import * as students from './views/students.js?v=2569.10.31-7';
-import * as daily from './views/daily.js?v=2569.10.31-7';
-import * as period from './views/period.js?v=2569.10.31-7';
-import * as reports from './views/reports.js?v=2569.10.31-7';
-import * as setup from './views/setup.js?v=2569.10.31-7';
-import * as scores from './views/scores.js?v=2569.10.31-7';
-import * as meals from './views/meals.js?v=2569.10.31-7';
-import * as health from './views/health.js?v=2569.10.31-7';
-import * as traits from './views/traits.js?v=2569.10.31-7';
-import * as remedial from './views/remedial.js?v=2569.10.31-7';
-import { renderStudentCheck } from './views/student-check.js?v=2569.10.31-7';
-import { NAV, MENU_GROUPS, MENU_ORDER, allowedMenus } from './menus.js?v=2569.10.31-7';
-import * as print from './views/print.js?v=2569.10.31-7';
+import { db } from './db.js?v=2569.10.31-8';
+import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.31-8';
+import { icon } from './icons.js?v=2569.10.31-8';
+import { initPwa } from './pwa.js?v=2569.10.31-8';
+import { trackWrites, saveState } from './savestate.js?v=2569.10.31-8';
+import { BRAND, VERSION } from './brand.js?v=2569.10.31-8';
+import { mountNav, labelHtml } from './navbar.js?v=2569.10.31-8';
+import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.31-8';
+import * as home from './views/home.js?v=2569.10.31-8';
+import * as students from './views/students.js?v=2569.10.31-8';
+import * as daily from './views/daily.js?v=2569.10.31-8';
+import * as period from './views/period.js?v=2569.10.31-8';
+import * as reports from './views/reports.js?v=2569.10.31-8';
+import * as setup from './views/setup.js?v=2569.10.31-8';
+import * as scores from './views/scores.js?v=2569.10.31-8';
+import * as meals from './views/meals.js?v=2569.10.31-8';
+import * as health from './views/health.js?v=2569.10.31-8';
+import * as traits from './views/traits.js?v=2569.10.31-8';
+import * as remedial from './views/remedial.js?v=2569.10.31-8';
+import { renderStudentCheck } from './views/student-check.js?v=2569.10.31-8';
+import { NAV, MENU_GROUPS, MENU_ORDER, allowedMenus } from './menus.js?v=2569.10.31-8';
+import * as print from './views/print.js?v=2569.10.31-8';
 
 const VIEWS = { home, students, daily, meals, period, reports, setup, scores, health, traits, remedial, print };
 const root = document.getElementById('app');
@@ -154,8 +156,11 @@ function tickClock() {
 }
 function showNet() {
   const el = $('#tb-net'); if (!el) return;
-  el.classList.toggle('off', !navigator.onLine); el.textContent = navigator.onLine ? 'ออนไลน์' : 'ออฟไลน์';
+  const s = saveState(); const online = navigator.onLine;
+  const [text, cls] = !online ? ['ออฟไลน์', 'off'] : s.failed ? ['บันทึกไม่สำเร็จ', 'off'] : s.pending ? ['กำลังบันทึก…', 'busy'] : s.justSaved ? ['บันทึกแล้ว', ''] : ['ออนไลน์', ''];
+  el.classList.toggle('off', cls === 'off'); el.classList.toggle('busy', cls === 'busy'); el.textContent = text;
 }
+window.addEventListener('wl-save', showNet);
 window.addEventListener('online', showNet);
 window.addEventListener('offline', showNet);
 
@@ -219,6 +224,10 @@ document.addEventListener('click', (e) => {
   });
 }, true);
 
+// โครงร่างหน้าระหว่างรอข้อมูล (แทนแถบโหลด)
+const SKELETON = `<div class="skel-page" role="status" aria-label="กำลังโหลด"><i class="skel" style="width:38%;height:28px"></i><i class="skel" style="width:62%;height:14px;margin-top:10px"></i>
+  <div class="skel-rows">${'<i class="skel"></i>'.repeat(7)}</div></div>`;
+
 async function route(ctx) {
   const v = (location.hash.replace('#', '') || 'home').split('?')[0];
   const view = VIEWS[v] && ctx.menus.has(v) ? v : 'home';
@@ -227,9 +236,11 @@ async function route(ctx) {
   const tt = $('#tb-title'); if (tt) tt.textContent = NAV[view] || '';
   if (cleanup) { try { cleanup(); } catch { /* */ } cleanup = null; }
   const el = $('#view');
-  el.innerHTML = '<div class="loading" role="status"><i class="bar"></i><span>กำลังโหลด…</span></div>';
+  el.classList.remove('enter');
+  el.innerHTML = SKELETON;
   try { cleanup = (await VIEWS[view].render(el, ctx)) || null; }
   catch (err) { console.error(err); el.innerHTML = `<div class="card"><h2>เปิดหน้านี้ไม่สำเร็จ</h2><p>${esc(err.message)}</p></div>`; }
+  void el.offsetWidth; el.classList.add('enter');                // เนื้อหาจางเข้า 150 มิลลิวินาที (ปิดเองเมื่อเครื่องตั้ง "ลดการเคลื่อนไหว")
   paintBadges();
   window.scrollTo(0, 0);
 }
@@ -295,4 +306,6 @@ async function boot() {
 }
 
 db.auth.onChange(() => {});
+trackWrites(db);
+initPwa();
 boot();
