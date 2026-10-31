@@ -11,6 +11,7 @@ import * as period from './views/period.js?v=2569.10.31-3';
 import * as reports from './views/reports.js?v=2569.10.31-3';
 import * as setup from './views/setup.js?v=2569.10.31-3';
 import * as scores from './views/scores.js?v=2569.10.31-3';
+import * as meals from './views/meals.js?v=2569.10.31-3';
 import * as health from './views/health.js?v=2569.10.31-3';
 import * as traits from './views/traits.js?v=2569.10.31-3';
 import * as remedial from './views/remedial.js?v=2569.10.31-3';
@@ -18,7 +19,7 @@ import { renderStudentCheck } from './views/student-check.js?v=2569.10.31-3';
 import { NAV, MENU_GROUPS, MENU_ORDER, allowedMenus } from './menus.js?v=2569.10.31-3';
 import * as print from './views/print.js?v=2569.10.31-3';
 
-const VIEWS = { home, students, daily, period, reports, setup, scores, health, traits, remedial, print };
+const VIEWS = { home, students, daily, meals, period, reports, setup, scores, health, traits, remedial, print };
 const root = document.getElementById('app');
 let cleanup = null;
 let navCtl = null;

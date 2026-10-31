@@ -418,7 +418,7 @@ async function growth(pane, ctx, run) {
 }
 
 const BACKUP_TABLES = ['school_settings', 'terms', 'classrooms', 'classroom_teachers', 'profiles', 'students', 'student_private',
-  'enrollments', 'subjects', 'subject_indicators', 'courses', 'course_teachers', 'daily_attendance', 'period_attendance', 'behavior_notes',
+  'enrollments', 'subjects', 'subject_indicators', 'courses', 'course_teachers', 'daily_attendance', 'meal_checks', 'period_attendance', 'behavior_notes',
   'assessment_items', 'item_scores', 'course_results', 'remedial_cases', 'trait_scores', 'assess_detail', 'activity_results', 'homeroom_comments', 'health_measurements'];
 
 function backup(pane, ctx) {

@@ -323,7 +323,7 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
 .seg button.on:not(.st-present) { font-weight: 700; }
 @media (max-width: 520px) {
   .roll-row { grid-template-columns: 28px minmax(0, 1fr); }
-  .roll-row .seg { grid-column: 1 / -1; justify-self: stretch; display: grid; grid-template-columns: repeat(5, 1fr); }
+  .roll-row .seg { grid-column: 1 / -1; justify-self: stretch; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
 }
 
 /* ---------- กล่องโต้ตอบ / แจ้งเตือน ---------- */

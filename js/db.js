@@ -145,7 +145,7 @@ function demoDb() {
     const row = { ...r };
     if (pk(t).includes('id') && !row.id) row.id = uuid();
     if ('updated_at' in row || ['daily_attendance', 'period_attendance', 'item_scores'].includes(t)) row.updated_at = new Date().toISOString();
-    if (['daily_attendance', 'period_attendance', 'behavior_notes'].includes(t) && !row.recorded_by) row.recorded_by = sessionUser?.id;
+    if (['daily_attendance', 'meal_checks', 'period_attendance', 'behavior_notes'].includes(t) && !row.recorded_by) row.recorded_by = sessionUser?.id;
     return row;
   };
 
