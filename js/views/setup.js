@@ -1,15 +1,15 @@
-import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.31-6';
-import { GRANTABLE, MENU_GROUPS, plain } from '../menus.js?v=2569.10.31-6';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-6';
-import { ROUNDING } from '../grading.js?v=2569.10.31-6';
-import { excelRefToRows } from '../assess.js?v=2569.10.31-6';
-import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.31-6';
-import { subjectImportFlow } from './subject-import-view.js?v=2569.10.31-6';
-import { teacherImportFlow } from './teacher-import-view.js?v=2569.10.31-6';
-import { indicatorImportFlow } from './indicator-import-view.js?v=2569.10.31-6';
-import { clearGrowthRef } from '../data.js?v=2569.10.31-6';
-import { teacherKey, displayName } from '../teacher-import.js?v=2569.10.31-6';
-import { applyCourseOrder, inheritedOrder } from '../course-order.js?v=2569.10.31-6';
+import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.31-7';
+import { GRANTABLE, MENU_GROUPS, plain } from '../menus.js?v=2569.10.31-7';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-7';
+import { ROUNDING } from '../grading.js?v=2569.10.31-7';
+import { excelRefToRows } from '../assess.js?v=2569.10.31-7';
+import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.31-7';
+import { subjectImportFlow } from './subject-import-view.js?v=2569.10.31-7';
+import { teacherImportFlow } from './teacher-import-view.js?v=2569.10.31-7';
+import { indicatorImportFlow } from './indicator-import-view.js?v=2569.10.31-7';
+import { clearGrowthRef } from '../data.js?v=2569.10.31-7';
+import { teacherKey, displayName } from '../teacher-import.js?v=2569.10.31-7';
+import { applyCourseOrder, inheritedOrder } from '../course-order.js?v=2569.10.31-7';
 
 let tab = 'school';
 const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', rooms: 'ห้องเรียน', subjects: 'รายวิชา', roomsubj: 'รายวิชาตามชั้น', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', notify: 'การแจ้งเตือน', backup: 'สำรองข้อมูล' };
@@ -299,7 +299,7 @@ async function editMenus(ctx, p, run) {
   const row = 'flex-direction:row;align-items:center;gap:8px';
   const body = `<p style="margin:0"><b>${esc(p.full_name || p.email || '')}</b></p>
     <label style="${row}"><input type="radio" name="mode" value="auto" ${custom ? '' : 'checked'}> ตามหน้าที่ที่ได้รับมอบหมาย (อัตโนมัติ)</label>
-    <p class="small muted" style="margin:-4px 0 0 24px">ทุกคนเห็น วันนี้ · รายงาน A4 · พิมพ์ ปพ.6 / ปพ.5 — ครูประจำชั้นเห็นงานประจำชั้น — ครูผู้สอนเห็นงานสอน (และติดตาม 0 ร มส เมื่อเกี่ยวกับห้อง ม.)</p>
+    <p class="small muted" style="margin:-4px 0 0 24px">ทุกคนเห็น วันนี้ · รายงาน A4 — ครูประจำชั้นเห็นงานประจำชั้นและพิมพ์เอกสาร ปพ. (เฉพาะห้องตัวเอง ไม่มีใบรับรอง) — ครูผู้สอนเห็นงานสอน (และติดตาม 0 ร มส เมื่อเกี่ยวกับห้อง ม.)</p>
     <label style="${row}"><input type="radio" name="mode" value="custom" ${custom ? 'checked' : ''}> กำหนดเมนูเอง</label>
     <fieldset id="menu-set" ${custom ? '' : 'disabled'} style="border:0;padding:0 0 0 24px;margin:0;display:flex;flex-direction:column;gap:6px">
       ${MENU_GROUPS.map((g) => `<b class="small">${esc(g.label)}</b>${g.items.map((v) => `<label style="${row}"><input type="checkbox" name="m_${v}" ${on.has(v) ? 'checked' : ''}> ${esc(plain(v))}</label>`).join('')}`).join('')}
@@ -386,7 +386,7 @@ async function growth(pane, ctx, run) {
   $('#g-tpl', pane).href = URL.createObjectURL(new Blob(['\ufeff' + tpl], { type: 'text/csv' }));
   const upsertRows = async (rows) => { for (let i = 0; i < rows.length; i += 500) await ctx.db.upsert('growth_reference', rows.slice(i, i + 500), 'ref_set,sex,basis,key,measure'); clearGrowthRef(); };
   $('#load-excel', pane).addEventListener('click', () => run(async () => {
-    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.31-6');
+    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.31-7');
     await upsertRows(excelRefToRows(EXCEL_AGE, EXCEL_HT));
   }, 'โหลดตารางจาก Excel เดิมแล้ว'));
   pane.querySelectorAll('[data-use]').forEach((b) => b.addEventListener('click', () =>
