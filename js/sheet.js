@@ -1,8 +1,8 @@
 // ตารางกรอกข้อมูลแบบ Excel: ลากคลุมหลายช่อง · คัดลอก/ตัด/วาง · ลบทั้งช่วง · ลากมุมขวาล่างเพื่อเติม (คัดลอก/เรียงเลข) · เลิกทำ
 // ทุกการเขียนผ่านฟังก์ชันบันทึกเดิมของหน้านั้น (set / setBatch) จึงตรวจค่าและสิทธิ์เหมือนกรอกเอง ค่าที่ไม่ผ่านจะไม่ถูกบันทึก
 // ช่องต้องมี data-r / data-c · ตัวเลือก: { cell: ตัวเลือก CSS ของช่อง, get(el), set(el, text) → true/false หรือ setBatch([{el,value}]) → [true/false], canEdit }
-import { toast, modal } from './util.js?v=2569.10.31-10';
-import { parseClip, toTsv, fillValues, wantSeries } from './sheet-core.js?v=2569.10.31-10';
+import { toast, modal } from './util.js?v=2569.10.31-11';
+import { parseClip, toTsv, fillValues, wantSeries } from './sheet-core.js?v=2569.10.31-11';
 
 let current = null;                                   // ตารางที่มีการเลือกอยู่ (มีได้ทีละตาราง)
 const isField = (t) => !!t?.closest?.('input, textarea, select');

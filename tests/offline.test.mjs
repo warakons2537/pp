@@ -100,6 +100,13 @@ assert.ok(isNetworkError(new Error('TypeError: Failed to fetch')) && !isNetworkE
   assert.equal(ev.at(-1)[1].over, 1);
 }
 
+// 8) ข้อมูลส่วนบุคคลที่ไม่ได้ล็อกอิน (นักเรียนตรวจผลเอง) ต้องไม่ถูกจำไว้ในเครื่อง
+{ const { base, db, kv } = await setup();
+  await db.rpc('remedial_lookup', { p_code: '123' }); await db.rpc('x');
+  const keys = [...kv.m.keys()].filter((k) => k.startsWith('r:'));
+  assert.equal(keys.some((k) => k.includes('remedial_lookup')), false); assert.equal(keys.length, 1);
+}
+
 // overlay: ไม่แตะแถวนอกเงื่อนไข
 assert.deepEqual(overlay('daily_attendance', [], { eq: { classroom_id: 'c1' } }, [{ table: 'daily_attendance', kind: 'upsert', args: [[{ student_id: 's', classroom_id: 'OTHER', date: 'd' }], 'student_id,date'] }]), []);
 console.log('offline ok');

@@ -3,6 +3,8 @@
 //  2) เข้าสู่ระบบ: ถ้าเน็ตหลุดและโทเค็นหมดอายุ ใช้ตัวตนที่จำไว้เปิดแอปต่อได้ (ออกจากระบบแล้วจะลบทั้งหมด)
 //  3) บันทึก: เช็กชื่อรายวัน/รายคาบ/เช็กอาหาร ถ้าส่งไม่ได้จะเก็บคิวไว้ในเครื่องแล้วส่งเองเมื่อมีสัญญาณ (ค่าล่าสุดชนะ)
 //     ส่วนอื่น (คะแนน 0 ร มส ตั้งค่า) ต้องออนไลน์ เพราะมีการตรวจเงื่อนไขมากกว่า
+// ฟังก์ชันที่ห้ามจำผลไว้ในเครื่อง (ข้อมูลส่วนบุคคลที่ผู้ใช้ไม่ได้ล็อกอิน เช่น นักเรียนตรวจผลของตัวเอง)
+const NO_CACHE = new Set(['remedial_lookup']);
 export const QUEUE_TABLES = new Set(['daily_attendance', 'period_attendance', 'meal_checks']);
 
 const NET = /failed to fetch|networkerror|network request failed|load failed|fetch failed|err_internet|err_network|timeout|ขาดการเชื่อมต่อ/i;
@@ -136,7 +138,7 @@ export function createOffline(base, { kv, probe, emit = () => {}, uuid = () => c
   return {
     ...base, auth,
     select: (table, opts = {}) => cached(readKey('s', table, opts), () => base.select(table, opts), table, opts),
-    rpc: (name, args) => cached(readKey('rpc', name, args || {}), () => base.rpc(name, args), null),
+    rpc: (name, args) => (NO_CACHE.has(name) ? base.rpc(name, args) : cached(readKey('rpc', name, args || {}), () => base.rpc(name, args), null)),
     insert: write('insert'), upsert: write('upsert'), update: write('update'), remove: write('remove'),
     offline: { flush, pending: () => mine().length, queue: () => queue.slice() },
   };
