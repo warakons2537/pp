@@ -1,25 +1,26 @@
-import { db } from './db.js?v=2569.10.31-8';
-import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.31-8';
-import { icon } from './icons.js?v=2569.10.31-8';
-import { initPwa } from './pwa.js?v=2569.10.31-8';
-import { trackWrites, saveState } from './savestate.js?v=2569.10.31-8';
-import { BRAND, VERSION } from './brand.js?v=2569.10.31-8';
-import { mountNav, labelHtml } from './navbar.js?v=2569.10.31-8';
-import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.31-8';
-import * as home from './views/home.js?v=2569.10.31-8';
-import * as students from './views/students.js?v=2569.10.31-8';
-import * as daily from './views/daily.js?v=2569.10.31-8';
-import * as period from './views/period.js?v=2569.10.31-8';
-import * as reports from './views/reports.js?v=2569.10.31-8';
-import * as setup from './views/setup.js?v=2569.10.31-8';
-import * as scores from './views/scores.js?v=2569.10.31-8';
-import * as meals from './views/meals.js?v=2569.10.31-8';
-import * as health from './views/health.js?v=2569.10.31-8';
-import * as traits from './views/traits.js?v=2569.10.31-8';
-import * as remedial from './views/remedial.js?v=2569.10.31-8';
-import { renderStudentCheck } from './views/student-check.js?v=2569.10.31-8';
-import { NAV, MENU_GROUPS, MENU_ORDER, allowedMenus } from './menus.js?v=2569.10.31-8';
-import * as print from './views/print.js?v=2569.10.31-8';
+import { db } from './db.js?v=2569.10.31-9';
+import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.31-9';
+import { icon } from './icons.js?v=2569.10.31-9';
+import { prefetchOffline } from './prefetch.js?v=2569.10.31-9';
+import { initPwa } from './pwa.js?v=2569.10.31-9';
+import { trackWrites, saveState } from './savestate.js?v=2569.10.31-9';
+import { BRAND, VERSION } from './brand.js?v=2569.10.31-9';
+import { mountNav, labelHtml } from './navbar.js?v=2569.10.31-9';
+import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.31-9';
+import * as home from './views/home.js?v=2569.10.31-9';
+import * as students from './views/students.js?v=2569.10.31-9';
+import * as daily from './views/daily.js?v=2569.10.31-9';
+import * as period from './views/period.js?v=2569.10.31-9';
+import * as reports from './views/reports.js?v=2569.10.31-9';
+import * as setup from './views/setup.js?v=2569.10.31-9';
+import * as scores from './views/scores.js?v=2569.10.31-9';
+import * as meals from './views/meals.js?v=2569.10.31-9';
+import * as health from './views/health.js?v=2569.10.31-9';
+import * as traits from './views/traits.js?v=2569.10.31-9';
+import * as remedial from './views/remedial.js?v=2569.10.31-9';
+import { renderStudentCheck } from './views/student-check.js?v=2569.10.31-9';
+import { NAV, MENU_GROUPS, MENU_ORDER, allowedMenus } from './menus.js?v=2569.10.31-9';
+import * as print from './views/print.js?v=2569.10.31-9';
 
 const VIEWS = { home, students, daily, meals, period, reports, setup, scores, health, traits, remedial, print };
 const root = document.getElementById('app');
@@ -157,10 +158,23 @@ function tickClock() {
 function showNet() {
   const el = $('#tb-net'); if (!el) return;
   const s = saveState(); const online = navigator.onLine;
-  const [text, cls] = !online ? ['ออฟไลน์', 'off'] : s.failed ? ['บันทึกไม่สำเร็จ', 'off'] : s.pending ? ['กำลังบันทึก…', 'busy'] : s.justSaved ? ['บันทึกแล้ว', ''] : ['ออนไลน์', ''];
-  el.classList.toggle('off', cls === 'off'); el.classList.toggle('busy', cls === 'busy'); el.textContent = text;
+  const [text, cls] = !online ? [s.queued ? `ออฟไลน์ · รอส่ง ${s.queued}` : 'ออฟไลน์', 'off'] : s.failed ? ['บันทึกไม่สำเร็จ', 'off']
+    : s.queued ? [`รอส่ง ${s.queued} รายการ`, 'busy'] : s.pending ? ['กำลังบันทึก…', 'busy'] : s.justSaved ? ['บันทึกแล้ว', ''] : ['ออนไลน์', 'quiet'];
+  el.classList.toggle('off', cls === 'off'); el.classList.toggle('busy', cls === 'busy'); el.classList.toggle('quiet', cls === 'quiet'); el.textContent = text;
 }
 window.addEventListener('wl-save', showNet);
+window.addEventListener('wl-synced', (e) => {
+  const { sent, over, failed } = e.detail;
+  if (sent) toast(`ส่งข้อมูลที่ค้างไว้แล้ว ${sent} รายการ${over ? ` · ทับข้อมูลที่ผู้อื่นแก้ระหว่างออฟไลน์ ${over} ช่อง (ใช้ค่าที่คุณบันทึก)` : ''}`);
+  if (failed.length) toast(`บางรายการส่งไม่สำเร็จ ${failed.length} รายการ: ${failed[0]}`, 'err');
+});
+window.addEventListener('wl-auth', () => toast('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่ ข้อมูลที่ค้างไว้จะถูกส่งหลังเข้าสู่ระบบ', 'err'));
+window.addEventListener('online', () => { toast('กลับมาออนไลน์แล้ว'); });
+window.addEventListener('offline', () => { toast('ไม่มีสัญญาณอินเทอร์เน็ต — เช็กชื่อและเช็กอาหารยังบันทึกได้ จะส่งให้อัตโนมัติเมื่อมีสัญญาณ', 'err'); });
+async function logout() {
+  try { await db.auth.signOut(); } catch (err) { toast(err.message, 'err'); return; }
+  boot();
+}
 window.addEventListener('online', showNet);
 window.addEventListener('offline', showNet);
 
@@ -197,7 +211,7 @@ function renderShell(ctx) {
     <div id="bnav-root"></div>`;
   navCtl = mountNav($('#bnav-root'), { labels: NAV, version: VERSION,
     ok: MENU_ORDER.filter((v) => ctx.menus.has(v)) });
-  $('#logout').addEventListener('click', async () => { await db.auth.signOut(); boot(); });
+  $('#logout').addEventListener('click', logout);
   $('#demo-reset')?.addEventListener('click', async () => { db.resetDemo(); await db.auth.signOut(); boot(); });
   clearInterval(clockTimer); tickClock(); clockTimer = setInterval(tickClock, 1000);
   showNet();
@@ -293,13 +307,14 @@ async function boot() {
     root.innerHTML = `<div class="login"><div class="card" style="max-width:460px"><h1>รอการอนุมัติ</h1>
       <p>บัญชี ${esc(ctx.me.email || ctx.me.full_name)} สมัครเรียบร้อยแล้ว กรุณาแจ้งผู้ดูแลระบบให้อนุมัติในหน้า "ตั้งค่าระบบ &gt; ผู้ใช้"</p>
       <button class="btn" id="logout">ออกจากระบบ</button></div></div>`;
-    $('#logout').addEventListener('click', async () => { await db.auth.signOut(); boot(); });
+    $('#logout').addEventListener('click', logout);
     return;
   }
   makeLive(ctx, s.user.id);
   curCtx = ctx;
   renderShell(ctx);
   watchStructure(ctx);
+  setTimeout(() => prefetchOffline(ctx).catch(() => {}), 4000);       // เตรียมข้อมูลไว้ใช้ตอนเน็ตหลุด
   hashHandler = () => route(ctx);
   window.addEventListener('hashchange', hashHandler);
   route(ctx);

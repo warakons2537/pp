@@ -1,7 +1,8 @@
 // ติดตามการบันทึกทุกครั้งของแอป เพื่อแสดง "กำลังบันทึก… / บันทึกแล้ว / บันทึกไม่สำเร็จ" ที่มุมบน
-let pending = 0; let failed = false; let savedAt = 0;
+let pending = 0; let failed = false; let savedAt = 0; let queued = 0;
+window.addEventListener('wl-queue', (e) => { queued = e.detail; window.dispatchEvent(new CustomEvent('wl-save')); });
 const emit = () => window.dispatchEvent(new CustomEvent('wl-save'));
-export const saveState = () => ({ pending, failed, justSaved: Date.now() - savedAt < 2000 });
+export const saveState = () => ({ pending, failed, queued, justSaved: Date.now() - savedAt < 2000 });
 
 export function trackWrites(db) {
   for (const m of ['insert', 'upsert', 'update', 'remove']) {

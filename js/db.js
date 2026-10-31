@@ -2,8 +2,9 @@
 //  ชั้นข้อมูล: ใช้ Supabase จริง หรือ "โหมดทดลอง" (เก็บในเบราว์เซอร์)
 //  หน้าจอทุกหน้าเรียกผ่าน API ชุดเดียวกัน จึงสลับได้โดยไม่ต้องแก้หน้าจอ
 // =====================================================================
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2569.10.31-8';
-import { seedDemo } from './demo-data.js?v=2569.10.31-8';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2569.10.31-9';
+import { createOffline, idbKv } from './offline.js?v=2569.10.31-9';
+import { seedDemo } from './demo-data.js?v=2569.10.31-9';
 
 const thaiError = (e) => {
   const m = String(e?.message || e);
@@ -259,9 +260,24 @@ function demoDb() {
   };
 }
 
+// ครอบด้วยชั้นออฟไลน์: จำข้อมูลที่อ่านไว้ · เข้าใช้ต่อได้เมื่อเน็ตหลุด · คิวบันทึกเช็กชื่อ/เช็กอาหาร
+function withOffline(base) {
+  if (typeof indexedDB === 'undefined') return base;
+  const origin = new URL(SUPABASE_URL.trim()).origin;
+  const probe = async () => {                          // เชื่อมถึงเซิร์ฟเวอร์ได้ไหม (ไม่สนว่าตอบอะไร ขอแค่ถึง)
+    if (navigator.onLine === false) return false;
+    try { const c = new AbortController(); setTimeout(() => c.abort(), 4000); await fetch(`${origin}/auth/v1/health`, { mode: 'no-cors', signal: c.signal, cache: 'no-store' }); return true; }
+    catch { return false; }
+  };
+  const emit = (type, detail) => window.dispatchEvent(new CustomEvent(`wl-${type}`, { detail }));
+  const layer = createOffline(base, { kv: idbKv(), probe, emit });
+  window.addEventListener('online', () => layer.offline.flush().catch(() => {}));
+  return layer;
+}
+
 function make() {
   if (!(SUPABASE_URL && SUPABASE_KEY)) return demoDb();
-  try { return supabaseDb(); } catch (err) {
+  try { return withOffline(supabaseDb()); } catch (err) {
     document.getElementById('app').innerHTML = `<div class="login"><div class="card"><h2>เชื่อมต่อฐานข้อมูลไม่ได้</h2><p>${String(err.message).replace(/</g, '&lt;')}</p></div></div>`;
     throw err;
   }
