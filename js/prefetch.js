@@ -1,7 +1,7 @@
 // โหลดข้อมูลที่ใช้บ่อยไว้ในเครื่องล่วงหน้า (ตอนออนไลน์) เพื่อให้เช็กชื่อ/เช็กอาหาร/รายคาบ เปิดได้แม้เน็ตหลุด
 // ต้องเรียกด้วยรูปแบบเดียวกับหน้าจอจริง (ชื่อตาราง/เงื่อนไข) ผลจึงตรงกับที่ชั้นออฟไลน์จำไว้
-import { getRoster } from './data.js?v=2569.10.31-9';
-import { iso, todayIso, daysInMonth } from './util.js?v=2569.10.31-9';
+import { getRoster } from './data.js?v=2569.10.31-10';
+import { iso, todayIso, daysInMonth } from './util.js?v=2569.10.31-10';
 
 export async function prefetchOffline(ctx) {
   if (ctx.db.mode !== 'supabase' || navigator.onLine === false) return;

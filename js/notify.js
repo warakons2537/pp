@@ -1,8 +1,9 @@
 // ---------- การแจ้งเตือน "ตั้งค่าระบบยังไม่ครบ" (เห็นเฉพาะผู้ดูแลระบบ) ----------
 // เพิ่มเรื่องใหม่: เพิ่มออบเจ็กต์ใน ITEMS 1 รายการ — แท็บการแจ้งเตือน จุดแดง และรายการค้าง ใช้ตามนี้เองทั้งหมด
 // check(ctx) คืนข้อความเมื่อค้าง หรือ null เมื่อครบแล้ว · tab = แท็บในหน้าตั้งค่าระบบที่ต้องไปแก้
-import { esc, roomName } from './util.js?v=2569.10.31-9';
-import { loadGrowthRef } from './data.js?v=2569.10.31-9';
+import { esc, roomName } from './util.js?v=2569.10.31-10';
+import { loadGrowthRef, getRoster } from './data.js?v=2569.10.31-10';
+import { todayIso, fromIso } from './util.js?v=2569.10.31-10';
 
 const few = (names) => (names.length > 3 ? `${names.slice(0, 3).join(', ')} และอีก ${names.length - 3}` : names.join(', '));
 
@@ -63,4 +64,28 @@ export function showAlerts(alerts, go) {
     if (b) go(b.dataset.tab);
   });
   wrap.querySelector('.alert-list button')?.focus();
+}
+
+// จุดแดงงานค้างรายเมนู (แต่ละคนเห็นเฉพาะงานของตัวเอง): เช็กชื่อ/เช็กอาหารวันนี้ยังไม่ครบ (วันจันทร์–ศุกร์) · 0 ร มส รอผู้ดูแลระบบยืนยัน
+export async function computeBadges(ctx) {
+  const out = {};
+  const today = todayIso(); const dow = fromIso(today).getDay();
+  const q = { gte: { date: today }, lte: { date: today } };
+  if (dow >= 1 && dow <= 5 && ctx.myClassrooms?.length) {
+    for (const [menu, table] of [['daily', 'daily_attendance'], ['meals', 'meal_checks']]) {
+      if (!ctx.menus.has(menu)) continue;
+      let n = 0;
+      for (const room of ctx.myClassrooms) {
+        try {
+          const [roster, rows] = await Promise.all([getRoster(ctx.db, room.id), ctx.db.select(table, { eq: { classroom_id: room.id }, ...q })]);
+          if (roster.length && rows.length < roster.length) n++;
+        } catch { /* ข้ามห้องที่โหลดไม่ได้ */ }
+      }
+      if (n) out[menu] = n;
+    }
+  }
+  if (ctx.isAdmin) {
+    try { const n = (await ctx.db.select('remedial_cases', { eq: { status: 'submitted' } })).length; if (n) out.remedial = n; } catch { /* ยังไม่ได้สร้างตาราง */ }
+  }
+  return out;
 }

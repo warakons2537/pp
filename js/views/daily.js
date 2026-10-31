@@ -1,7 +1,8 @@
-import { esc, $, toast, options, roomName, fullName, iso, todayIso, thaiDate, daysInMonth,
-  THAI_MONTHS, THAI_DOW, STATUS, nextStatus } from '../util.js?v=2569.10.31-9';
-import { attachSheet } from '../sheet.js?v=2569.10.31-9';
-import { getRoster, termMonths } from '../data.js?v=2569.10.31-9';
+import { esc, $, toast, options, roomName, fullName, iso, fromIso, todayIso, thaiDate, daysInMonth,
+  THAI_MONTHS, THAI_DOW, STATUS, nextStatus } from '../util.js?v=2569.10.31-10';
+import { attachSheet } from '../sheet.js?v=2569.10.31-10';
+import { onSwipe } from '../swipe.js?v=2569.10.31-10';
+import { getRoster, termMonths } from '../data.js?v=2569.10.31-10';
 
 const pref = { room: null, mode: null, ym: null, date: null };
 
@@ -166,7 +167,7 @@ export async function render(el, ctx) {
   function drawDay(box, students, m, edit) {
     box.innerHTML = `
       <div class="row" style="justify-content:space-between;align-items:center">
-        <b>${esc(thaiDate(pref.date))}</b>
+        <b>${esc(thaiDate(pref.date))}</b><span class="small muted touch-only">ปัดซ้าย/ขวาเพื่อเปลี่ยนวัน</span>
         ${edit ? '<button class="btn btn-primary" id="allin">ทุกคนที่ยังว่าง = มา</button>' : ''}
       </div>
       <div class="small muted" id="daycount"></div>
@@ -175,6 +176,7 @@ export async function render(el, ctx) {
           <div class="seg">${Object.entries(STATUS).map(([key, v]) => `<button data-s="${key}" class="${st === key ? `on ${v.cls}` : ''}" ${edit ? '' : 'disabled'}>${v.label}</button>`).join('')}</div></div>`; }).join('')}
       </div>`;
     updateDayCount();
+    onSwipe(box, (dir) => { const d = fromIso(pref.date); d.setDate(d.getDate() + (dir === 'left' ? 1 : -1)); pref.date = iso(d); render(el, ctx); });   // ปัดซ้าย = วันถัดไป · ปัดขวา = วันก่อนหน้า
     if (!edit) return;
     box.addEventListener('click', (e) => {
       const b = e.target.closest('.seg button');

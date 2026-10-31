@@ -1,26 +1,28 @@
-import { db } from './db.js?v=2569.10.31-9';
-import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.31-9';
-import { icon } from './icons.js?v=2569.10.31-9';
-import { prefetchOffline } from './prefetch.js?v=2569.10.31-9';
-import { initPwa } from './pwa.js?v=2569.10.31-9';
-import { trackWrites, saveState } from './savestate.js?v=2569.10.31-9';
-import { BRAND, VERSION } from './brand.js?v=2569.10.31-9';
-import { mountNav, labelHtml } from './navbar.js?v=2569.10.31-9';
-import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.31-9';
-import * as home from './views/home.js?v=2569.10.31-9';
-import * as students from './views/students.js?v=2569.10.31-9';
-import * as daily from './views/daily.js?v=2569.10.31-9';
-import * as period from './views/period.js?v=2569.10.31-9';
-import * as reports from './views/reports.js?v=2569.10.31-9';
-import * as setup from './views/setup.js?v=2569.10.31-9';
-import * as scores from './views/scores.js?v=2569.10.31-9';
-import * as meals from './views/meals.js?v=2569.10.31-9';
-import * as health from './views/health.js?v=2569.10.31-9';
-import * as traits from './views/traits.js?v=2569.10.31-9';
-import * as remedial from './views/remedial.js?v=2569.10.31-9';
-import { renderStudentCheck } from './views/student-check.js?v=2569.10.31-9';
-import { NAV, MENU_GROUPS, MENU_ORDER, allowedMenus } from './menus.js?v=2569.10.31-9';
-import * as print from './views/print.js?v=2569.10.31-9';
+import { db } from './db.js?v=2569.10.31-10';
+import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.31-10';
+import { icon } from './icons.js?v=2569.10.31-10';
+import { prefetchOffline } from './prefetch.js?v=2569.10.31-10';
+import { initPwa } from './pwa.js?v=2569.10.31-10';
+import { trackWrites, saveState } from './savestate.js?v=2569.10.31-10';
+import { BRAND, VERSION } from './brand.js?v=2569.10.31-10';
+import { mountNav, labelHtml } from './navbar.js?v=2569.10.31-10';
+import { computeAlerts, computeBadges, badge, showAlerts } from './notify.js?v=2569.10.31-10';
+import { openSearch, initSearchKey } from './search.js?v=2569.10.31-10';
+import { openPrefs } from './prefs.js?v=2569.10.31-10';
+import * as home from './views/home.js?v=2569.10.31-10';
+import * as students from './views/students.js?v=2569.10.31-10';
+import * as daily from './views/daily.js?v=2569.10.31-10';
+import * as period from './views/period.js?v=2569.10.31-10';
+import * as reports from './views/reports.js?v=2569.10.31-10';
+import * as setup from './views/setup.js?v=2569.10.31-10';
+import * as scores from './views/scores.js?v=2569.10.31-10';
+import * as meals from './views/meals.js?v=2569.10.31-10';
+import * as health from './views/health.js?v=2569.10.31-10';
+import * as traits from './views/traits.js?v=2569.10.31-10';
+import * as remedial from './views/remedial.js?v=2569.10.31-10';
+import { renderStudentCheck } from './views/student-check.js?v=2569.10.31-10';
+import { NAV, MENU_GROUPS, MENU_ORDER, allowedMenus } from './menus.js?v=2569.10.31-10';
+import * as print from './views/print.js?v=2569.10.31-10';
 
 const VIEWS = { home, students, daily, meals, period, reports, setup, scores, health, traits, remedial, print };
 const root = document.getElementById('app');
@@ -200,18 +202,24 @@ function renderShell(ctx) {
         <header class="topbar no-print">
           <div class="tb-title"><b id="tb-title"></b><small id="tb-term">${esc(termLine(ctx))}</small></div>
           <div class="tb-clock"><span id="tb-date">${icon('daily')}<span></span></span><i class="sep"></i><span id="tb-time">${icon('period')}<span></span></span></div>
+          <div class="tb-tools">
+            <button class="btn btn-sm" id="btn-search" title="ค้นหาด่วน (Ctrl+K)" aria-label="ค้นหาด่วน">${icon('search')}</button>
+            <button class="btn btn-sm" id="btn-prefs" title="การแสดงผล (ธีม ขนาดตัวอักษร)" aria-label="การแสดงผล">${icon('prefs')}</button>
+          </div>
           <span class="live tb-net" id="tb-net"></span>
           <div class="tb-user"><span class="avatar" aria-hidden="true">${esc((name.replace(/^(ครู|นาย|นางสาว|นาง)\s*/, '').replace(/^[เแโใไ]/, '')[0]) || '?')}</span>
             <span class="nm"><b title="${esc(name)}">${esc(name)}</b><small>${ctx.isAdmin ? 'ผู้ดูแลระบบ' : 'ครู'}</small></span>
             <button class="btn btn-sm" id="logout" title="ออกจากระบบ" aria-label="ออกจากระบบ">${icon('logout')}</button></div>
         </header>
         <div class="main-pad">${db.mode === 'demo' ? `<div class="demo-bar no-print"><span><b>โหมดทดลอง</b> ข้อมูลตัวอย่าง (ชื่อสมมติ) เก็บในเบราว์เซอร์นี้เท่านั้น</span>
-        <button class="btn btn-sm" id="demo-reset">ล้างข้อมูลทดลอง</button></div>` : ''}<div class="main-inner" id="view"></div></div></main>
+        <button class="btn btn-sm" id="demo-reset">ล้างข้อมูลทดลอง</button></div>` : ''}<div class="main-inner" id="view" tabindex="-1"></div></div></main>
     </div>
     <div id="bnav-root"></div>`;
   navCtl = mountNav($('#bnav-root'), { labels: NAV, version: VERSION,
     ok: MENU_ORDER.filter((v) => ctx.menus.has(v)) });
   $('#logout').addEventListener('click', logout);
+  $('#btn-search').addEventListener('click', () => openSearch(ctx, { logout }));
+  $('#btn-prefs').addEventListener('click', openPrefs);
   $('#demo-reset')?.addEventListener('click', async () => { db.resetDemo(); await db.auth.signOut(); boot(); });
   clearInterval(clockTimer); tickClock(); clockTimer = setInterval(tickClock, 1000);
   showNet();
@@ -219,13 +227,23 @@ function renderShell(ctx) {
 
 // จุดแดงจำนวนเรื่องที่ตั้งค่ายังไม่ครบ: เมนูด้านข้าง · เมนูลัดหน้าหลัก · แถบล่าง
 let curCtx = null;
+let work = {};                                  // งานค้างรายเมนู (เช็กชื่อวันนี้ ฯลฯ)
+let workAt = 0; let workBusy = false;
 function paintBadges() {
-  const n = curCtx?.alerts?.length || 0;
-  $$('.nav a[data-v="setup"], .apps a[data-v="setup"] .tile').forEach((el) => {
-    el.querySelector(':scope > .nbadge')?.remove();
-    if (n) el.insertAdjacentHTML('beforeend', badge(n));
-  });
-  navCtl?.setBadge('setup', n);
+  const counts = { ...work, setup: curCtx?.alerts?.length || 0 };
+  for (const v of ['setup', 'daily', 'meals', 'remedial']) {
+    const n = counts[v] || 0;
+    $$(`.nav a[data-v="${v}"], .apps a[data-v="${v}"] .tile`).forEach((el) => {
+      el.querySelector(':scope > .nbadge')?.remove();
+      if (n) el.insertAdjacentHTML('beforeend', badge(n));
+    });
+    navCtl?.setBadge(v, n);
+  }
+}
+async function refreshWork(force) {
+  if (!curCtx || workBusy || (!force && Date.now() - workAt < 20000)) return;
+  workBusy = true;
+  try { work = await computeBadges(curCtx); workAt = Date.now(); paintBadges(); } catch { /* ไม่กระทบการใช้งาน */ } finally { workBusy = false; }
 }
 // แตะเมนูตั้งค่าระบบขณะมีเรื่องค้าง → แสดงรายการก่อน
 document.addEventListener('click', (e) => {
@@ -242,6 +260,7 @@ document.addEventListener('click', (e) => {
 const SKELETON = `<div class="skel-page" role="status" aria-label="กำลังโหลด"><i class="skel" style="width:38%;height:28px"></i><i class="skel" style="width:62%;height:14px;margin-top:10px"></i>
   <div class="skel-rows">${'<i class="skel"></i>'.repeat(7)}</div></div>`;
 
+let lastView = null;
 async function route(ctx) {
   const v = (location.hash.replace('#', '') || 'home').split('?')[0];
   const view = VIEWS[v] && ctx.menus.has(v) ? v : 'home';
@@ -256,6 +275,8 @@ async function route(ctx) {
   catch (err) { console.error(err); el.innerHTML = `<div class="card"><h2>เปิดหน้านี้ไม่สำเร็จ</h2><p>${esc(err.message)}</p></div>`; }
   void el.offsetWidth; el.classList.add('enter');                // เนื้อหาจางเข้า 150 มิลลิวินาที (ปิดเองเมื่อเครื่องตั้ง "ลดการเคลื่อนไหว")
   paintBadges();
+  refreshWork(['daily', 'meals', 'remedial'].includes(lastView));
+  lastView = view;
   window.scrollTo(0, 0);
 }
 
@@ -321,6 +342,8 @@ async function boot() {
 }
 
 db.auth.onChange(() => {});
+document.querySelector('.skip-link')?.addEventListener('click', (e) => { e.preventDefault(); document.getElementById('view')?.focus(); });
 trackWrites(db);
+initSearchKey(() => curCtx, logout);
 initPwa();
 boot();

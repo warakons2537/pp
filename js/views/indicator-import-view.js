@@ -3,9 +3,9 @@
 //  อ่านรหัสวิชา (แผ่น "รายวิชา") + หัวคอลัมน์ตัวชี้วัด (แผ่น "วิชาที่ n" แถว 5) → ตารางตรวจ
 //  → เพิ่มลงตัวชี้วัดกลางของรายวิชา (เฉพาะตัวที่ยังไม่มี) แล้วใส่ลงทุกห้องที่เปิดสอนในภาคเรียนนี้
 // =====================================================================
-import { esc, modal } from '../util.js?v=2569.10.31-9';
-import { sheetMatrix } from '../achievement-import.js?v=2569.10.31-9';
-import { parseBookIndicators, planBookImport, syncSubject } from '../indicators.js?v=2569.10.31-9';
+import { esc, modal } from '../util.js?v=2569.10.31-10';
+import { sheetMatrix } from '../achievement-import.js?v=2569.10.31-10';
+import { parseBookIndicators, planBookImport, syncSubject } from '../indicators.js?v=2569.10.31-10';
 
 export async function indicatorImportFlow(ctx, file) {
   if (!window.XLSX) throw new Error('โหลดตัวอ่านไฟล์ Excel ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วรีเฟรชหน้า');

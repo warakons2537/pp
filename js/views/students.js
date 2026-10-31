@@ -1,6 +1,6 @@
-import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.10.31-9';
-import { getRoster } from '../data.js?v=2569.10.31-9';
-import { readDmcFile } from '../dmc.js?v=2569.10.31-9';
+import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.10.31-10';
+import { getRoster } from '../data.js?v=2569.10.31-10';
+import { readDmcFile } from '../dmc.js?v=2569.10.31-10';
 
 let selected = null;   // ห้องที่เลือกค้างไว้ระหว่างเปลี่ยนหน้า
 
@@ -13,6 +13,9 @@ export async function render(el, ctx) {
     $('#dmc-file', el)?.addEventListener('change', (e) => importFlow(e.target, ctx, null, () => render(el, ctx)));
     return;
   }
+  const focusSid = ctx.params?.student || null;
+  if (ctx.params?.room && rooms.some((r) => r.id === ctx.params.room)) selected = ctx.params.room;
+  if (ctx.params?.room || ctx.params?.student) ctx.params = {};
   if (!rooms.some((r) => r.id === selected)) selected = rooms[0].id;
   const room = ctx.classroomById[selected];
   const roster = await getRoster(ctx.db, selected, { includeLeft: true });
@@ -34,7 +37,7 @@ export async function render(el, ctx) {
     </div>
     ${roster.length ? `<div class="tbl-wrap"><table class="tbl stu-tbl">
       <thead><tr><th class="n">เลขที่</th><th class="hide-sm">เลขประจำตัว</th><th>ชื่อ-สกุล</th><th class="c hide-sm">เพศ</th><th>สถานะ</th><th></th></tr></thead>
-      <tbody>${roster.map((s) => `<tr>
+      <tbody>${roster.map((s) => `<tr data-sid="${esc(s.id)}">
         <td class="n">${s.number ?? ''}</td><td class="tabular hide-sm">${esc(s.student_code ?? '')}</td>
         <td class="w">${esc(fullName(s))}</td><td class="c hide-sm">${esc(s.gender ?? '')}</td>
         <td>${s.enroll_status === 'left' ? `<span class="chip chip-warn">ออก ${esc(thaiDate(s.left_on, true))}</span>` : '<span class="chip chip-ok">กำลังเรียน</span>'}</td>
@@ -47,6 +50,7 @@ export async function render(el, ctx) {
 
   const again = () => render(el, ctx);
   $('#room', el).addEventListener('change', (e) => { selected = e.target.value; again(); });
+  if (focusSid) { const tr = el.querySelector(`tr[data-sid="${CSS.escape(focusSid)}"]`); if (tr) { tr.scrollIntoView({ block: 'center' }); tr.classList.add('flash'); setTimeout(() => tr.classList.remove('flash'), 1800); } }
   $('#dmc-file', el).addEventListener('change', (e) => importFlow(e.target, ctx, room, again));
   $('#add', el).addEventListener('click', () => editStudent(ctx, room, null, active.length + 1, again));
   $('#renum', el).addEventListener('click', () => renumber(ctx, active, again));

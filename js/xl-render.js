@@ -5,10 +5,10 @@
 //  - ผสานเซลล์ · เส้นขอบ · สีพื้น · ฟอนต์ · การจัดแนว/ตัดบรรทัด/ข้อความล้นเซลล์ · หมุนข้อความ
 //  - รูปแบบตัวเลข · การจัดรูปแบบตามเงื่อนไข · รูปภาพ/รูปร่าง/กล่องข้อความ
 // =====================================================================
-import { MAXCOL, XErr, Mat } from './xl-formula.js?v=2569.10.31-9';
-import { formatValue, isDateFormat } from './xl-numfmt.js?v=2569.10.31-9';
-import { parseDrawing, key } from './xl-model.js?v=2569.10.31-9';
-import { shiftFormula } from './xlsx-template.js?v=2569.10.31-9';
+import { MAXCOL, XErr, Mat } from './xl-formula.js?v=2569.10.31-10';
+import { formatValue, isDateFormat } from './xl-numfmt.js?v=2569.10.31-10';
+import { parseDrawing, key } from './xl-model.js?v=2569.10.31-10';
+import { shiftFormula } from './xlsx-template.js?v=2569.10.31-10';
 
 export const PAPER = { 9: [595.28, 841.89], 1: [612, 792], 5: [612, 1008], 8: [841.89, 1190.55], 11: [419.53, 595.28] };
 const PT_PER_PX = 0.75; const EMU_PER_PT = 12700;

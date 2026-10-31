@@ -1,7 +1,7 @@
-import { esc, roomName, thaiDate, todayIso, fullName, iso, fromIso, THAI_DOW, levelName } from '../util.js?v=2569.10.31-9';
-import { getRoster, termRange } from '../data.js?v=2569.10.31-9';
-import { icon } from '../icons.js?v=2569.10.31-9';
-import { MENU_ORDER, plain, hasNoDuties } from '../menus.js?v=2569.10.31-9';
+import { esc, roomName, thaiDate, todayIso, fullName, iso, fromIso, THAI_DOW, levelName } from '../util.js?v=2569.10.31-10';
+import { getRoster, termRange } from '../data.js?v=2569.10.31-10';
+import { icon } from '../icons.js?v=2569.10.31-10';
+import { MENU_ORDER, plain, hasNoDuties } from '../menus.js?v=2569.10.31-10';
 
 export async function render(el, ctx) {
   const { db } = ctx;
@@ -22,19 +22,21 @@ export async function render(el, ctx) {
   const since = iso(new Date(fromIso(today).getTime() - 40 * 86400000));
   const rooms = ctx.myClassrooms;
   const cards = await Promise.all(rooms.map(async (c) => {
-    const [roster, recent, summary] = await Promise.all([
+    const [roster, recent, summary, mealRows] = await Promise.all([
       getRoster(db, c.id),
       db.select('daily_attendance', { eq: { classroom_id: c.id }, gte: { date: since }, lte: { date: today } }),
       db.rpc('daily_attendance_summary', { cid: c.id, d_from: range.from, d_to: range.to }),
+      ctx.menus.has('meals') ? db.select('meal_checks', { eq: { classroom_id: c.id }, gte: { date: today }, lte: { date: today } }).catch(() => []) : [],
     ]);
     const todayRows = recent.filter((r) => r.date === today);
     const days = [...new Set(recent.map((r) => r.date))].sort().slice(-10);
     const series = days.map((d) => { const rs = recent.filter((r) => r.date === d);
       return { d, pct: rs.length ? Math.round(100 * rs.filter((r) => r.status === 'present' || r.status === 'late').length / rs.length) : 0 }; });
     const risk = summary.filter((s) => s.pct !== null && s.pct < 80).map((s) => ({ ...s, st: roster.find((r) => r.id === s.student_id) })).filter((s) => s.st);
-    return { c, roster, todayRows, series, risk, absent: todayRows.filter((r) => r.status === 'absent').length };
+    return { c, roster, todayRows, series, risk, absent: todayRows.filter((r) => r.status === 'absent').length, meal: mealRows.filter((r) => r.status === 'ate').length, mealMarked: mealRows.length };
   }));
 
+  const pendingRem = ctx.isAdmin && ctx.menus.has('remedial') ? await db.select('remedial_cases', { eq: { status: 'submitted' } }).then((r) => r.length).catch(() => 0) : 0;
   const notChecked = cards.filter((x) => x.roster.length && x.todayRows.length < x.roster.length);
   const riskAll = cards.flatMap((x) => x.risk.map((r) => ({ ...r, room: x.c })));
   const d = fromIso(today);
@@ -43,6 +45,9 @@ export async function render(el, ctx) {
   const todo = [
     ...notChecked.map((x) => `<a href="#daily"><span class="dot" style="background:var(--amber)"></span>
       <span>ยังเช็กชื่อห้อง ${esc(roomName(x.c))} ไม่ครบ (${x.todayRows.length}/${x.roster.length} คน)</span></a>`),
+    ...(ctx.menus.has('meals') ? cards.filter((x) => x.roster.length && x.mealMarked < x.roster.length).map((x) => `<a href="#meals"><span class="dot" style="background:var(--amber)"></span>
+      <span>ยังเช็กอาหารกลางวันห้อง ${esc(roomName(x.c))} ไม่ครบ (${x.mealMarked}/${x.roster.length} คน)</span></a>`) : []),
+    ...(pendingRem ? [`<a href="#remedial"><span class="dot" style="background:var(--amber)"></span><span>ติดตาม 0 ร มส: มี ${pendingRem} รายการรอยืนยัน</span></a>`] : []),
     ...(riskAll.length ? [`<a href="#reports"><span class="dot" style="background:var(--red)"></span>
       <span>นักเรียน ${riskAll.length} คน มาเรียนต่ำกว่าร้อยละ 80 ในภาคนี้</span></a>`] : []),
   ];
@@ -61,10 +66,10 @@ export async function render(el, ctx) {
     ${hasNoDuties(ctx) ? '<div class="notice">คุณยังไม่ได้รับมอบหมายเป็นครูประจำชั้นหรือครูผู้สอน — กรุณาแจ้งผู้ดูแลระบบให้กำหนดห้องและวิชา หรือเปิดเมนูที่ต้องการให้</div>' : ''}
     <div class="card"><div class="card-title">${icon('home')}เมนูลัด</div>
       <nav class="apps">${APPS.map(([v, label]) => `<a href="#${v}" data-v="${v}"><span class="tile">${icon(v)}</span><span>${label}</span></a>`).join('')}</nav></div>
-    ${rooms.length && can('daily') ? `<div class="todo">${todo.length ? todo.join('') : `<a href="#daily"><span class="dot" style="background:var(--green)"></span><span>เช็กชื่อวันนี้ครบทุกห้องแล้ว</span></a>`}</div>` : ''}
+    ${(rooms.length && can('daily')) || pendingRem ? `<div class="todo">${todo.length ? todo.join('') : `<a href="#daily"><span class="dot" style="background:var(--green)"></span><span>เช็กชื่อวันนี้ครบทุกห้องแล้ว</span></a>`}</div>` : ''}
 
     ${rooms.length ? `<h2>ห้องที่ดูแล</h2>
-    <div class="grid">${cards.map(({ c, roster, todayRows, series, risk, absent }) => `
+    <div class="grid">${cards.map(({ c, roster, todayRows, series, risk, absent, meal, mealMarked }) => `
       <div class="card room-card">
         <div class="top">
           <div><div class="roomno">${esc(roomName(c))}</div><div class="small muted">${esc(levelName(c.level))} · ${roster.length} คน</div></div>
@@ -79,6 +84,7 @@ export async function render(el, ctx) {
         <div class="stats">
           <div class="stat"><b>${todayRows.length ? roster.length - absent : '–'}</b><span>มาวันนี้</span></div>
           <div class="stat"><b style="${absent ? 'color:var(--red)' : ''}">${todayRows.length ? absent : '–'}</b><span>ขาดวันนี้</span></div>
+          ${can('meals') ? `<div class="stat"><b>${mealMarked ? meal : '–'}</b><span>ทานอาหารวันนี้</span></div>` : ''}
           <div class="stat"><b style="${risk.length ? 'color:var(--red)' : ''}">${risk.length}</b><span>ต่ำกว่า 80%</span></div>
         </div>
         ${risk.length ? `<div class="small">${risk.slice(0, 3).map((r) => `<div style="display:flex;justify-content:space-between;gap:8px"><span>${esc(fullName(r.st))}</span><span class="chip chip-bad">${r.pct}%</span></div>`).join('')}${risk.length > 3 ? `<div class="muted">และอีก ${risk.length - 3} คน</div>` : ''}</div>` : ''}
