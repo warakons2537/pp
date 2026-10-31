@@ -1,6 +1,6 @@
 import { esc, $, toast, options, roomName, fullName, iso, todayIso, thaiDate, daysInMonth,
-  THAI_MONTHS, THAI_DOW } from '../util.js?v=2569.10.31-4';
-import { getRoster, termMonths } from '../data.js?v=2569.10.31-4';
+  THAI_MONTHS, THAI_DOW } from '../util.js?v=2569.10.31-5';
+import { getRoster, termMonths } from '../data.js?v=2569.10.31-5';
 
 // สถานะการทานอาหาร (ใช้สีเดียวกับเช็กชื่อ)
 const MEAL = {

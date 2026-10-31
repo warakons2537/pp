@@ -1,8 +1,8 @@
 // รายงานระยะที่ 3: ภาวะโภชนาการ (รายชื่อ + ความชุก + รายชื่อที่ต้องดูแล) และสรุปคุณลักษณะ/กิจกรรม
-import { esc, fullName, levelName, thaiDate } from '../util.js?v=2569.10.31-4';
-import { getRoster, loadGrowthRef, getBirthDates } from '../data.js?v=2569.10.31-4';
-import { classify, ageMonths, WA, HA, WH, OUT_OF_TABLE, TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.10.31-4';
-import { head, signs, termText } from './report-common.js?v=2569.10.31-4';
+import { esc, fullName, levelName, thaiDate } from '../util.js?v=2569.10.31-5';
+import { getRoster, loadGrowthRef, getBirthDates } from '../data.js?v=2569.10.31-5';
+import { classify, ageMonths, WA, HA, WH, OUT_OF_TABLE, TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.10.31-5';
+import { head, signs, termText } from './report-common.js?v=2569.10.31-5';
 
 const academic = (ctx) => ({ name: ctx.settings.academic_head_name, role: 'หัวหน้างานวิชาการ' });
 const director = (ctx) => ({ name: ctx.settings.director_name, role: ctx.settings.director_title || 'ผู้อำนวยการโรงเรียน' });

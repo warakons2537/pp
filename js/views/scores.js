@@ -1,9 +1,9 @@
-import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.10.31-4';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-4';
-import { getRoster } from '../data.js?v=2569.10.31-4';
-import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.10.31-4';
-import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.10.31-4';
-import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.10.31-4';
+import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.10.31-5';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-5';
+import { getRoster } from '../data.js?v=2569.10.31-5';
+import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.10.31-5';
+import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.10.31-5';
+import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.10.31-5';
 
 const pref = { course: null, tab: 'scores' };
 const KIND = { score: 'คะแนนเก็บระหว่างภาค', final: 'สอบปลายภาค', indicator: 'ตัวชี้วัด (ผ/มผ)' };
