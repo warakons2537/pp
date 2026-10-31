@@ -1,12 +1,12 @@
 // =====================================================================
 //  พิมพ์ ปพ.6 รายบุคคล ด้วยแบบพิมพ์ในตัว (หน้าตาเหมือนไฟล์ ปพ.5-6 เดิมของโรงเรียน)
 // =====================================================================
-import { esc, $, toast, roomName } from '../util.js?v=2569.10.31-11';
-import { buildBookData } from '../pp-book.js?v=2569.10.31-11';
-import { Forms, classModel, loadFormsBytes } from '../pp-forms.js?v=2569.10.31-11';
-import { Renderer } from '../xl-render.js?v=2569.10.31-11';
-import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.10.31-11';
-import { ensureCss, printPages } from './pp-book-view.js?v=2569.10.31-11';
+import { esc, $, toast, roomName } from '../util.js?v=2569.10.31-12';
+import { buildBookData } from '../pp-book.js?v=2569.10.31-12';
+import { Forms, classModel, loadFormsBytes } from '../pp-forms.js?v=2569.10.31-12';
+import { Renderer } from '../xl-render.js?v=2569.10.31-12';
+import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.10.31-12';
+import { ensureCss, printPages } from './pp-book-view.js?v=2569.10.31-12';
 
 const ZOOM = { 0.5: 'เล็ก', 0.75: 'กลาง', 1: 'เต็ม' };
 let zoom = 0.75;

@@ -1,15 +1,15 @@
-import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.31-11';
-import { GRANTABLE, MENU_GROUPS, plain } from '../menus.js?v=2569.10.31-11';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-11';
-import { ROUNDING } from '../grading.js?v=2569.10.31-11';
-import { excelRefToRows } from '../assess.js?v=2569.10.31-11';
-import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.31-11';
-import { subjectImportFlow } from './subject-import-view.js?v=2569.10.31-11';
-import { teacherImportFlow } from './teacher-import-view.js?v=2569.10.31-11';
-import { indicatorImportFlow } from './indicator-import-view.js?v=2569.10.31-11';
-import { clearGrowthRef } from '../data.js?v=2569.10.31-11';
-import { teacherKey, displayName } from '../teacher-import.js?v=2569.10.31-11';
-import { applyCourseOrder, inheritedOrder } from '../course-order.js?v=2569.10.31-11';
+import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.31-12';
+import { GRANTABLE, MENU_GROUPS, plain } from '../menus.js?v=2569.10.31-12';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-12';
+import { ROUNDING } from '../grading.js?v=2569.10.31-12';
+import { excelRefToRows } from '../assess.js?v=2569.10.31-12';
+import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.31-12';
+import { subjectImportFlow } from './subject-import-view.js?v=2569.10.31-12';
+import { teacherImportFlow } from './teacher-import-view.js?v=2569.10.31-12';
+import { indicatorImportFlow } from './indicator-import-view.js?v=2569.10.31-12';
+import { clearGrowthRef } from '../data.js?v=2569.10.31-12';
+import { teacherKey, displayName } from '../teacher-import.js?v=2569.10.31-12';
+import { applyCourseOrder, inheritedOrder } from '../course-order.js?v=2569.10.31-12';
 
 let tab = 'school';
 const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', rooms: 'ห้องเรียน', subjects: 'รายวิชา', roomsubj: 'รายวิชาตามชั้น', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', notify: 'การแจ้งเตือน', backup: 'สำรองข้อมูล' };
@@ -59,8 +59,10 @@ function school(pane, ctx, run) {
 function terms(pane, ctx, run) {
   pane.innerHTML = `<div class="card">
     <div class="row"><button class="btn btn-primary" id="add">เพิ่มภาคเรียน</button></div>
-    ${ctx.terms.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>ปีการศึกษา</th><th>ภาคเรียน</th><th>เปิดภาค</th><th>ปิดภาค</th><th></th></tr></thead><tbody>
+    ${ctx.terms.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>ปีการศึกษา</th><th>ภาคเรียน</th><th>เปิดภาค</th><th>ปิดภาค</th><th>ผลการเรียนให้นักเรียนดู</th><th></th></tr></thead><tbody>
       ${ctx.terms.map((t) => `<tr><td data-l="ปีการศึกษา">${t.academic_year}</td><td data-l="ภาคเรียน">${t.term}</td><td data-l="เปิดภาค">${esc(thaiDate(t.start_date, true))}</td><td data-l="ปิดภาค">${esc(thaiDate(t.end_date, true))}</td>
+        <td data-l="นักเรียนดูผลการเรียน">${t.grades_released ? '<span class="chip chip-ok">เปิดให้ดูแล้ว</span>' : '<span class="chip">ยังไม่เปิด</span>'}
+          <button class="btn btn-sm" data-rel="${t.id}">${t.grades_released ? 'ปิด' : 'เปิดให้ดู'}</button></td>
         <td class="n tc-act">${t.is_current ? '<span class="chip chip-ok">ภาคเรียนปัจจุบัน</span>' : `<button class="btn btn-sm" data-cur="${t.id}">ตั้งเป็นปัจจุบัน</button>`}
           <button class="btn btn-sm" data-edit="${t.id}">แก้ไข</button></td></tr>`).join('')}
     </tbody></table></div>` : '<div class="empty">ยังไม่มีภาคเรียน</div>'}
@@ -81,6 +83,15 @@ function terms(pane, ctx, run) {
     const t = ctx.terms.find((x) => x.id === b.dataset.edit);
     const r = await form(t); if (!r) return;
     run(async () => { await ctx.db.update('terms', { id: t.id }, { academic_year: Number(r.academic_year), term: Number(r.term), start_date: r.start_date || null, end_date: r.end_date || null, approve_date: r.approve_date || null, is_current: !!r.is_current }); if (r.is_current) await clearOthers(ctx, t.id); });
+  }));
+  pane.querySelectorAll('[data-rel]').forEach((b) => b.addEventListener('click', async () => {
+    const t = ctx.terms.find((x) => x.id === b.dataset.rel);
+    if (!t.grades_released) {
+      const ok = await modal('เปิดให้นักเรียนดูผลการเรียน', `<p>ภาคเรียนที่ ${t.term}/${t.academic_year}: นักเรียนจะตรวจสอบเกรดของตัวเองได้ที่หน้าเข้าสู่ระบบ (กรอกชื่อ นามสกุล หรือเลขประจำตัวอย่างน้อย 2 ช่อง)</p>
+        <p class="small muted">ควรเปิดเมื่อครูบันทึกคะแนนและตัดเกรดครบแล้วเท่านั้น วิชาที่คะแนนยังไม่ครบจะขึ้นว่า "รอครูบันทึกคะแนนให้ครบ" ปิดได้ทุกเมื่อ</p>`, { okText: 'เปิดให้ดู' });
+      if (!ok) return;
+    }
+    run(() => ctx.db.update('terms', { id: t.id }, { grades_released: !t.grades_released }));
   }));
   pane.querySelectorAll('[data-cur]').forEach((b) => b.addEventListener('click', () =>
     run(async () => { await ctx.db.update('terms', { id: b.dataset.cur }, { is_current: true }); await clearOthers(ctx, b.dataset.cur); })));
@@ -386,7 +397,7 @@ async function growth(pane, ctx, run) {
   $('#g-tpl', pane).href = URL.createObjectURL(new Blob(['\ufeff' + tpl], { type: 'text/csv' }));
   const upsertRows = async (rows) => { for (let i = 0; i < rows.length; i += 500) await ctx.db.upsert('growth_reference', rows.slice(i, i + 500), 'ref_set,sex,basis,key,measure'); clearGrowthRef(); };
   $('#load-excel', pane).addEventListener('click', () => run(async () => {
-    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.31-11');
+    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.31-12');
     await upsertRows(excelRefToRows(EXCEL_AGE, EXCEL_HT));
   }, 'โหลดตารางจาก Excel เดิมแล้ว'));
   pane.querySelectorAll('[data-use]').forEach((b) => b.addEventListener('click', () =>

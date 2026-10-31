@@ -4,7 +4,7 @@
 //  3) บันทึก: เช็กชื่อรายวัน/รายคาบ/เช็กอาหาร ถ้าส่งไม่ได้จะเก็บคิวไว้ในเครื่องแล้วส่งเองเมื่อมีสัญญาณ (ค่าล่าสุดชนะ)
 //     ส่วนอื่น (คะแนน 0 ร มส ตั้งค่า) ต้องออนไลน์ เพราะมีการตรวจเงื่อนไขมากกว่า
 // ฟังก์ชันที่ห้ามจำผลไว้ในเครื่อง (ข้อมูลส่วนบุคคลที่ผู้ใช้ไม่ได้ล็อกอิน เช่น นักเรียนตรวจผลของตัวเอง)
-const NO_CACHE = new Set(['remedial_lookup']);
+const NO_CACHE = new Set(['remedial_lookup', 'student_grades']);
 export const QUEUE_TABLES = new Set(['daily_attendance', 'period_attendance', 'meal_checks']);
 
 const NET = /failed to fetch|networkerror|network request failed|load failed|fetch failed|err_internet|err_network|timeout|ขาดการเชื่อมต่อ/i;

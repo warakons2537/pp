@@ -2,9 +2,9 @@
 //  ชั้นข้อมูล: ใช้ Supabase จริง หรือ "โหมดทดลอง" (เก็บในเบราว์เซอร์)
 //  หน้าจอทุกหน้าเรียกผ่าน API ชุดเดียวกัน จึงสลับได้โดยไม่ต้องแก้หน้าจอ
 // =====================================================================
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2569.10.31-11';
-import { createOffline, idbKv } from './offline.js?v=2569.10.31-11';
-import { seedDemo } from './demo-data.js?v=2569.10.31-11';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2569.10.31-12';
+import { createOffline, idbKv } from './offline.js?v=2569.10.31-12';
+import { seedDemo } from './demo-data.js?v=2569.10.31-12';
 
 const thaiError = (e) => {
   const m = String(e?.message || e);
@@ -169,6 +169,29 @@ function demoDb() {
         return { student_id: e.student_id, present: c('present'), late: c('late'), sick: c('sick'), leave: c('leave'),
           absent: c('absent'), school_days: days, pct: days ? Math.round(10000 * came / days) / 100 : null };
       });
+    },
+    // ผลการเรียนของนักเรียน (ต้องกรอก ≥ 2 ช่อง · เฉพาะภาคที่เปิดให้ดู) — เหมือน student_grades ใน student_grades.sql
+    student_grades({ p_first, p_last, p_code }) {
+      const n = (x) => String(x ?? '').trim().toLowerCase();
+      if ([p_first, p_last, p_code].filter((x) => n(x)).length < 2) return [];
+      const hit = T('students').filter((x) => (!n(p_code) || n(x.student_code) === n(p_code)) && (!n(p_first) || n(x.first_name) === n(p_first)) && (!n(p_last) || n(x.last_name) === n(p_last)));
+      if (!hit.length) return [];
+      if (hit.length > 1) return [{ matches: hit.length }];
+      const st = hit[0]; const rounding = T('school_settings')[0]?.score_rounding || 'floor';
+      const rooms = T('enrollments').filter((e) => e.student_id === st.id).map((e) => e.classroom_id);
+      return T('courses').filter((k) => rooms.includes(k.classroom_id) && T('terms').find((t) => t.id === k.term_id)?.grades_released).map((k) => {
+        const t = T('terms').find((x) => x.id === k.term_id); const sj = T('subjects').find((x) => x.id === k.subject_id);
+        const cl = T('classrooms').find((x) => x.id === k.classroom_id); const cr = T('course_results').find((x) => x.course_id === k.id && x.student_id === st.id);
+        const items = T('assessment_items').filter((i) => i.course_id === k.id).sort((a, b) => a.sort_order - b.sort_order);
+        const att = T('period_attendance').filter((a) => a.course_id === k.id);
+        const slots = new Set(att.map((a) => `${a.date}#${a.period}`)).size;
+        const came = att.filter((a) => a.student_id === st.id && ['present', 'late'].includes(a.status)).length;
+        return { matches: 1, academic_year: t.academic_year, term: t.term, subject_code: sj?.code, subject_name: sj?.name, credits: sj?.credits ?? null,
+          hours_per_year: sj?.hours_per_year ?? null, level: cl?.level, midterm_ratio: k.midterm_ratio, final_ratio: k.final_ratio, rounding,
+          items: items.map((i) => ({ id: i.id, kind: i.kind, max_score: i.max_score, title: i.title })),
+          scores: T('item_scores').filter((s) => s.student_id === st.id && items.some((i) => i.id === s.item_id)).map((s) => ({ item_id: s.item_id, score: s.score ?? null, passed: s.passed ?? null })),
+          special: cr?.special || null, ms_waived: !!cr?.ms_waived, below80: slots ? 100 * came / slots < 80 : false, att_pct: slots ? Math.round(10000 * came / slots) / 100 : null };
+      }).sort((a, b) => b.academic_year - a.academic_year || b.term - a.term || String(a.subject_code).localeCompare(String(b.subject_code)));
     },
     remedial_lookup({ p_first, p_last, p_code }) {
       const n = (x) => String(x ?? '').trim().toLowerCase();

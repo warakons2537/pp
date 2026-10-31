@@ -1,28 +1,28 @@
-import { db } from './db.js?v=2569.10.31-11';
-import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.31-11';
-import { icon } from './icons.js?v=2569.10.31-11';
-import { prefetchOffline } from './prefetch.js?v=2569.10.31-11';
-import { initPwa } from './pwa.js?v=2569.10.31-11';
-import { trackWrites, saveState } from './savestate.js?v=2569.10.31-11';
-import { BRAND, VERSION } from './brand.js?v=2569.10.31-11';
-import { mountNav, labelHtml } from './navbar.js?v=2569.10.31-11';
-import { computeAlerts, computeBadges, badge, showAlerts } from './notify.js?v=2569.10.31-11';
-import { openSearch, initSearchKey } from './search.js?v=2569.10.31-11';
-import { openPrefs } from './prefs.js?v=2569.10.31-11';
-import * as home from './views/home.js?v=2569.10.31-11';
-import * as students from './views/students.js?v=2569.10.31-11';
-import * as daily from './views/daily.js?v=2569.10.31-11';
-import * as period from './views/period.js?v=2569.10.31-11';
-import * as reports from './views/reports.js?v=2569.10.31-11';
-import * as setup from './views/setup.js?v=2569.10.31-11';
-import * as scores from './views/scores.js?v=2569.10.31-11';
-import * as meals from './views/meals.js?v=2569.10.31-11';
-import * as health from './views/health.js?v=2569.10.31-11';
-import * as traits from './views/traits.js?v=2569.10.31-11';
-import * as remedial from './views/remedial.js?v=2569.10.31-11';
-import { renderStudentCheck } from './views/student-check.js?v=2569.10.31-11';
-import { NAV, MENU_GROUPS, MENU_ORDER, allowedMenus } from './menus.js?v=2569.10.31-11';
-import * as print from './views/print.js?v=2569.10.31-11';
+import { db } from './db.js?v=2569.10.31-12';
+import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.31-12';
+import { icon } from './icons.js?v=2569.10.31-12';
+import { prefetchOffline } from './prefetch.js?v=2569.10.31-12';
+import { initPwa } from './pwa.js?v=2569.10.31-12';
+import { trackWrites, saveState } from './savestate.js?v=2569.10.31-12';
+import { BRAND, VERSION } from './brand.js?v=2569.10.31-12';
+import { mountNav, labelHtml } from './navbar.js?v=2569.10.31-12';
+import { computeAlerts, computeBadges, badge, showAlerts } from './notify.js?v=2569.10.31-12';
+import { openSearch, initSearchKey } from './search.js?v=2569.10.31-12';
+import { openPrefs } from './prefs.js?v=2569.10.31-12';
+import * as home from './views/home.js?v=2569.10.31-12';
+import * as students from './views/students.js?v=2569.10.31-12';
+import * as daily from './views/daily.js?v=2569.10.31-12';
+import * as period from './views/period.js?v=2569.10.31-12';
+import * as reports from './views/reports.js?v=2569.10.31-12';
+import * as setup from './views/setup.js?v=2569.10.31-12';
+import * as scores from './views/scores.js?v=2569.10.31-12';
+import * as meals from './views/meals.js?v=2569.10.31-12';
+import * as health from './views/health.js?v=2569.10.31-12';
+import * as traits from './views/traits.js?v=2569.10.31-12';
+import * as remedial from './views/remedial.js?v=2569.10.31-12';
+import { renderStudentCheck } from './views/student-check.js?v=2569.10.31-12';
+import { NAV, MENU_GROUPS, MENU_ORDER, allowedMenus } from './menus.js?v=2569.10.31-12';
+import * as print from './views/print.js?v=2569.10.31-12';
 
 const VIEWS = { home, students, daily, meals, period, reports, setup, scores, health, traits, remedial, print };
 const root = document.getElementById('app');
@@ -104,7 +104,7 @@ function renderLogin() {
             ${users.map((u) => `<button class="btn" data-u="${esc(u.id)}"><span>${esc(u.full_name)}</span>
               <span class="chip ${u.role === 'admin' ? 'chip-info' : u.role === 'pending' ? 'chip-warn' : ''}">${esc(roleText[u.role])}</span></button>`).join('')}
           </div>
-          <a href="#student" class="btn btn-ghost" data-student style="justify-content:center">นักเรียน: ตรวจสอบผล 0 ร มส</a>
+          <a href="#student" class="btn btn-ghost" data-student style="justify-content:center">นักเรียน: ตรวจสอบผลการเรียน</a>
         </div></div></div>`;
     $$('[data-u]', root).forEach((b) => b.addEventListener('click', async () => { await db.auth.signIn(b.dataset.u); boot(); }));
     return;
@@ -124,7 +124,7 @@ function renderLogin() {
             <button class="btn btn-primary" type="submit" style="justify-content:center;padding-block:10px">${mode === 'in' ? 'เข้าสู่ระบบ' : 'สมัครใช้งาน'}</button>
             ${mode === 'up' ? '<p class="muted small" style="margin:0">สมัครแล้วต้องรอผู้ดูแลระบบอนุมัติก่อนจึงจะเห็นข้อมูล ผู้สมัครคนแรกของระบบจะเป็นผู้ดูแลระบบอัตโนมัติ</p>' : ''}
           </form>
-          <a href="#student" class="btn btn-ghost" data-student style="justify-content:center">นักเรียน: ตรวจสอบผล 0 ร มส</a>
+          <a href="#student" class="btn btn-ghost" data-student style="justify-content:center">นักเรียน: ตรวจสอบผลการเรียน</a>
         </div></div></div>`;
     $$('[data-m]', root).forEach((b) => b.addEventListener('click', () => { mode = b.dataset.m; draw(); }));
     $('#f-login').addEventListener('submit', async (e) => {

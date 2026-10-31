@@ -1,6 +1,6 @@
 // ข้อมูลตัวอย่างสำหรับโหมดทดลอง (ชื่อทั้งหมดสมมติ)
-import { EXCEL_AGE, EXCEL_HT } from './data/growth-excel.js?v=2569.10.31-11';
-import { excelRefToRows } from './assess.js?v=2569.10.31-11';
+import { EXCEL_AGE, EXCEL_HT } from './data/growth-excel.js?v=2569.10.31-12';
+import { excelRefToRows } from './assess.js?v=2569.10.31-12';
 export function seedDemo() {
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -14,7 +14,7 @@ export function seedDemo() {
     { id: 'u-new', full_name: 'ครูใหม่ (รออนุมัติ)', email: 'new@demo', role: 'pending' },
   ];
   const terms = [
-    { id: 'term-1', academic_year: 2569, term: 1, start_date: '2026-05-16', end_date: '2026-10-09', is_current: true },
+    { id: 'term-1', academic_year: 2569, term: 1, start_date: '2026-05-16', end_date: '2026-10-09', is_current: true, grades_released: true },
     { id: 'term-2', academic_year: 2569, term: 2, start_date: '2026-11-01', end_date: '2027-03-31', is_current: false },
   ];
   const classrooms = [

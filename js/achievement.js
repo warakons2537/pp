@@ -6,8 +6,8 @@
 //  ใส่สูตรแบบเดียวกับไฟล์เดิม เปิดใน Excel แล้วแก้คะแนนต่อได้ ผลคำนวณเปลี่ยนตาม
 //  ปรับจากไฟล์เดิม: ซ่อนช่องคะแนนที่ไม่ได้ใช้ และพิมพ์เลขที่/ชื่อซ้ำทุกหน้า
 // =====================================================================
-import { Sheet, ref, colName } from './xlsx-write.js?v=2569.10.31-11';
-import { ROUNDING, toGrade } from './grading.js?v=2569.10.31-11';
+import { Sheet, ref, colName } from './xlsx-write.js?v=2569.10.31-12';
+import { ROUNDING, toGrade } from './grading.js?v=2569.10.31-12';
 
 export const SLOTS = 48;            // ช่องคะแนนในไฟล์เดิม (C..AX)
 export const ROWS = 45;             // แถวนักเรียนในไฟล์เดิม (7..51)
