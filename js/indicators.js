@@ -4,7 +4,7 @@
 //  - ใส่ลงแต่ละห้อง (assessment_items kind = indicator) เฉพาะตัวที่ห้องนั้นยังไม่มี ไม่ลบ/แทนของเดิม
 //  - จัดรูปแบบรหัสให้สม่ำเสมอ และอ่านรายการจากเล่ม ปพ.5-6 เดิม (แผ่น "รายวิชา" + "วิชาที่ n" แถว 5)
 // =====================================================================
-import { codeLevel } from './subject-import.js?v=2569.10.31-2';
+import { codeLevel } from './subject-import.js?v=2569.10.31-3';
 
 const DIGIT = '0-9๐-๙';
 const arabic = (s) => String(s).replace(/[๐-๙]/g, (d) => String(d.charCodeAt(0) - 0x0E50));
@@ -71,7 +71,7 @@ export async function syncCourse(db, courseId, master, items = null) {
   return rows.length;
 }
 
-// ห้องที่ผู้ใช้นี้ใส่รายการกลางให้ได้ (ผู้ดูแล = ทุกห้อง · ครู = ห้องที่สอน) ของภาคเรียนปัจจุบัน
+// ห้องที่ผู้ใช้นี้ใส่รายการกลางให้ได้ (ผู้ดูแลระบบ = ทุกห้อง · ครู = ห้องที่สอน) ของภาคเรียนปัจจุบัน
 export const syncableCourses = (ctx, subjectId) => (ctx.isAdmin ? ctx.courses : ctx.myCourses).filter((k) => k.subject_id === subjectId);
 
 export async function syncSubject(ctx, subjectId) {

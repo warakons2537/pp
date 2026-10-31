@@ -1,6 +1,6 @@
-import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.10.31-2';
-import { getRoster } from '../data.js?v=2569.10.31-2';
-import { readDmcFile } from '../dmc.js?v=2569.10.31-2';
+import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.10.31-3';
+import { getRoster } from '../data.js?v=2569.10.31-3';
+import { readDmcFile } from '../dmc.js?v=2569.10.31-3';
 
 let selected = null;   // ห้องที่เลือกค้างไว้ระหว่างเปลี่ยนหน้า
 
@@ -8,7 +8,7 @@ export async function render(el, ctx) {
   const rooms = ctx.myClassrooms;
   if (!rooms.length) {
     el.innerHTML = `<div class="page-head"><div><h1>นักเรียน</h1></div></div>
-      <div class="empty">คุณยังไม่ได้เป็นครูประจำชั้นห้องใด ${ctx.isAdmin ? '— สร้างห้องเรียนได้ที่ "ตั้งค่าระบบ" หรือนำเข้าไฟล์ DMC ทั้งโรงเรียนด้านล่าง' : 'กรุณาแจ้งฝ่ายวิชาการ'}</div>
+      <div class="empty">คุณยังไม่ได้เป็นครูประจำชั้นห้องใด ${ctx.isAdmin ? '— สร้างห้องเรียนได้ที่ "ตั้งค่าระบบ" หรือนำเข้าไฟล์ DMC ทั้งโรงเรียนด้านล่าง' : 'กรุณาแจ้งผู้ดูแลระบบ'}</div>
       ${ctx.isAdmin ? '<div><label class="btn btn-primary">นำเข้าจาก DMC (ทั้งโรงเรียน)<input type="file" id="dmc-file" accept=".xls,.xlsx,.csv" hidden></label></div>' : ''}`;
     $('#dmc-file', el)?.addEventListener('change', (e) => importFlow(e.target, ctx, null, () => render(el, ctx)));
     return;
@@ -97,7 +97,7 @@ async function editStudent(ctx, room, s, nextNo, done) {
 async function showDmc(ctx, sid) {
   let p;
   try { p = (await ctx.db.select('student_private', { eq: { student_id: sid } }))[0]; } catch { p = null; }
-  if (!p) { toast('ไม่มีข้อมูลส่วนบุคคล หรือคุณไม่มีสิทธิ์ดู (เฉพาะครูประจำชั้นและฝ่ายวิชาการ)', 'err'); return; }
+  if (!p) { toast('ไม่มีข้อมูลส่วนบุคคล หรือคุณไม่มีสิทธิ์ดู (เฉพาะครูประจำชั้นและผู้ดูแลระบบ)', 'err'); return; }
   const raw = p.dmc_raw || {};
   const keys = Object.keys(raw);
   await modal('ข้อมูลจากไฟล์ DMC', keys.length
@@ -126,7 +126,7 @@ async function renumber(ctx, active, done) {
 }
 
 // ---------------------------------------------------------------------
-//  นำเข้า DMC: ไฟล์เดียวมีหลายห้องได้ — แอดมินสร้างห้องให้อัตโนมัติ
+//  นำเข้า DMC: ไฟล์เดียวมีหลายห้องได้ — ผู้ดูแลระบบสร้างห้องให้อัตโนมัติ
 // ---------------------------------------------------------------------
 async function importFlow(input, ctx, currentRoom, done) {
   const file = input.files[0];
@@ -166,7 +166,7 @@ async function importFlow(input, ctx, currentRoom, done) {
           : `<span class="chip chip-bad">ข้าม</span> <span class="small">${esc(p.note)}</span>`}</td></tr>`).join('')}
     </tbody></table></div>
     <p class="muted small">นักเรียนที่มีเลขประจำตัวตรงกับในระบบจะถูก<b>อัปเดต</b> ไม่สร้างซ้ำ · เลขที่เรียงตามลำดับในไฟล์ (คนที่มีเลขที่อยู่แล้วคงเลขเดิม)
-      · ข้อมูลส่วนบุคคล (เลขประชาชน ผู้ปกครอง ที่อยู่) เห็นเฉพาะครูประจำชั้นและฝ่ายวิชาการ</p>`,
+      · ข้อมูลส่วนบุคคล (เลขประชาชน ผู้ปกครอง ที่อยู่) เห็นเฉพาะครูประจำชั้นและผู้ดูแลระบบ</p>`,
   { okText: okGroups.length ? `นำเข้า ${okGroups.reduce((n, p) => n + p.recs.length, 0)} คน` : 'ปิด', wide: true });
   if (!res || !okGroups.length) return;
 

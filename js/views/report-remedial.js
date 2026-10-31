@@ -1,7 +1,7 @@
-// รายงานสรุปติดตามการแก้ 0 ร มส รายห้อง (เฉพาะ ม.1–ม.3) — ผลหลังแก้แสดงเมื่อผู้ดูแลยืนยันแล้วเท่านั้น
-import { esc, fullName, levelName, thaiDate } from '../util.js?v=2569.10.31-2';
-import { CAUSES, PLANS, STATUS, isSecondary, loadRemedial, statusOf, originalOf } from '../remedial.js?v=2569.10.31-2';
-import { head, signs, termText } from './report-common.js?v=2569.10.31-2';
+// รายงานสรุปติดตามการแก้ 0 ร มส รายห้อง (เฉพาะ ม.1–ม.3) — ผลหลังแก้แสดงเมื่อผู้ดูแลระบบยืนยันแล้วเท่านั้น
+import { esc, fullName, levelName, thaiDate } from '../util.js?v=2569.10.31-3';
+import { CAUSES, PLANS, STATUS, isSecondary, loadRemedial, statusOf, originalOf } from '../remedial.js?v=2569.10.31-3';
+import { head, signs, termText } from './report-common.js?v=2569.10.31-3';
 
 export async function remedialReport(ctx, room) {
   if (!isSecondary(room)) return '<div class="empty">รายงานนี้ใช้กับนักเรียนมัธยม (ม.1–ม.3) เท่านั้น</div>';

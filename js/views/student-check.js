@@ -1,6 +1,6 @@
 // หน้านักเรียนตรวจผล 0 ร มส ของตัวเอง (ไม่ต้องมีบัญชี) — ต้องกรอก ชื่อ + นามสกุล + เลขประจำตัวให้ตรงทะเบียน
-import { esc, $, toast } from '../util.js?v=2569.10.31-2';
-import { CAUSES, PLANS, STATUS } from '../remedial.js?v=2569.10.31-2';
+import { esc, $, toast } from '../util.js?v=2569.10.31-3';
+import { CAUSES, PLANS, STATUS } from '../remedial.js?v=2569.10.31-3';
 
 export function renderStudentCheck(root, db, onBack) {
   root.innerHTML = `

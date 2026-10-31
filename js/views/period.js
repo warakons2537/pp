@@ -1,5 +1,5 @@
-import { esc, $, toast, options, fullName, todayIso, thaiDate, STATUS } from '../util.js?v=2569.10.31-2';
-import { getRoster } from '../data.js?v=2569.10.31-2';
+import { esc, $, toast, options, fullName, todayIso, thaiDate, STATUS } from '../util.js?v=2569.10.31-3';
+import { getRoster } from '../data.js?v=2569.10.31-3';
 
 const pref = { course: null, date: null, period: 1 };
 
@@ -8,7 +8,7 @@ export async function render(el, ctx) {
   if (ctx.params?.course) { pref.course = ctx.params.course; ctx.params = {}; }
   if (!list.length) {
     el.innerHTML = `<div class="page-head"><div><h1>เช็กชื่อรายคาบ</h1></div></div>
-      <div class="empty">ยังไม่มีวิชาที่คุณสอนในภาคเรียนนี้ ${ctx.isAdmin ? '— เพิ่มรายวิชาและครูผู้สอนได้ที่ "ตั้งค่าระบบ"' : '— กรุณาแจ้งฝ่ายวิชาการให้กำหนดครูผู้สอน'}</div>`;
+      <div class="empty">ยังไม่มีวิชาที่คุณสอนในภาคเรียนนี้ ${ctx.isAdmin ? '— เพิ่มรายวิชาและครูผู้สอนได้ที่ "ตั้งค่าระบบ"' : '— กรุณาแจ้งผู้ดูแลระบบให้กำหนดครูผู้สอน'}</div>`;
     return;
   }
   if (!list.some((k) => k.id === pref.course)) pref.course = list[0].id;

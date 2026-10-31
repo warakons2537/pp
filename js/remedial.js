@@ -1,7 +1,7 @@
 // ติดตามการแก้ 0 ร มส (เฉพาะ ม.1–ม.3): ค่าคงที่ + รวมรายการจากเกรดที่คำนวณได้กับรายการที่ครูบันทึกไว้
 // ไม่แก้เกรดใน ปพ.5: ผลหลังแก้เก็บในตาราง remedial_cases เท่านั้น
-import { getRoster } from './data.js?v=2569.10.31-2';
-import { loadCourse, computeCourse, fmtGrade } from './grading.js?v=2569.10.31-2';
+import { getRoster } from './data.js?v=2569.10.31-3';
+import { loadCourse, computeCourse, fmtGrade } from './grading.js?v=2569.10.31-3';
 
 export const CAUSES = { absent: 'ขาดเรียน / เวลาเรียนไม่ถึง', low_score: 'คะแนนไม่ถึงเกณฑ์', missing_work: 'ไม่ส่งงาน',
   missed_exam: 'ขาดสอบ', other: 'อื่น ๆ' };
@@ -19,7 +19,7 @@ export const NEW_GRADES = ['0', '1', '1.5', '2', '2.5', '3', '3.5', '4'];
 export const isSecondary = (room) => !!room && String(room.level).startsWith('ม.');
 export const hasSecondary = (ctx) => (ctx.classrooms || []).some(isSecondary);
 
-// วิชาที่ผู้ใช้เห็นในหน้านี้: ผู้ดูแลเห็นทุกวิชา · ครูเห็นวิชาที่สอนกับวิชาในห้องที่เป็นครูประจำชั้น (เฉพาะ ม.)
+// วิชาที่ผู้ใช้เห็นในหน้านี้: ผู้ดูแลระบบเห็นทุกวิชา · ครูเห็นวิชาที่สอนกับวิชาในห้องที่เป็นครูประจำชั้น (เฉพาะ ม.)
 export function visibleCourses(ctx) {
   const list = ctx.isAdmin ? ctx.courses
     : [...new Set([...ctx.myCourses, ...ctx.courses.filter((k) => ctx.myClassrooms.some((c) => c.id === k.classroom_id))])];

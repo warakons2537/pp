@@ -1,6 +1,7 @@
-import { esc, roomName, thaiDate, todayIso, fullName, iso, fromIso, THAI_DOW, levelName } from '../util.js?v=2569.10.31-2';
-import { getRoster, termRange } from '../data.js?v=2569.10.31-2';
-import { icon } from '../icons.js?v=2569.10.31-2';
+import { esc, roomName, thaiDate, todayIso, fullName, iso, fromIso, THAI_DOW, levelName } from '../util.js?v=2569.10.31-3';
+import { getRoster, termRange } from '../data.js?v=2569.10.31-3';
+import { icon } from '../icons.js?v=2569.10.31-3';
+import { MENU_ORDER, plain, hasNoDuties } from '../menus.js?v=2569.10.31-3';
 
 export async function render(el, ctx) {
   const { db } = ctx;
@@ -8,11 +9,11 @@ export async function render(el, ctx) {
     el.innerHTML = `
       <div class="page-head"><div><h1>เริ่มต้นใช้งาน</h1><p>ระบบยังไม่มีภาคเรียนหรือห้องเรียน ทำตามลำดับนี้ครั้งเดียว</p></div></div>
       <div class="card"><ol class="small" style="margin:0;padding-left:20px;line-height:2">
-        <li>ฝ่ายวิชาการเปิด "ตั้งค่าระบบ" กรอกข้อมูลโรงเรียน และเพิ่มภาคเรียนปัจจุบัน</li>
+        <li>ผู้ดูแลระบบเปิด "ตั้งค่าระบบ" กรอกข้อมูลโรงเรียน และเพิ่มภาคเรียนปัจจุบัน</li>
         <li>นำเข้ารายชื่อนักเรียนจากไฟล์ DMC ที่หน้า "นักเรียน" ระบบจะสร้างห้องให้เอง</li>
         <li>อนุมัติบัญชีครู แล้วกำหนดครูประจำชั้นของแต่ละห้อง</li>
         <li>เพิ่มรายวิชา เปิดสอน และกำหนดครูผู้สอน</li>
-      </ol>${ctx.isAdmin ? '<div><a class="btn btn-primary" href="#setup">ไปที่ตั้งค่าระบบ</a></div>' : '<p class="muted">กรุณาแจ้งฝ่ายวิชาการ</p>'}</div>`;
+      </ol>${ctx.isAdmin ? '<div><a class="btn btn-primary" href="#setup">ไปที่ตั้งค่าระบบ</a></div>' : '<p class="muted">กรุณาแจ้งผู้ดูแลระบบ</p>'}</div>`;
     return;
   }
 
@@ -47,20 +48,20 @@ export async function render(el, ctx) {
   ];
 
   const initial = esc(((ctx.me.full_name || '').replace(/^(ครู|นาย|นางสาว|นาง)\s*/, '').replace(/^[เแโใไ]/, '')[0]) || '?');
-  const APPS = [['daily', 'เช็กชื่อประจำวัน'], ['period', 'เช็กชื่อรายคาบ'], ['students', 'นักเรียน'], ['scores', 'คะแนนรายวิชา'],
-    ['health', 'น้ำหนัก-ส่วนสูง'], ['traits', 'คุณลักษณะ/กิจกรรม'], ['print', 'พิมพ์ ปพ.6 / ปพ.5'], ['reports', 'รายงาน A4'],
-    ...(ctx.isAdmin ? [['setup', 'ตั้งค่าระบบ']] : [])];
+  const can = (v) => ctx.menus.has(v);
+  const APPS = MENU_ORDER.filter((v) => v !== 'home' && can(v)).map((v) => [v, plain(v)]);
 
   el.innerHTML = `
     <section class="welcome">
       <div class="av" aria-hidden="true">${initial}</div>
       <div><h1>${greet}</h1>
         <p>${['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'][d.getDay()]}ที่ ${esc(thaiDate(today))} · ภาคเรียนที่ ${ctx.term.term} ปีการศึกษา ${ctx.term.academic_year}</p></div>
-      ${rooms.length ? '<a class="btn" href="#daily">เช็กชื่อวันนี้</a>' : ''}
+      ${rooms.length && can('daily') ? '<a class="btn" href="#daily">เช็กชื่อวันนี้</a>' : ''}
     </section>
+    ${hasNoDuties(ctx) ? '<div class="notice">คุณยังไม่ได้รับมอบหมายเป็นครูประจำชั้นหรือครูผู้สอน — กรุณาแจ้งผู้ดูแลระบบให้กำหนดห้องและวิชา หรือเปิดเมนูที่ต้องการให้</div>' : ''}
     <div class="card"><div class="card-title">${icon('home')}เมนูลัด</div>
       <nav class="apps">${APPS.map(([v, label]) => `<a href="#${v}" data-v="${v}"><span class="tile">${icon(v)}</span><span>${label}</span></a>`).join('')}</nav></div>
-    ${rooms.length ? `<div class="todo">${todo.length ? todo.join('') : `<a href="#daily"><span class="dot" style="background:var(--green)"></span><span>เช็กชื่อวันนี้ครบทุกห้องแล้ว</span></a>`}</div>` : ''}
+    ${rooms.length && can('daily') ? `<div class="todo">${todo.length ? todo.join('') : `<a href="#daily"><span class="dot" style="background:var(--green)"></span><span>เช็กชื่อวันนี้ครบทุกห้องแล้ว</span></a>`}</div>` : ''}
 
     ${rooms.length ? `<h2>ห้องที่ดูแล</h2>
     <div class="grid">${cards.map(({ c, roster, todayRows, series, risk, absent }) => `
@@ -81,15 +82,15 @@ export async function render(el, ctx) {
           <div class="stat"><b style="${risk.length ? 'color:var(--red)' : ''}">${risk.length}</b><span>ต่ำกว่า 80%</span></div>
         </div>
         ${risk.length ? `<div class="small">${risk.slice(0, 3).map((r) => `<div style="display:flex;justify-content:space-between;gap:8px"><span>${esc(fullName(r.st))}</span><span class="chip chip-bad">${r.pct}%</span></div>`).join('')}${risk.length > 3 ? `<div class="muted">และอีก ${risk.length - 3} คน</div>` : ''}</div>` : ''}
-        <div class="row"><a class="btn btn-sm" href="#students">${icon('students')}รายชื่อ</a><a class="btn btn-sm" href="#reports">${icon('reports')}รายงาน</a></div>
+        <div class="row">${can('students') ? `<a class="btn btn-sm" href="#students">${icon('students')}รายชื่อ</a>` : ''}${can('reports') ? `<a class="btn btn-sm" href="#reports">${icon('reports')}รายงาน</a>` : ''}</div>
       </div>`).join('')}</div>` : ''}
 
-    <h2>วิชาที่สอน</h2>
-    ${ctx.myCourses.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>รายวิชา</th><th>ห้อง</th><th class="hide-sm">ครูผู้สอน</th><th></th></tr></thead><tbody>
+    ${can('period') || can('scores') ? '<h2>วิชาที่สอน</h2>' : ''}
+    ${!(can('period') || can('scores')) ? '' : ctx.myCourses.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>รายวิชา</th><th>ห้อง</th><th class="hide-sm">ครูผู้สอน</th><th></th></tr></thead><tbody>
       ${ctx.myCourses.map((k) => `<tr><td class="tc-ttl"><b>${esc(k.subject?.code)}</b> ${esc(k.subject?.name)}</td><td data-l="ห้อง">${esc(roomName(k.classroom))}</td>
         <td class="small muted hide-sm">${esc(k.teachers.map((t) => t.full_name).join(', '))}</td>
-        <td class="n tc-act" style="white-space:nowrap"><a class="btn btn-sm" href="#period" data-k="${esc(k.id)}" data-v="period">${icon('period')}เช็กชื่อ</a>
-          <a class="btn btn-sm" href="#scores" data-k="${esc(k.id)}" data-v="scores">${icon('scores')}คะแนน</a></td></tr>`).join('')}
+        <td class="n tc-act" style="white-space:nowrap">${can('period') ? `<a class="btn btn-sm" href="#period" data-k="${esc(k.id)}" data-v="period">${icon('period')}เช็กชื่อ</a>` : ''}
+          ${can('scores') ? `<a class="btn btn-sm" href="#scores" data-k="${esc(k.id)}" data-v="scores">${icon('scores')}คะแนน</a>` : ''}</td></tr>`).join('')}
     </tbody></table></div>` : '<div class="empty">ยังไม่มีวิชาที่ได้รับมอบหมายในภาคเรียนนี้</div>'}`;
   el.querySelectorAll('[data-k]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); ctx.go(a.dataset.v, { course: a.dataset.k }); }));
 }

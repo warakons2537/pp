@@ -4,14 +4,14 @@
 //  - ดูตัวอย่างทุกหน้า เลือกพิมพ์รายหน้า → พิมพ์ / บันทึกเป็น PDF ได้ในแอป (ไม่ต้องมี Excel)
 //  - หรือสร้างไฟล์ Excel ที่หน้าตาเหมือนต้นฉบับ
 // =====================================================================
-import { esc, $, $$, toast, roomName, confirmBox } from '../util.js?v=2569.10.31-2';
-import { Template } from '../xlsx-template.js?v=2569.10.31-2';
-import { buildBookData, makeBook, prepareBook, defaultBook } from '../pp-book.js?v=2569.10.31-2';
-import { downloadBytes } from '../xlsx-write.js?v=2569.10.31-2';
-import { Workbook } from '../xl-model.js?v=2569.10.31-2';
-import { Engine } from '../xl-formula.js?v=2569.10.31-2';
-import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.10.31-2';
-import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.10.31-2';
+import { esc, $, $$, toast, roomName, confirmBox } from '../util.js?v=2569.10.31-3';
+import { Template } from '../xlsx-template.js?v=2569.10.31-3';
+import { buildBookData, makeBook, prepareBook, defaultBook } from '../pp-book.js?v=2569.10.31-3';
+import { downloadBytes } from '../xlsx-write.js?v=2569.10.31-3';
+import { Workbook } from '../xl-model.js?v=2569.10.31-3';
+import { Engine } from '../xl-formula.js?v=2569.10.31-3';
+import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.10.31-3';
+import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.10.31-3';
 
 const PATH = 'pp/template';
 let cache = { at: null, bytes: null, t: null };          // ไฟล์ต้นฉบับที่โหลดแล้ว (อยู่ในหน่วยความจำ)
@@ -30,7 +30,7 @@ export async function bookView(paper, ctx, room) {
   const isAdmin = ctx.isAdmin;
   paper.innerHTML = '<p class="muted">กำลังตรวจไฟล์ต้นฉบับ…</p>';
   let info = null;
-  try { info = await ctx.db.files.info(PATH); } catch (err) { paper.innerHTML = `<div class="empty">อ่านที่เก็บไฟล์ไม่ได้: ${esc(err.message)}<br><span class="small">ถ้าเพิ่งอัปเดตแอป ให้ผู้ดูแลรัน supabase/schema.sql ใหม่ (เพิ่มที่เก็บไฟล์ pp-files)</span></div>`; return; }
+  try { info = await ctx.db.files.info(PATH); } catch (err) { paper.innerHTML = `<div class="empty">อ่านที่เก็บไฟล์ไม่ได้: ${esc(err.message)}<br><span class="small">ถ้าเพิ่งอัปเดตแอป ให้ผู้ดูแลระบบรัน supabase/schema.sql ใหม่ (เพิ่มที่เก็บไฟล์ pp-files)</span></div>`; return; }
 
   const uploadCard = `
     <div class="card no-print"><div class="row" style="justify-content:space-between;align-items:center">

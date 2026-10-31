@@ -3,8 +3,8 @@
 //  เซลล์ สูตร (รวมสูตรร่วม/อาร์เรย์) รูปแบบ ความกว้างคอลัมน์ ความสูงแถว ผสานเซลล์
 //  พื้นที่พิมพ์ หัวตารางซ้ำ ตัวแบ่งหน้า การตั้งค่าหน้ากระดาษ รูปภาพ/รูปร่าง การจัดรูปแบบตามเงื่อนไข
 // =====================================================================
-import { readZip, shiftFormula } from './xlsx-template.js?v=2569.10.31-2';
-import { XErr, ERR, MAXCOL, colNum, textToNumber } from './xl-formula.js?v=2569.10.31-2';
+import { readZip, shiftFormula } from './xlsx-template.js?v=2569.10.31-3';
+import { XErr, ERR, MAXCOL, colNum, textToNumber } from './xl-formula.js?v=2569.10.31-3';
 
 const td = new TextDecoder();
 const unesc = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")

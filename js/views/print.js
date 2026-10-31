@@ -1,13 +1,13 @@
 // พิมพ์เอกสาร ปพ.: ปพ.6 รายบุคคล · ปก ปพ.5 รายชั้น · ปก ปพ.5 รายวิชา · ใบรับรองผลการศึกษา
-import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js?v=2569.10.31-2';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-2';
-import { loadRoomYear, personName } from '../yeardata.js?v=2569.10.31-2';
-import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.10.31-2';
-import { icon } from '../icons.js?v=2569.10.31-2';
-import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js?v=2569.10.31-2';
-import { bookView } from './pp-book-view.js?v=2569.10.31-2';
-import { listView, studentView, missingOf, termsOf } from './pp6-hub.js?v=2569.10.31-2';
-import { pp6FormsView } from './pp6-forms-view.js?v=2569.10.31-2';
+import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js?v=2569.10.31-3';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-3';
+import { loadRoomYear, personName } from '../yeardata.js?v=2569.10.31-3';
+import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.10.31-3';
+import { icon } from '../icons.js?v=2569.10.31-3';
+import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js?v=2569.10.31-3';
+import { bookView } from './pp-book-view.js?v=2569.10.31-3';
+import { listView, studentView, missingOf, termsOf } from './pp6-hub.js?v=2569.10.31-3';
+import { pp6FormsView } from './pp6-forms-view.js?v=2569.10.31-3';
 
 const DOCS = { book: 'เล่ม ปพ. (เหมือนไฟล์ต้นฉบับ)', pp6: 'ปพ.6 รายบุคคล', coverClass: 'ปก ปพ.5 รายชั้น', coverCourse: 'ปก ปพ.5 รายวิชา', cert: 'ใบรับรองผลการศึกษา' };
 const pref = { doc: 'book', room: null, from: 1, to: 99, scope: 'term', page2: true, course: null, pp6View: 'list', stu: null,
@@ -22,7 +22,7 @@ const LEVEL_MEANING = [['4', '80–100', 'ดีเยี่ยม'], ['3.5', '7
 
 export async function render(el, ctx) {
   const rooms = ctx.isAdmin ? ctx.classrooms : (ctx.myClassrooms.length ? ctx.myClassrooms : ctx.classrooms);
-  if (!rooms.length || !ctx.term) { el.innerHTML = '<h1>พิมพ์เอกสาร ปพ.</h1><div class="empty">ยังไม่มีห้องเรียนหรือภาคเรียน</div>'; return; }
+  if (!rooms.length || !ctx.term) { el.innerHTML = '<h1>พิมพ์ ปพ.6 / ปพ.5</h1><div class="empty">ยังไม่มีห้องเรียนหรือภาคเรียน</div>'; return; }
   if (!rooms.some((r) => r.id === pref.room)) pref.room = rooms[0].id;
   pref.certDate ??= todayIso();
   const room = ctx.classroomById[pref.room];
@@ -32,7 +32,7 @@ export async function render(el, ctx) {
   if (pref.doc === 'pp6' && pref.pp6View !== 'paper') return hub(el, ctx, rooms, room);
 
   el.innerHTML = `
-    <div class="page-head"><div><h1>พิมพ์เอกสาร ปพ.</h1><p>ดูตัวอย่างทุกหน้าก่อนพิมพ์ แต่ละคนขึ้นหน้าใหม่ให้อัตโนมัติ</p></div>
+    <div class="page-head"><div><h1>พิมพ์ ปพ.6 / ปพ.5</h1><p>ดูตัวอย่างทุกหน้าก่อนพิมพ์ แต่ละคนขึ้นหน้าใหม่ให้อัตโนมัติ</p></div>
     <div class="row no-print">
       ${pref.doc === 'pp6' ? `<button class="btn btn-pill" id="pp6-back">${icon('back')}กลับไปรายชื่อ</button>` : ''}
       <label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label>
@@ -117,7 +117,7 @@ async function getData(ctx, room) {
 async function hub(el, ctx, rooms, room) {
   const again = () => render(el, ctx);
   el.innerHTML = `
-    <div class="page-head"><div><h1>พิมพ์เอกสาร ปพ.</h1><p>ตรวจเกรดรายคนก่อนพิมพ์ ปพ.6 · คนที่ยังมีวิชาไม่มีเกรดหรือคะแนนไม่ครบจะพิมพ์ไม่ได้</p></div>
+    <div class="page-head"><div><h1>พิมพ์ ปพ.6 / ปพ.5</h1><p>ตรวจเกรดรายคนก่อนพิมพ์ ปพ.6 · คนที่ยังมีวิชาไม่มีเกรดหรือคะแนนไม่ครบจะพิมพ์ไม่ได้</p></div>
     <div class="row no-print">
       <label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label>
       <label class="field">ช่วงข้อมูล<select id="scope"><option value="term" ${pref.scope === 'term' ? 'selected' : ''}>ภาคเรียนที่ ${ctx.term.term} (ภาคปัจจุบัน)</option>

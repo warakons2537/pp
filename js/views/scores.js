@@ -1,9 +1,9 @@
-import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.10.31-2';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-2';
-import { getRoster } from '../data.js?v=2569.10.31-2';
-import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.10.31-2';
-import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.10.31-2';
-import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.10.31-2';
+import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.10.31-3';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-3';
+import { getRoster } from '../data.js?v=2569.10.31-3';
+import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.10.31-3';
+import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.10.31-3';
+import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.10.31-3';
 
 const pref = { course: null, tab: 'scores' };
 const KIND = { score: 'คะแนนเก็บระหว่างภาค', final: 'สอบปลายภาค', indicator: 'ตัวชี้วัด (ผ/มผ)' };
@@ -12,8 +12,8 @@ export async function render(el, ctx) {
   const list = ctx.myCourses;
   if (ctx.params?.course) { pref.course = ctx.params.course; ctx.params = {}; }
   if (!list.length) {
-    el.innerHTML = `<div class="page-head"><div><h1>คะแนนรายวิชา (ปพ.5)</h1></div></div>
-      <div class="empty">ยังไม่มีวิชาที่คุณสอนในภาคเรียนนี้ ${ctx.isAdmin ? '— เปิดสอนวิชาได้ที่ "ตั้งค่าระบบ → รายวิชา"' : '— กรุณาแจ้งฝ่ายวิชาการ'}</div>`;
+    el.innerHTML = `<div class="page-head"><div><h1>คะแนนรายวิชา</h1></div></div>
+      <div class="empty">ยังไม่มีวิชาที่คุณสอนในภาคเรียนนี้ ${ctx.isAdmin ? '— เปิดสอนวิชาได้ที่ "ตั้งค่าระบบ → รายวิชา"' : '— กรุณาแจ้งผู้ดูแลระบบ'}</div>`;
     return;
   }
   if (!list.some((k) => k.id === pref.course)) pref.course = list[0].id;
@@ -30,7 +30,7 @@ export async function render(el, ctx) {
 
   el.innerHTML = `
     <div class="page-head">
-      <div><h1>คะแนนรายวิชา (ปพ.5)</h1>
+      <div><h1>คะแนนรายวิชา</h1>
         <p>กรอกคะแนน ตัดเกรด และประเมินตัวชี้วัดรายวิชา · ${esc(course.subject?.credits ? `${course.subject.credits} หน่วยกิต` : course.subject?.hours_per_year ? `${course.subject.hours_per_year} ชม./ปี` : '')}
           · ระหว่างภาค:ปลายภาค ${course.midterm_ratio}:${course.final_ratio} · <span class="live">อัปเดตทันที</span></p></div>
       <div class="row"><label class="field">วิชา<select id="course">${options(list, course.id, ctx.courseLabel)}</select></label>

@@ -1,11 +1,11 @@
-import { esc, $, toast, modal, options, roomName, fullName } from '../util.js?v=2569.10.31-2';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-2';
-import { getRoster } from '../data.js?v=2569.10.31-2';
-import { attachGrid } from '../grid.js?v=2569.10.31-2';
-import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.10.31-2';
-import { detailPane } from './assess-detail.js?v=2569.10.31-2';
-import { FORMS } from '../assess-forms.js?v=2569.10.31-2';
-import { assessImportFlow } from './assess-import-view.js?v=2569.10.31-2';
+import { esc, $, toast, modal, options, roomName, fullName } from '../util.js?v=2569.10.31-3';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-3';
+import { getRoster } from '../data.js?v=2569.10.31-3';
+import { attachGrid } from '../grid.js?v=2569.10.31-3';
+import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.10.31-3';
+import { detailPane } from './assess-detail.js?v=2569.10.31-3';
+import { FORMS } from '../assess-forms.js?v=2569.10.31-3';
+import { assessImportFlow } from './assess-import-view.js?v=2569.10.31-3';
 
 const pref = { room: null, tab: 'trait8' };
 const TABS = { ...Object.fromEntries(Object.entries(TRAIT_KINDS).map(([k, v]) => [k, v.short])),
@@ -13,7 +13,7 @@ const TABS = { ...Object.fromEntries(Object.entries(TRAIT_KINDS).map(([k, v]) =>
 
 export async function render(el, ctx) {
   const rooms = ctx.isAdmin ? ctx.classrooms : [...ctx.myClassrooms, ...ctx.classrooms.filter((c) => !ctx.myClassrooms.includes(c))];
-  if (!rooms.length || !ctx.term) { el.innerHTML = '<h1>คุณลักษณะและกิจกรรม</h1><div class="empty">ยังไม่มีห้องเรียนหรือภาคเรียน</div>'; return; }
+  if (!rooms.length || !ctx.term) { el.innerHTML = '<h1>คุณลักษณะ/กิจกรรม</h1><div class="empty">ยังไม่มีห้องเรียนหรือภาคเรียน</div>'; return; }
   if (!rooms.some((r) => r.id === pref.room)) pref.room = (ctx.myClassrooms[0] || rooms[0]).id;
   const room = ctx.classroomById[pref.room];
   const canEdit = ctx.isAdmin || ctx.classroomTeacherRows.some((x) => x.classroom_id === room.id && x.teacher_id === ctx.me.id);
@@ -21,7 +21,7 @@ export async function render(el, ctx) {
 
   el.innerHTML = `
     <div class="page-head">
-      <div><h1>คุณลักษณะและกิจกรรม</h1><p>ประเมินคุณลักษณะ การอ่านคิดวิเคราะห์ สมรรถนะ และกิจกรรมรายห้อง · ภาคเรียนที่ ${ctx.term.term}/${ctx.term.academic_year} · ${canEdit ? '<span class="live">อัปเดตทันที</span>' : 'ดูอย่างเดียว (ครูประจำชั้นเป็นผู้บันทึก)'}</p></div>
+      <div><h1>คุณลักษณะ/กิจกรรม</h1><p>ประเมินคุณลักษณะ การอ่านคิดวิเคราะห์ สมรรถนะ และกิจกรรมรายห้อง · ภาคเรียนที่ ${ctx.term.term}/${ctx.term.academic_year} · ${canEdit ? '<span class="live">อัปเดตทันที</span>' : 'ดูอย่างเดียว (ครูประจำชั้นเป็นผู้บันทึก)'}</p></div>
       <div class="row"><label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label>
         ${canEdit ? '<label class="btn" title="เลือกได้หลายไฟล์ (.xlsx) : คุณลักษณะอันพึงประสงค์ · สมรรถนะ · อ่านคิดวิเคราะห์เขียน">นำเข้าจากไฟล์<input type="file" id="imp-assess" accept=".xlsx,.xls,.xlsb" multiple hidden></label>' : ''}</div>
     </div>

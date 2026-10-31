@@ -1,7 +1,7 @@
 // ติดตามการแก้ 0 ร มส (เฉพาะ ม.1–ม.3)
-// ครูผู้สอน: วางแผน บันทึกผลแก้ แล้วส่งยืนยัน · ผู้ดูแล: ยืนยัน/ส่งกลับ · ไม่แก้เกรดใน ปพ.5
-import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso } from '../util.js?v=2569.10.31-2';
-import { CAUSES, PLANS, STATUS, NEW_GRADES, visibleCourses, canEditCase, loadRemedial, statusOf, originalOf } from '../remedial.js?v=2569.10.31-2';
+// ครูผู้สอน: วางแผน บันทึกผลแก้ แล้วส่งยืนยัน · ผู้ดูแลระบบ: ยืนยัน/ส่งกลับ · ไม่แก้เกรดใน ปพ.5
+import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso } from '../util.js?v=2569.10.31-3';
+import { CAUSES, PLANS, STATUS, NEW_GRADES, visibleCourses, canEditCase, loadRemedial, statusOf, originalOf } from '../remedial.js?v=2569.10.31-3';
 
 const pref = { room: '', status: '', grade: '' };
 const gradeChip = (g) => `<span class="chip ${g === 'ร' ? 'chip-warn' : 'chip-bad'}">${esc(g)}</span>`;
@@ -54,7 +54,7 @@ export async function render(el, ctx) {
             <td class="c">${gradeChip(originalOf(it))}</td>
             <td class="hide-sm">${esc(CAUSES[c?.cause] ?? '–')}</td><td class="hide-sm">${esc(PLANS[c?.plan] ?? '–')}</td>
             <td class="hide-sm">${dateOrDash(c?.due_date)}</td>
-            <td>${stChip(statusOf(it))}${c?.review_note && statusOf(it) !== 'approved' ? `<br><span class="small muted" title="หมายเหตุจากผู้ดูแล">${esc(c.review_note)}</span>` : ''}</td>
+            <td>${stChip(statusOf(it))}${c?.review_note && statusOf(it) !== 'approved' ? `<br><span class="small muted" title="หมายเหตุจากผู้ดูแลระบบ">${esc(c.review_note)}</span>` : ''}</td>
             <td class="c">${c?.new_grade ? `<b>${esc(c.new_grade)}</b>${c.status === 'approved' ? '' : '<sup>รอยืนยัน</sup>'}` : '<span class="muted">–</span>'}</td>
             <td class="n"><button class="btn btn-sm${c?.status === 'submitted' && ctx.isAdmin ? ' btn-primary' : ''}" data-k="${esc(it.key)}">${
               ctx.isAdmin ? (c?.status === 'submitted' ? 'ตรวจ' : 'แก้ไข') : edit ? (c ? 'แก้ไข' : 'วางแผน') : 'ดู'}</button></td></tr>`; }).join('')}</tbody></table></div>`
@@ -99,10 +99,10 @@ async function editCase(ctx, it) {
     <div class="row"><label class="field">กำหนดแก้ภายใน<input type="date" name="due_date" value="${esc(c.due_date ?? '')}" ${dis}></label>
       <label class="field">วันที่แก้เสร็จ<input type="date" name="done_on" value="${esc(c.done_on ?? '')}" ${dis}></label></div>
     <label>ผลหลังแก้<select name="new_grade" ${dis}><option value="">ยังไม่มีผล</option>${NEW_GRADES.map((g) => `<option value="${g}" ${c.new_grade === g ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
-    <label>สถานะ<select name="status" ${dis}>${statuses.map((s) => `<option value="${s}" ${cur === s ? 'selected' : ''}>${STATUS[s].label}${s === 'submitted' ? ' (ส่งให้ผู้ดูแลยืนยัน)' : ''}</option>`).join('')}</select></label>
+    <label>สถานะ<select name="status" ${dis}>${statuses.map((s) => `<option value="${s}" ${cur === s ? 'selected' : ''}>${STATUS[s].label}${s === 'submitted' ? ' (ส่งให้ผู้ดูแลระบบยืนยัน)' : ''}</option>`).join('')}</select></label>
     <label>หมายเหตุครู<textarea name="note" rows="2" ${dis}>${esc(c.note ?? '')}</textarea></label>
-    ${ctx.isAdmin ? `<label>หมายเหตุผู้ดูแล (ถ้าส่งกลับ ให้บอกเหตุผล)<textarea name="review_note" rows="2">${esc(c.review_note ?? '')}</textarea></label>`
-      : c.review_note ? `<p class="small" style="margin:0"><b>ผู้ดูแล:</b> ${esc(c.review_note)}</p>` : ''}`;
+    ${ctx.isAdmin ? `<label>หมายเหตุผู้ดูแลระบบ (ถ้าส่งกลับ ให้บอกเหตุผล)<textarea name="review_note" rows="2">${esc(c.review_note ?? '')}</textarea></label>`
+      : c.review_note ? `<p class="small" style="margin:0"><b>ผู้ดูแลระบบ:</b> ${esc(c.review_note)}</p>` : ''}`;
   const r = await modal(it.case ? 'ผลการแก้ 0 ร มส' : 'วางแผนแก้ 0 ร มส', body, { okText: edit ? 'บันทึก' : 'ปิด', cancelText: edit ? 'ยกเลิก' : '', wide: true });
   if (!r || !edit) return false;
   const row = { course_id: it.course.id, student_id: it.student.id, original_grade: originalOf(it),

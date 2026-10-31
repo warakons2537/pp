@@ -59,7 +59,7 @@ export function teacherChoices(rows, profiles) {
   return [...out.values()];
 }
 
-// ชื่อวิชาแต่ละชื่อในไฟล์ → ค่าเริ่มต้น: ชื่อวิชาในระบบที่ตรงกัน (คีย์) หรือ '' (ให้ผู้ดูแลเลือก)
+// ชื่อวิชาแต่ละชื่อในไฟล์ → ค่าเริ่มต้น: ชื่อวิชาในระบบที่ตรงกัน (คีย์) หรือ '' (ให้ผู้ดูแลระบบเลือก)
 export function subjectChoices(rows, subjects) {
   const keys = new Set(subjects.map((s) => subjectNameKey(s.name)));
   const out = new Map();

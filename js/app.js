@@ -1,22 +1,22 @@
-import { db } from './db.js?v=2569.10.31-2';
-import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.31-2';
-import { icon } from './icons.js?v=2569.10.31-2';
-import { BRAND, VERSION } from './brand.js?v=2569.10.31-2';
-import { mountNav, labelHtml } from './navbar.js?v=2569.10.31-2';
-import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.31-2';
-import * as home from './views/home.js?v=2569.10.31-2';
-import * as students from './views/students.js?v=2569.10.31-2';
-import * as daily from './views/daily.js?v=2569.10.31-2';
-import * as period from './views/period.js?v=2569.10.31-2';
-import * as reports from './views/reports.js?v=2569.10.31-2';
-import * as setup from './views/setup.js?v=2569.10.31-2';
-import * as scores from './views/scores.js?v=2569.10.31-2';
-import * as health from './views/health.js?v=2569.10.31-2';
-import * as traits from './views/traits.js?v=2569.10.31-2';
-import * as remedial from './views/remedial.js?v=2569.10.31-2';
-import { renderStudentCheck } from './views/student-check.js?v=2569.10.31-2';
-import { hasSecondary } from './remedial.js?v=2569.10.31-2';
-import * as print from './views/print.js?v=2569.10.31-2';
+import { db } from './db.js?v=2569.10.31-3';
+import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.10.31-3';
+import { icon } from './icons.js?v=2569.10.31-3';
+import { BRAND, VERSION } from './brand.js?v=2569.10.31-3';
+import { mountNav, labelHtml } from './navbar.js?v=2569.10.31-3';
+import { computeAlerts, badge, showAlerts } from './notify.js?v=2569.10.31-3';
+import * as home from './views/home.js?v=2569.10.31-3';
+import * as students from './views/students.js?v=2569.10.31-3';
+import * as daily from './views/daily.js?v=2569.10.31-3';
+import * as period from './views/period.js?v=2569.10.31-3';
+import * as reports from './views/reports.js?v=2569.10.31-3';
+import * as setup from './views/setup.js?v=2569.10.31-3';
+import * as scores from './views/scores.js?v=2569.10.31-3';
+import * as health from './views/health.js?v=2569.10.31-3';
+import * as traits from './views/traits.js?v=2569.10.31-3';
+import * as remedial from './views/remedial.js?v=2569.10.31-3';
+import { renderStudentCheck } from './views/student-check.js?v=2569.10.31-3';
+import { NAV, MENU_GROUPS, MENU_ORDER, allowedMenus } from './menus.js?v=2569.10.31-3';
+import * as print from './views/print.js?v=2569.10.31-3';
 
 const VIEWS = { home, students, daily, period, reports, setup, scores, health, traits, remedial, print };
 const root = document.getElementById('app');
@@ -62,6 +62,7 @@ async function loadContext(userId) {
   ctx.courseById = indexBy(ctx.courses);
   ctx.myCourses = ctx.isAdmin ? ctx.courses : ctx.courses.filter((k) => k.teachers.some((t) => t.id === me.id));
   ctx.courseLabel = (k) => `${k.subject?.code ?? ''} ${k.subject?.name ?? ''} — ${roomName(k.classroom)}`;
+  ctx.menus = allowedMenus(ctx);
   ctx.alerts = await computeAlerts(ctx);
   return ctx;
 }
@@ -87,7 +88,7 @@ document.addEventListener('click', (e) => {
 function renderLogin() {
   if (db.mode === 'demo') {
     const users = db.auth.demoUsers().filter((u) => u.has_account !== false);
-    const roleText = { admin: 'ฝ่ายวิชาการ', teacher: 'ครู', pending: 'รออนุมัติ' };
+    const roleText = { admin: 'ผู้ดูแลระบบ', teacher: 'ครู', pending: 'รออนุมัติ' };
     root.innerHTML = `
       <div class="login"><div class="login-book">${loginCover('โหมดทดลอง · ข้อมูลตัวอย่าง ชื่อสมมติ')}
         <div class="login-form">
@@ -115,7 +116,7 @@ function renderLogin() {
             <label>อีเมล<input type="email" id="l-email" name="email" autocomplete="username" required></label>
             <label>รหัสผ่าน<input type="password" id="l-pass" name="password" minlength="6" autocomplete="${mode === 'up' ? 'new-password' : 'current-password'}" required></label>
             <button class="btn btn-primary" type="submit" style="justify-content:center;padding-block:10px">${mode === 'in' ? 'เข้าสู่ระบบ' : 'สมัครใช้งาน'}</button>
-            ${mode === 'up' ? '<p class="muted small" style="margin:0">สมัครแล้วต้องรอฝ่ายวิชาการอนุมัติก่อนจึงจะเห็นข้อมูล ผู้สมัครคนแรกของระบบจะเป็นผู้ดูแลระบบอัตโนมัติ</p>' : ''}
+            ${mode === 'up' ? '<p class="muted small" style="margin:0">สมัครแล้วต้องรอผู้ดูแลระบบอนุมัติก่อนจึงจะเห็นข้อมูล ผู้สมัครคนแรกของระบบจะเป็นผู้ดูแลระบบอัตโนมัติ</p>' : ''}
           </form>
           <a href="#student" class="btn btn-ghost" data-student style="justify-content:center">นักเรียน: ตรวจสอบผล 0 ร มส</a>
         </div></div></div>`;
@@ -142,9 +143,6 @@ function renderLogin() {
 const schoolLine = (ctx) => (ctx.settings.school_name ? `โรงเรียน${ctx.settings.school_name}` : 'ยังไม่ได้ตั้งชื่อโรงเรียน');
 const termLine = (ctx) => (ctx.term ? `ภาคเรียนที่ ${ctx.term.term} ปีการศึกษา ${ctx.term.academic_year}` : 'ยังไม่ได้ตั้งภาคเรียน');
 
-// \u200b = จุดตัดบรรทัดที่ระบุเอง (ตัวตัดคำของเบราว์เซอร์ตัด "เช็กชื่อ" ผิดที่)
-const NAV = { home: 'วันนี้', students: 'นักเรียน', daily: 'เช็กชื่อ\u200bประจำวัน', period: 'เช็กชื่อ\u200bรายคาบ', reports: 'รายงาน A4',
-  scores: 'คะแนน\u200bรายวิชา', health: 'น้ำหนัก-\u200bส่วนสูง', traits: 'คุณลักษณะ/\u200bกิจกรรม', remedial: 'ติดตาม\u200b0 ร มส', print: 'พิมพ์\u200bปพ.6 / ปพ.5', setup: 'ตั้งค่าระบบ' };
 let clockTimer = null;
 const THAI_DAYS = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
 function tickClock() {
@@ -172,18 +170,8 @@ function renderShell(ctx) {
           <small class="ver" title="ถ้าไม่ใช่เลขล่าสุด ให้กด Ctrl+F5">เวอร์ชัน ${VERSION}</small></div>
         <nav class="nav">
           ${item('home')}
-          <div class="sec">ธุรการชั้นเรียน</div>
-          ${item('students')}
-          ${item('daily')}
-          ${item('period')}
-          ${item('reports')}
-          <div class="sec">ปพ.</div>
-          ${item('scores')}
-          ${item('health')}
-          ${item('traits')}
-          ${hasSecondary(ctx) ? item('remedial') : ''}
-          ${item('print')}
-          ${ctx.isAdmin ? `<div class="sec">ผู้ดูแล</div>${item('setup')}` : ''}
+          ${MENU_GROUPS.map((g) => { const vs = g.items.filter((v) => ctx.menus.has(v)); return vs.length ? `<div class="sec">${g.label}</div>${vs.map(item).join('')}` : ''; }).join('')}
+          ${ctx.isAdmin ? `<div class="sec">ผู้ดูแลระบบ</div>${item('setup')}` : ''}
           <div class="sec">แอปในเครือ</div>
           <a href="../">${icon('link')}<span>ทางเข้า WL (ทุกแอป)</span></a>
         </nav>
@@ -202,7 +190,7 @@ function renderShell(ctx) {
     </div>
     <div id="bnav-root"></div>`;
   navCtl = mountNav($('#bnav-root'), { labels: NAV, version: VERSION,
-    ok: ['home', 'students', 'daily', 'period', 'reports', 'scores', 'health', 'traits', ...(hasSecondary(ctx) ? ['remedial'] : []), 'print', ...(ctx.isAdmin ? ['setup'] : [])] });
+    ok: MENU_ORDER.filter((v) => ctx.menus.has(v)) });
   $('#logout').addEventListener('click', async () => { await db.auth.signOut(); boot(); });
   $('#demo-reset')?.addEventListener('click', async () => { db.resetDemo(); await db.auth.signOut(); boot(); });
   clearInterval(clockTimer); tickClock(); clockTimer = setInterval(tickClock, 1000);
@@ -232,7 +220,7 @@ document.addEventListener('click', (e) => {
 
 async function route(ctx) {
   const v = (location.hash.replace('#', '') || 'home').split('?')[0];
-  const view = VIEWS[v] && (v !== 'setup' || ctx.isAdmin) ? v : 'home';
+  const view = VIEWS[v] && ctx.menus.has(v) ? v : 'home';
   $$('.nav a[data-v]').forEach((a) => a.classList.toggle('on', a.dataset.v === view));
   navCtl?.setView(view);
   const tt = $('#tb-title'); if (tt) tt.textContent = NAV[view] || '';
@@ -258,12 +246,15 @@ function makeLive(ctx, userId) {
   let chain = Promise.resolve();
   const load = async () => {
     const fresh = await loadContext(userId);
+    const menusBefore = [...(ctx.menus || [])].join();
     for (const k of Object.keys(ctx)) if (!KEEP.has(k) && !(k in fresh)) delete ctx[k];
     Object.assign(ctx, fresh);
     const sc = document.getElementById('brand-school'); if (sc) sc.textContent = schoolLine(ctx);
     const tm = document.getElementById('brand-term'); if (tm) tm.textContent = termLine(ctx);
     const tt = document.getElementById('tb-term'); if (tt) tt.textContent = termLine(ctx);
     paintBadges();
+    // ผู้ดูแลระบบเปลี่ยนเมนูของเรา → วาดเมนูใหม่ทันที (ถ้ากำลังอยู่หน้าที่ถูกซ่อนจะกลับหน้าแรก)
+    if (menusBefore !== [...ctx.menus].join()) { renderShell(ctx); route(ctx); }
   };
   ctx.refresh = () => { const p = chain.then(load, load); chain = p.catch(() => {}); return p; };
   ctx.go = (view, params = {}) => { ctx.params = params; location.hash = view; };
@@ -288,7 +279,7 @@ async function boot() {
   catch (err) { root.innerHTML = `<div class="login"><div class="card" style="max-width:460px"><h2>เชื่อมต่อฐานข้อมูลไม่สำเร็จ</h2><p>${esc(err.message)}</p></div></div>`; return; }
   if (ctx.me.role === 'pending') {
     root.innerHTML = `<div class="login"><div class="card" style="max-width:460px"><h1>รอการอนุมัติ</h1>
-      <p>บัญชี ${esc(ctx.me.email || ctx.me.full_name)} สมัครเรียบร้อยแล้ว กรุณาแจ้งฝ่ายวิชาการให้อนุมัติในหน้า "ตั้งค่าระบบ &gt; ผู้ใช้"</p>
+      <p>บัญชี ${esc(ctx.me.email || ctx.me.full_name)} สมัครเรียบร้อยแล้ว กรุณาแจ้งผู้ดูแลระบบให้อนุมัติในหน้า "ตั้งค่าระบบ &gt; ผู้ใช้"</p>
       <button class="btn" id="logout">ออกจากระบบ</button></div></div>`;
     $('#logout').addEventListener('click', async () => { await db.auth.signOut(); boot(); });
     return;

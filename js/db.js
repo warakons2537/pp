@@ -2,8 +2,8 @@
 //  ชั้นข้อมูล: ใช้ Supabase จริง หรือ "โหมดทดลอง" (เก็บในเบราว์เซอร์)
 //  หน้าจอทุกหน้าเรียกผ่าน API ชุดเดียวกัน จึงสลับได้โดยไม่ต้องแก้หน้าจอ
 // =====================================================================
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2569.10.31-2';
-import { seedDemo } from './demo-data.js?v=2569.10.31-2';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2569.10.31-3';
+import { seedDemo } from './demo-data.js?v=2569.10.31-3';
 
 const thaiError = (e) => {
   const m = String(e?.message || e);
@@ -230,7 +230,7 @@ function demoDb() {
       gone.forEach((r) => emit(t, 'DELETE', r)); save();
     },
     async rpc(name, args) {
-      // ผู้ดูแลจับคู่ครูที่ยังไม่มีบัญชีกับบัญชีจริง (เหมือน claim_teacher ใน schema.sql)
+      // ผู้ดูแลระบบจับคู่ครูที่ยังไม่มีบัญชีกับบัญชีจริง (เหมือน claim_teacher ใน schema.sql)
       if (name === 'claim_teacher') {
         const { placeholder, account } = args;
         for (const t of ['course_teachers', 'classroom_teachers']) {

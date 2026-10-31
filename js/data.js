@@ -1,4 +1,4 @@
-import { sortByNumber, iso, fromIso } from './util.js?v=2569.10.31-2';
+import { sortByNumber, iso, fromIso } from './util.js?v=2569.10.31-3';
 
 // รายชื่อนักเรียนในห้อง (เรียงตามเลขที่)
 export async function getRoster(db, classroomId, { includeLeft = false } = {}) {
@@ -36,14 +36,14 @@ export function termMonths(term) {
 const refCache = {};
 export async function loadGrowthRef(db, set) {
   if (refCache[set]) return refCache[set];
-  const { makeRef } = await import('./assess.js?v=2569.10.31-2');
+  const { makeRef } = await import('./assess.js?v=2569.10.31-3');
   const ref = makeRef(await db.select('growth_reference', { eq: { ref_set: set } }));
-  if (ref.size) refCache[set] = ref;            // ตารางว่างไม่เก็บ เผื่อผู้ดูแลเพิ่งโหลดตาราง
+  if (ref.size) refCache[set] = ref;            // ตารางว่างไม่เก็บ เผื่อผู้ดูแลระบบเพิ่งโหลดตาราง
   return ref;
 }
 export const clearGrowthRef = () => { for (const k of Object.keys(refCache)) delete refCache[k]; };
 
-// วันเกิดของนักเรียน (อ่านได้เฉพาะครูประจำชั้น/ผู้ดูแล — คนอื่นได้ค่าว่าง)
+// วันเกิดของนักเรียน (อ่านได้เฉพาะครูประจำชั้น/ผู้ดูแลระบบ — คนอื่นได้ค่าว่าง)
 export async function getBirthDates(db, ids) {
   if (!ids.length) return {};
   try {

@@ -1,14 +1,15 @@
-import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.31-2';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-2';
-import { ROUNDING } from '../grading.js?v=2569.10.31-2';
-import { excelRefToRows } from '../assess.js?v=2569.10.31-2';
-import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.31-2';
-import { subjectImportFlow } from './subject-import-view.js?v=2569.10.31-2';
-import { teacherImportFlow } from './teacher-import-view.js?v=2569.10.31-2';
-import { indicatorImportFlow } from './indicator-import-view.js?v=2569.10.31-2';
-import { clearGrowthRef } from '../data.js?v=2569.10.31-2';
-import { teacherKey, displayName } from '../teacher-import.js?v=2569.10.31-2';
-import { applyCourseOrder, inheritedOrder } from '../course-order.js?v=2569.10.31-2';
+import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.10.31-3';
+import { GRANTABLE, MENU_GROUPS, plain } from '../menus.js?v=2569.10.31-3';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.10.31-3';
+import { ROUNDING } from '../grading.js?v=2569.10.31-3';
+import { excelRefToRows } from '../assess.js?v=2569.10.31-3';
+import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.10.31-3';
+import { subjectImportFlow } from './subject-import-view.js?v=2569.10.31-3';
+import { teacherImportFlow } from './teacher-import-view.js?v=2569.10.31-3';
+import { indicatorImportFlow } from './indicator-import-view.js?v=2569.10.31-3';
+import { clearGrowthRef } from '../data.js?v=2569.10.31-3';
+import { teacherKey, displayName } from '../teacher-import.js?v=2569.10.31-3';
+import { applyCourseOrder, inheritedOrder } from '../course-order.js?v=2569.10.31-3';
 
 let tab = 'school';
 const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', rooms: 'ห้องเรียน', subjects: 'รายวิชา', roomsubj: 'รายวิชาตามชั้น', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', notify: 'การแจ้งเตือน', backup: 'สำรองข้อมูล' };
@@ -290,23 +291,49 @@ function subjects(pane, ctx, run) {
   }));
 }
 
+// เลือกเมนูที่ครูแต่ละคนเห็น: ตามหน้าที่อัตโนมัติ หรือกำหนดเอง (ไม่ใช้กับผู้ดูแลระบบ ซึ่งเห็นทุกเมนูเสมอ)
+async function editMenus(ctx, p, run) {
+  if (!p || p.role === 'admin') return;
+  const custom = Array.isArray(p.menus);
+  const on = new Set(custom ? p.menus : []);
+  const row = 'flex-direction:row;align-items:center;gap:8px';
+  const body = `<p style="margin:0"><b>${esc(p.full_name || p.email || '')}</b></p>
+    <label style="${row}"><input type="radio" name="mode" value="auto" ${custom ? '' : 'checked'}> ตามหน้าที่ที่ได้รับมอบหมาย (อัตโนมัติ)</label>
+    <p class="small muted" style="margin:-4px 0 0 24px">ทุกคนเห็น วันนี้ · รายงาน A4 · พิมพ์ ปพ.6 / ปพ.5 — ครูประจำชั้นเห็นงานประจำชั้น — ครูผู้สอนเห็นงานสอน (และติดตาม 0 ร มส เมื่อเกี่ยวกับห้อง ม.)</p>
+    <label style="${row}"><input type="radio" name="mode" value="custom" ${custom ? 'checked' : ''}> กำหนดเมนูเอง</label>
+    <fieldset id="menu-set" ${custom ? '' : 'disabled'} style="border:0;padding:0 0 0 24px;margin:0;display:flex;flex-direction:column;gap:6px">
+      ${MENU_GROUPS.map((g) => `<b class="small">${esc(g.label)}</b>${g.items.map((v) => `<label style="${row}"><input type="checkbox" name="m_${v}" ${on.has(v) ? 'checked' : ''}> ${esc(plain(v))}</label>`).join('')}`).join('')}
+      <span class="small muted">"วันนี้" เห็นเสมอ · ผู้ดูแลระบบเห็นทุกเมนูเสมอและไม่ถูกจำกัด</span>
+    </fieldset>`;
+  const h = (e) => { if (e.target.name === 'mode') { const fs = document.getElementById('menu-set'); if (fs) fs.disabled = e.target.value !== 'custom'; } };
+  document.addEventListener('change', h);
+  const r = await modal('เมนูที่เห็น', body, { wide: true });
+  document.removeEventListener('change', h);
+  if (!r) return;
+  const menus = r.mode === 'custom' ? GRANTABLE.filter((v) => r[`m_${v}`] !== undefined) : null;
+  run(() => ctx.db.update('profiles', { id: p.id }, { menus }), 'บันทึกเมนูแล้ว');
+}
+
 // ---------------------------------------------------------------------
 function users(pane, ctx, run) {
   const roleOpts = [{ id: 'pending', label: 'รออนุมัติ' }, { id: 'teacher', label: 'ครู' }, { id: 'admin', label: 'ผู้ดูแลระบบ' }];
   const holders = ctx.profiles.filter((p) => p.has_account === false);
+  const menuCell = (p) => (p.role === 'admin' ? '<span class="chip chip-info">ทุกเมนู</span>' : p.role === 'pending' ? '<span class="muted">—</span>'
+    : `<button class="btn btn-sm" data-menus="${p.id}">${Array.isArray(p.menus) ? `กำหนดเอง (${p.menus.filter((v) => GRANTABLE.includes(v)).length} เมนู)` : 'ตามหน้าที่ (อัตโนมัติ)'}</button>`);
   pane.innerHTML = `<div class="card">
     <div class="row" style="justify-content:space-between"><h2>ผู้ใช้</h2><button class="btn" id="add-teacher">เพิ่มครู</button></div>
-    <p class="small muted">ครูสมัครใช้งานเองจากหน้าเข้าสู่ระบบ แล้วผู้ดูแลอนุมัติที่นี่ · ผู้ดูแลระบบแก้ไขได้ทุกอย่าง · ครูแก้ได้เฉพาะห้องที่เป็นครูประจำชั้นและวิชาที่สอน</p>
-    <div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>ชื่อ</th><th>อีเมล</th><th>สิทธิ์</th></tr></thead><tbody>
+    <p class="small muted">ครูสมัครใช้งานเองจากหน้าเข้าสู่ระบบ แล้วผู้ดูแลระบบอนุมัติที่นี่ · ผู้ดูแลระบบแก้ไขได้ทุกอย่าง · ครูแก้ได้เฉพาะห้องที่เป็นครูประจำชั้นและวิชาที่สอน · ผู้ดูแลระบบเลือกได้ว่าครูแต่ละคนเห็นเมนูอะไร (คอลัมน์ "เมนูที่เห็น") ส่วนผู้ดูแลระบบเห็นทุกเมนูเสมอ</p>
+    <div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>ชื่อ</th><th>อีเมล</th><th>สิทธิ์</th><th>เมนูที่เห็น</th></tr></thead><tbody>
       ${ctx.profiles.map((p) => `<tr><td class="tc-ttl">${esc(p.full_name || '—')}</td><td class="small wrap-any" data-l="อีเมล">${esc(p.email ?? '')}</td>
         <td data-l="สิทธิ์">${p.has_account === false ? `<span class="chip">ยังไม่มีบัญชี</span> <button class="btn btn-sm btn-danger" data-delt="${p.id}">ลบ</button>`
           : `${p.id === ctx.me.id ? '<span class="chip chip-info">ผู้ดูแลระบบ (คุณ)</span>'
           : `<select data-role="${p.id}" aria-label="สิทธิ์ของ ${esc(p.full_name)}">${options(roleOpts, p.role)}</select>`}
-          ${holders.length ? `<select data-claim="${p.id}" aria-label="จับคู่ ${esc(p.full_name)} กับรายชื่อครูที่สร้างไว้"><option value="">จับคู่กับรายชื่อที่สร้างไว้…</option>${options(holders, null, (h) => h.full_name)}</select>` : ''}`}</td></tr>`).join('')}
+          ${holders.length ? `<select data-claim="${p.id}" aria-label="จับคู่ ${esc(p.full_name)} กับรายชื่อครูที่สร้างไว้"><option value="">จับคู่กับรายชื่อที่สร้างไว้…</option>${options(holders, null, (h) => h.full_name)}</select>` : ''}`}</td>
+        <td data-l="เมนูที่เห็น">${menuCell(p)}</td></tr>`).join('')}
     </tbody></table></div></div>`;
   $('#add-teacher', pane).addEventListener('click', async () => {
     const r = await modal('เพิ่มครู', `<label>ชื่อ-นามสกุล<input type="text" name="full_name" required autofocus placeholder="เช่น วรากร ตรงต่อกิจ"></label>
-      <p class="small muted" style="margin:0">ครูที่เพิ่มจะยังไม่มีบัญชี เมื่อครูสมัครด้วยชื่อเดียวกัน ระบบจับคู่ให้เอง (ต้องรอผู้ดูแลอนุมัติ)</p>`);
+      <p class="small muted" style="margin:0">ครูที่เพิ่มจะยังไม่มีบัญชี เมื่อครูสมัครด้วยชื่อเดียวกัน ระบบจับคู่ให้เอง (ต้องรอผู้ดูแลระบบอนุมัติ)</p>`);
     if (!r) return;
     const name = displayName(r.full_name); const key = teacherKey(name);
     if (!key) { toast('กรุณากรอกชื่อ', 'err'); return; }
@@ -319,6 +346,7 @@ function users(pane, ctx, run) {
     if (!await confirmBox(`ลบ "${t.full_name}"?${n ? ` ที่ผูกกับวิชาหรือห้องอยู่ ${n} รายการจะถูกเอาออกด้วย` : ''}`, 'ลบ')) return;
     run(() => ctx.db.remove('profiles', { id: t.id }), 'ลบแล้ว');
   }));
+  pane.querySelectorAll('[data-menus]').forEach((b) => b.addEventListener('click', () => editMenus(ctx, ctx.profileById[b.dataset.menus], run)));
   pane.querySelectorAll('[data-role]').forEach((s) => s.addEventListener('change', () =>
     run(() => ctx.db.update('profiles', { id: s.dataset.role }, { role: s.value }), 'เปลี่ยนสิทธิ์แล้ว')));
   pane.querySelectorAll('[data-claim]').forEach((s) => s.addEventListener('change', async () => {
@@ -358,7 +386,7 @@ async function growth(pane, ctx, run) {
   $('#g-tpl', pane).href = URL.createObjectURL(new Blob(['\ufeff' + tpl], { type: 'text/csv' }));
   const upsertRows = async (rows) => { for (let i = 0; i < rows.length; i += 500) await ctx.db.upsert('growth_reference', rows.slice(i, i + 500), 'ref_set,sex,basis,key,measure'); clearGrowthRef(); };
   $('#load-excel', pane).addEventListener('click', () => run(async () => {
-    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.31-2');
+    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.10.31-3');
     await upsertRows(excelRefToRows(EXCEL_AGE, EXCEL_HT));
   }, 'โหลดตารางจาก Excel เดิมแล้ว'));
   pane.querySelectorAll('[data-use]').forEach((b) => b.addEventListener('click', () =>

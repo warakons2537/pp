@@ -1,8 +1,8 @@
 // แถบเมนูล่างสำหรับจอแคบ + แผง "เพิ่มเติม" + จัดแถบเมนูเอง
 // เลือกเมนูหลักได้ 4 อัน จำเฉพาะเครื่องนี้ (localStorage) ไม่ใช้ฐานข้อมูล
-import { icon } from './icons.js?v=2569.10.31-2';
-import { esc, toast } from './util.js?v=2569.10.31-2';
-import { badge } from './notify.js?v=2569.10.31-2';
+import { icon } from './icons.js?v=2569.10.31-3';
+import { esc, toast } from './util.js?v=2569.10.31-3';
+import { badge } from './notify.js?v=2569.10.31-3';
 
 const KEY = 'wl-bnav', MAX = 4, DEFAULT = ['home', 'daily', 'scores', 'students'];
 // ชื่อเมนูที่มีจุดตัดบรรทัด (\u200b) → ห่อแต่ละท่อนไม่ให้ตัดกลางคำ
@@ -11,14 +11,19 @@ let cur = null;
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cur?.close(); });
 
 function load(ok) {
+  const max = Math.min(MAX, ok.length);
   let a = null;
   try { a = JSON.parse(localStorage.getItem(KEY)); } catch { /* ใช้ค่าเริ่มต้น */ }
   a = Array.isArray(a) ? [...new Set(a)].filter((v) => ok.includes(v)) : [];
-  return a.length === MAX ? a : DEFAULT.filter((v) => ok.includes(v));
+  if (a.length === max) return a;
+  const d = DEFAULT.filter((v) => ok.includes(v));
+  for (const v of ok) if (d.length < max && !d.includes(v)) d.push(v);
+  return d.slice(0, max);
 }
 const save = (a) => { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch { /* เครื่องไม่ให้จำค่า */ } };
 
 export function mountNav(host, { labels, ok, version }) {
+  const max = Math.min(MAX, ok.length);
   let bar = load(ok), view = 'home', open = false, edit = false;
   const badges = {};   // จุดแดงจำนวนเรื่องค้าง { view: n }
   const link = (v) => `<a href="#${v}" data-v="${v}">${icon(v)}<span>${labelHtml(labels[v])}</span>${badge(badges[v])}</a>`;
@@ -27,7 +32,7 @@ export function mountNav(host, { labels, ok, version }) {
   function draw() {
     const body = edit
       ? `<h3>จัดแถบเมนู</h3>
-         <p class="small muted" style="margin:0">เลือกเมนูที่ใช้บ่อย 4 อัน (เลือกแล้ว ${bar.length}/${MAX}) · จำเฉพาะเครื่องนี้</p>
+         <p class="small muted" style="margin:0">เลือกเมนูที่ใช้บ่อย ${max} อัน (เลือกแล้ว ${bar.length}/${max}) · จำเฉพาะเครื่องนี้</p>
          <div class="sheet-list">${ok.map(pick).join('')}</div>
          <div class="sheet-foot"><span></span><button type="button" class="btn btn-primary" data-act="done">เสร็จสิ้น</button></div>`
       : `<div class="sheet-list">${ok.filter((v) => !bar.includes(v)).map(link).join('')}<a href="../">${icon('link')}<span>ทางเข้า WL (ทุกแอป)</span></a></div>
@@ -48,15 +53,15 @@ export function mountNav(host, { labels, ok, version }) {
   }
   function setOpen(v) {
     open = v;
-    if (!v) { edit = false; if (bar.length !== MAX) bar = load(ok); }
+    if (!v) { edit = false; if (bar.length !== max) bar = load(ok); }
     draw();
     if (v) host.querySelector('.sheet a, .sheet button')?.focus();
   }
   function toggle(v) {
     if (bar.includes(v)) bar = bar.filter((x) => x !== v);
-    else if (bar.length < MAX) bar = ok.filter((x) => bar.includes(x) || x === v);
-    else return toast('เลือกได้ไม่เกิน 4 เมนู — ยกเลิกเมนูอื่นก่อน');
-    if (bar.length === MAX) save(bar);
+    else if (bar.length < max) bar = ok.filter((x) => bar.includes(x) || x === v);
+    else return toast(`เลือกได้ไม่เกิน ${max} เมนู — ยกเลิกเมนูอื่นก่อน`);
+    if (bar.length === max) save(bar);
     draw();
   }
   host.addEventListener('click', (e) => {
@@ -67,7 +72,7 @@ export function mountNav(host, { labels, ok, version }) {
     if (!b) { if (t.closest('.sheet a')) setOpen(false); return; }
     if (b.dataset.act === 'more') setOpen(!open);
     else if (b.dataset.act === 'edit') { edit = true; draw(); }
-    else if (b.dataset.act === 'done') { if (bar.length !== MAX) return toast('ต้องเลือกให้ครบ 4 เมนู'); edit = false; draw(); }
+    else if (b.dataset.act === 'done') { if (bar.length !== max) return toast(`ต้องเลือกให้ครบ ${max} เมนู`); edit = false; draw(); }
   });
   draw();
   const ctl = { setView(v) { view = v; mark(); }, setBadge(v, n) { if ((badges[v] || 0) !== n) { badges[v] = n; draw(); } }, close() { if (open) setOpen(false); } };
