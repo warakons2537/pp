@@ -1,6 +1,6 @@
 // ข้อมูลตัวอย่างสำหรับโหมดทดลอง (ชื่อทั้งหมดสมมติ)
-import { EXCEL_AGE, EXCEL_HT } from './data/growth-excel.js?v=2569.10.31-1';
-import { excelRefToRows } from './assess.js?v=2569.10.31-1';
+import { EXCEL_AGE, EXCEL_HT } from './data/growth-excel.js?v=2569.10.31-2';
+import { excelRefToRows } from './assess.js?v=2569.10.31-2';
 export function seedDemo() {
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);

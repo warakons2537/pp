@@ -1,7 +1,7 @@
 // ติดตามการแก้ 0 ร มส (เฉพาะ ม.1–ม.3)
 // ครูผู้สอน: วางแผน บันทึกผลแก้ แล้วส่งยืนยัน · ผู้ดูแล: ยืนยัน/ส่งกลับ · ไม่แก้เกรดใน ปพ.5
-import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso } from '../util.js?v=2569.10.31-1';
-import { CAUSES, PLANS, STATUS, NEW_GRADES, visibleCourses, canEditCase, loadRemedial, statusOf, originalOf } from '../remedial.js?v=2569.10.31-1';
+import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso } from '../util.js?v=2569.10.31-2';
+import { CAUSES, PLANS, STATUS, NEW_GRADES, visibleCourses, canEditCase, loadRemedial, statusOf, originalOf } from '../remedial.js?v=2569.10.31-2';
 
 const pref = { room: '', status: '', grade: '' };
 const gradeChip = (g) => `<span class="chip ${g === 'ร' ? 'chip-warn' : 'chip-bad'}">${esc(g)}</span>`;
@@ -44,11 +44,11 @@ export async function render(el, ctx) {
         <button class="btn btn-sm btn-primary" id="open-all">เปิดรายการทั้งหมด (${todo.length})</button></div>` : ''}
       ${ctx.isAdmin && count('submitted') ? `<div class="notice">มี ${count('submitted')} รายการรอยืนยันผลแก้ — กดปุ่ม "ตรวจ" ที่แถวสถานะ "รอยืนยัน"</div>` : ''}
       ${list.length ? `<div class="tbl-wrap"><table class="tbl">
-        <thead><tr><th>ห้อง/ที่</th><th>ชื่อ-สกุล</th><th>วิชา</th><th class="c">ผลเดิม</th><th class="hide-sm">สาเหตุ</th><th class="hide-sm">วิธีแก้</th>
+        <thead><tr><th>ห้อง</th><th class="n">เลขที่</th><th>ชื่อ-สกุล</th><th>วิชา</th><th class="c">ผลเดิม</th><th class="hide-sm">สาเหตุ</th><th class="hide-sm">วิธีแก้</th>
           <th class="hide-sm">กำหนด</th><th>สถานะ</th><th class="c">ผลหลังแก้</th><th></th></tr></thead>
         <tbody>${list.map((it) => {
           const c = it.case; const edit = canEditCase(ctx, it.course, c);
-          return `<tr><td class="tabular">${esc(roomName(it.course.classroom))}/${it.student.number ?? ''}</td>
+          return `<tr><td class="tabular">${esc(roomName(it.course.classroom))}</td><td class="n tabular">${it.student.number ?? ''}</td>
             <td class="w">${esc(fullName(it.student))}</td>
             <td>${esc(it.course.subject?.code ?? '')}<br><span class="muted small">${esc(it.course.subject?.name ?? '')}</span></td>
             <td class="c">${gradeChip(originalOf(it))}</td>
