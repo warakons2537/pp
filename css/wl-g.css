@@ -13,6 +13,7 @@
   --nav-glass: rgba(255, 255, 255, .46); --nav-glass-bd: rgba(255, 255, 255, .8); --nav-sheen: rgba(255, 255, 255, .5);
   --nav-hl: inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 -1px 0 rgba(30, 58, 95, .12);
   --lens-bg: rgba(10, 74, 38, .14); --lens-fg: #0a4a26;
+  --g-check: #0a4a26; --g-on-check: #FFFFFF;
 }
 /* สว่าง: เลือกสว่างเอง หรือไม่ได้เลือก + เครื่องเป็นสว่าง */
 :root[data-theme="light"] {
@@ -50,7 +51,7 @@
     --g-ok-bg: var(--pen-wash); --g-ok-fg: var(--on-pen-wash); --g-warn-bg: var(--amber-wash); --g-warn-fg: var(--on-amber-wash); --g-bad-bg: var(--red-wash); --g-bad-fg: var(--on-red-wash);
     --g-glass: rgba(25, 28, 25, .6); --g-glass-bd: rgba(255, 255, 255, .2); --g-glow: none;
     --nav-glass: rgba(30, 34, 30, .5); --nav-glass-bd: rgba(255, 255, 255, .2); --nav-sheen: rgba(255, 255, 255, .14);
-    --nav-hl: inset 0 1px 0 rgba(255, 255, 255, .24), inset 0 -1px 0 rgba(0, 0, 0, .4); --lens-bg: color-mix(in srgb, var(--pen) 26%, transparent); --lens-fg: var(--pen);
+    --nav-hl: inset 0 1px 0 rgba(255, 255, 255, .24), inset 0 -1px 0 rgba(0, 0, 0, .4); --lens-bg: color-mix(in srgb, var(--pen) 26%, transparent); --lens-fg: var(--pen); --g-check: var(--pen); --g-on-check: var(--on-pen);
   --g-hero-sub: var(--ink-soft);
 }
 @media (prefers-color-scheme: dark) {
@@ -60,7 +61,7 @@
     --g-ok-bg: var(--pen-wash); --g-ok-fg: var(--on-pen-wash); --g-warn-bg: var(--amber-wash); --g-warn-fg: var(--on-amber-wash); --g-bad-bg: var(--red-wash); --g-bad-fg: var(--on-red-wash);
     --g-glass: rgba(25, 28, 25, .6); --g-glass-bd: rgba(255, 255, 255, .2); --g-glow: none;
     --nav-glass: rgba(30, 34, 30, .5); --nav-glass-bd: rgba(255, 255, 255, .2); --nav-sheen: rgba(255, 255, 255, .14);
-    --nav-hl: inset 0 1px 0 rgba(255, 255, 255, .24), inset 0 -1px 0 rgba(0, 0, 0, .4); --lens-bg: color-mix(in srgb, var(--pen) 26%, transparent); --lens-fg: var(--pen);
+    --nav-hl: inset 0 1px 0 rgba(255, 255, 255, .24), inset 0 -1px 0 rgba(0, 0, 0, .4); --lens-bg: color-mix(in srgb, var(--pen) 26%, transparent); --lens-fg: var(--pen); --g-check: var(--pen); --g-on-check: var(--on-pen);
   --g-hero-sub: var(--ink-soft);
   }
 }
@@ -256,3 +257,27 @@ table.tbl.tbl-dense, .modal table.tbl { font-size: .9rem; }
   .day-head .btn { width: 100%; }
   .day-card { padding: 14px; }
 }
+
+/* ---------- ช่องติ๊ก: วาดเอง (โหมดมืดไม่เป็นสี่เหลี่ยมดำ) ขอบเห็นชัดทั้งสว่าง/มืด ---------- */
+.g-chk { -webkit-appearance: none; appearance: none; width: 24px; height: 24px; margin: 0; flex: none; display: inline-grid; place-content: center; cursor: pointer;
+  background: var(--g-card); border: 2px solid var(--g-muted); border-radius: 7px; transition: background .15s ease, border-color .15s ease; }
+.g-chk:hover { border-color: var(--g-check); }
+.g-chk:checked, .g-chk:indeterminate { background: var(--g-check); border-color: var(--g-check); }
+.g-chk:checked::after { content: ""; width: 11px; height: 6px; margin-top: -2px; border-left: 2.5px solid var(--g-on-check); border-bottom: 2.5px solid var(--g-on-check); transform: rotate(-45deg); }
+.g-chk:indeterminate::after { content: ""; width: 11px; height: 2.5px; border-radius: 2px; background: var(--g-on-check); }
+.g-chk:disabled { opacity: .4; cursor: default; }
+.g-tbl thead .g-chk { background: transparent; border-color: rgba(255, 255, 255, .85); }
+.g-tbl thead .g-chk:checked, .g-tbl thead .g-chk:indeterminate { background: var(--g-gold); border-color: var(--g-gold); }
+.g-tbl thead .g-chk:checked::after { border-color: var(--g-on-gold); }
+.g-tbl thead .g-chk:indeterminate::after { background: var(--g-on-gold); }
+@media (prefers-reduced-motion: reduce) { .g-chk { transition: none; } }
+
+/* ---------- ช่องเลือกวันที่บนจอสัมผัส (js/datefield.js): ข้อความวันที่ไทยทับ ช่องจริงโปร่งใสอยู่เต็มพื้นที่ ---------- */
+.dt-wrap { position: relative; display: block; min-width: 0; }
+.dt-wrap > input[type=date] { position: relative; z-index: 1; width: 100%; opacity: 0; }
+.dt-face { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 14px; color: var(--g-fg);
+  background: var(--sheet); border: 1px solid var(--outline); border-radius: 14px; pointer-events: none; }
+.dt-face svg { color: var(--g-muted); flex: none; }
+.dt-empty { color: var(--g-muted); }
+.dt-wrap:focus-within .dt-face { border-color: var(--g-focus); box-shadow: 0 0 0 1px var(--g-focus); }
+.modal-body .dt-wrap > input[type=date] { min-height: 48px; }
