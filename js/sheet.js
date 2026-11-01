@@ -1,8 +1,8 @@
 // ตารางกรอกข้อมูลแบบ Excel: ลากคลุมหลายช่อง · คัดลอก/ตัด/วาง · ลบทั้งช่วง · ลากมุมขวาล่างเพื่อเติม (คัดลอก/เรียงเลข) · เลิกทำ
 // ทุกการเขียนผ่านฟังก์ชันบันทึกเดิมของหน้านั้น (set / setBatch) จึงตรวจค่าและสิทธิ์เหมือนกรอกเอง ค่าที่ไม่ผ่านจะไม่ถูกบันทึก
 // ช่องต้องมี data-r / data-c · ตัวเลือก: { cell: ตัวเลือก CSS ของช่อง, get(el), set(el, text) → true/false หรือ setBatch([{el,value}]) → [true/false], canEdit }
-import { toast, modal } from './util.js?v=2569.11.1-7';
-import { parseClip, toTsv, fillValues, wantSeries } from './sheet-core.js?v=2569.11.1-7';
+import { toast, modal } from './util.js?v=2569.11.1-8';
+import { parseClip, toTsv, fillValues, wantSeries } from './sheet-core.js?v=2569.11.1-8';
 
 let current = null;                                   // ตารางที่มีการเลือกอยู่ (มีได้ทีละตาราง)
 const isField = (t) => !!t?.closest?.('input, textarea, select');
@@ -51,22 +51,35 @@ export function attachSheet(table, o) {
     handle.hidden = false;
   };
 
-  const bar = document.createElement('div');
-  bar.className = 'sheet-bar no-print';
-  bar.innerHTML = `<span class="sb-msg small muted"></span><span class="sb-btns">
-    <button type="button" class="btn btn-sm" data-act="copy">คัดลอก</button>
-    ${canEdit ? `<button type="button" class="btn btn-sm" data-act="down" title="Ctrl+D">เติมลง</button>
-    <button type="button" class="btn btn-sm" data-act="right" title="Ctrl+R">เติมขวา</button>
-    <button type="button" class="btn btn-sm" data-act="clear" title="Delete">ลบ</button>
-    <button type="button" class="btn btn-sm" data-act="undo" title="Ctrl+Z">เลิกทำ</button>` : ''}</span>`;
-  wrap.insertAdjacentElement('beforebegin', bar);
+  // คำแนะนำสั้น ๆ เหนือตาราง + แถบคำสั่งลอยกระจกใสด้านล่าง (ขึ้นเมื่อเลือกช่วง หรือมีรายการให้เลิกทำ)
   const HINT = canEdit ? 'ลากคลุมหลายช่องได้ · Ctrl+C คัดลอก · Delete ลบ · ลากมุมขวาล่างเพื่อเติม (กด Ctrl สลับคัดลอก/เรียงเลข)' : 'ลากคลุมหลายช่องแล้ว Ctrl+C เพื่อคัดลอกไปวางใน Excel ได้';
+  const hint = document.createElement('div');
+  hint.className = 'sheet-hint small muted no-print'; hint.textContent = HINT;
+  wrap.insertAdjacentElement('beforebegin', hint);
+
+  const host = document.getElementById('view') || document.body;
+  host.querySelectorAll(':scope > .sheet-float').forEach((x) => x.remove());          // มีแถบนี้ได้ทีละตัว (กันค้างจากตารางที่ถูกวาดใหม่)
+  const bar = document.createElement('div');
+  bar.className = 'g-bulk sheet-float no-print'; bar.setAttribute('role', 'region'); bar.setAttribute('aria-label', 'คำสั่งของช่วงที่เลือก'); bar.hidden = true;
+  bar.innerHTML = `<div class="g-bulk-top"><div class="sb-msg"></div><button type="button" class="btn" data-act="cancel">ยกเลิกเลือก</button></div>
+    <div class="g-bulk-actions"><button type="button" class="btn btn-primary" data-act="copy">คัดลอก</button>
+    ${canEdit ? `<button type="button" class="btn" data-act="down" title="Ctrl+D">เติมลง</button>
+    <button type="button" class="btn" data-act="right" title="Ctrl+R">เติมขวา</button>
+    <button type="button" class="btn" data-act="clear" title="Delete">ลบ</button>
+    <button type="button" class="btn" data-act="undo" title="Ctrl+Z">เลิกทำ</button>` : ''}</div>`;
+  host.appendChild(bar);
   const undo = [];
   const updateBar = () => {
-    bar.querySelector('.sb-msg').textContent = sel ? `เลือก ${count(sel)} ช่อง` : HINT;
-    bar.querySelectorAll('button').forEach((b) => {
+    if (!table.isConnected) { bar.remove(); host.classList.remove('g-has-bar'); return; }
+    const show = !!sel || undo.length > 0;
+    bar.hidden = !show; host.classList.toggle('g-has-bar', show);
+    bar.querySelector('.sb-msg').textContent = sel ? `เลือก ${count(sel)} ช่อง` : 'ทำรายการแล้ว · เลิกทำได้';
+    bar.querySelector('[data-act=cancel]').hidden = !sel;
+    bar.querySelectorAll('[data-act]').forEach((b) => {
       const a = b.dataset.act;
+      if (a === 'cancel') return;
       b.disabled = a === 'undo' ? !undo.length : !sel;
+      if (a === 'copy' || a === 'down' || a === 'right' || a === 'clear') b.hidden = !sel;       // ไม่มีช่วงที่เลือก = เหลือแค่ปุ่มเลิกทำ
     });
   };
 
@@ -268,17 +281,21 @@ export function attachSheet(table, o) {
   document.addEventListener('paste', onPaste, true);
   bar.addEventListener('click', (e) => {
     const a = e.target.closest('button')?.dataset.act; if (!a) return;
-    if (a === 'copy') copyNow(); else if (a === 'clear') clearSel(); else if (a === 'undo') doUndo();
+    if (a === 'cancel') setSel(null); else if (a === 'copy') copyNow(); else if (a === 'clear') clearSel(); else if (a === 'undo') doUndo();
     else if (a === 'down') fillInside('down'); else if (a === 'right') fillInside('right');
   });
   window.addEventListener('resize', place);
+  const watcher = new MutationObserver(() => { if (!table.isConnected) cleanup(); });      // ตารางถูกวาดใหม่/เปลี่ยนแท็บ → เก็บแถบลอยและตัวดักเหตุการณ์
+  watcher.observe(host, { childList: true, subtree: true });
 
   function cleanup() {
+    watcher.disconnect();
     document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp);
     document.removeEventListener('pointerdown', onOutside); document.removeEventListener('keydown', onKey, true);
     document.removeEventListener('copy', onCopy, true); document.removeEventListener('cut', onCut, true);
     document.removeEventListener('paste', onPaste, true); window.removeEventListener('resize', place);
     if (current === api) current = null;
+    bar.remove(); hint.remove(); host.classList.remove('g-has-bar');
   }
   const api = { clear: () => setSel(null), cleanup };
   updateBar();

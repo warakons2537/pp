@@ -1,9 +1,9 @@
 // ติดตามการแก้ 0 ร มส (เฉพาะ ม.1–ม.3)
 // ครูผู้สอน: วางแผน บันทึกผลแก้ แล้วส่งยืนยัน · ผู้ดูแลระบบ: ยืนยัน/ส่งกลับ · ไม่แก้เกรดใน ปพ.5
-import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso } from '../util.js?v=2569.11.1-7';
-import { CAUSES, PLANS, STATUS, NEW_GRADES, visibleCourses, canEditCase, loadRemedial, statusOf, originalOf, legacyLabel } from '../remedial.js?v=2569.11.1-7';
-import { importFlow } from './remedial-import-view.js?v=2569.11.1-7';
-import { attachBulk } from '../bulk.js?v=2569.11.1-7';
+import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso } from '../util.js?v=2569.11.1-8';
+import { CAUSES, PLANS, STATUS, NEW_GRADES, visibleCourses, canEditCase, loadRemedial, statusOf, originalOf, legacyLabel } from '../remedial.js?v=2569.11.1-8';
+import { importFlow } from './remedial-import-view.js?v=2569.11.1-8';
+import { attachBulk } from '../bulk.js?v=2569.11.1-8';
 
 const pref = { room: '', status: '', grade: '' };
 const sel = new Set();      // รายการที่ติ๊กเลือก (จำไว้ข้ามการวาดใหม่ เช่น เปลี่ยนตัวกรอง)

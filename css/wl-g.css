@@ -281,3 +281,8 @@ table.tbl.tbl-dense, .modal table.tbl { font-size: .9rem; }
 .dt-empty { color: var(--g-muted); }
 .dt-wrap:focus-within .dt-face { border-color: var(--g-focus); box-shadow: 0 0 0 1px var(--g-focus); }
 .modal-body .dt-wrap > input[type=date] { min-height: 48px; }
+
+/* ---------- แถบคำสั่งของตารางกรอก (js/sheet.js): ลอยกระจกใสเมื่อเลือกช่วง ---------- */
+.sheet-hint { margin: 6px 0; min-height: 24px; }
+.sheet-float .g-bulk-actions .btn[hidden], .sheet-float .g-bulk-top .btn[hidden] { display: none; }
+.sheet-float .g-bulk-actions .btn:disabled { opacity: .4; }
