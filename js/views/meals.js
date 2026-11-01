@@ -1,9 +1,9 @@
 import { esc, $, toast, options, roomName, fullName, iso, fromIso, todayIso, thaiDate, daysInMonth,
-  THAI_MONTHS, THAI_DOW } from '../util.js?v=2569.11.1-5';
-import { attachSheet } from '../sheet.js?v=2569.11.1-5';
-import { attachBulk } from '../bulk.js?v=2569.11.1-5';
-import { onSwipe } from '../swipe.js?v=2569.11.1-5';
-import { getRoster, termMonths } from '../data.js?v=2569.11.1-5';
+  THAI_MONTHS, THAI_DOW } from '../util.js?v=2569.11.1-6';
+import { attachSheet } from '../sheet.js?v=2569.11.1-6';
+import { attachBulk } from '../bulk.js?v=2569.11.1-6';
+import { onSwipe } from '../swipe.js?v=2569.11.1-6';
+import { getRoster, termMonths } from '../data.js?v=2569.11.1-6';
 
 // สถานะการทานอาหาร (ใช้สีเดียวกับเช็กชื่อ)
 const MEAL = {
@@ -60,8 +60,8 @@ export async function render(el, ctx) {
           : `<label class="field">วันที่<input type="date" id="date" value="${pref.date}"></label>`}
       </div>
     </div>
-    <div class="small muted">${Object.values(MEAL).map((s) => `<span class="chip ${s.cls}">${s.mark} = ${s.label}</span>`).join(' ')}
-      ${pref.mode === 'month' && canEdit ? ' · แตะช่องเพื่อเปลี่ยนสถานะ · แตะหัววันที่เพื่อให้ทุกคนที่ยังว่าง "ทาน"' : ''}</div>
+    <div class="legend small muted"><span class="legend-chips">${Object.values(MEAL).map((s) => `<span class="chip ${s.cls}">${s.mark} = ${s.label}</span>`).join('')}</span>
+      ${pref.mode === 'month' && canEdit ? '<span class="legend-hint">แตะช่องเพื่อเปลี่ยนสถานะ · แตะหัววันที่เพื่อให้ทุกคนที่ยังว่าง "ทาน"</span>' : ''}</div>
     ${canEdit ? `<div class="row" style="margin:8px 0"><button class="btn" id="import">นำเข้าจากเช็กชื่อประจำวัน${pref.mode === 'month' ? 'ทั้งเดือน' : 'ของวันนี้'}</button>
       <span class="small muted">มา/สาย → ทาน · ป่วย/ลา/ขาด → ไม่มาเรียน · เติมเฉพาะช่องที่ยังว่าง ไม่ทับที่ครูบันทึกไว้แล้ว</span></div>` : ''}
     <div id="sheet"></div>`;
@@ -122,7 +122,7 @@ export async function render(el, ctx) {
     if (!out) return;
     const c = {}; let n = 0;
     for (const r of marks.values()) { c[r.status] = (c[r.status] || 0) + 1; n++; }
-    out.innerHTML = `บันทึกแล้ว ${n}/${roster.length} คน · ${Object.entries(MEAL).map(([k, s]) => `${s.label} ${c[k] || 0}`).join(' · ')}`;
+    out.innerHTML = `<b>บันทึกแล้ว ${n}/${roster.length} คน</b><span class="dc-list">${Object.entries(MEAL).map(([k, s]) => `<span class="dc ${s.cls}${c[k] ? '' : ' zero'}">${s.label} ${c[k] || 0}</span>`).join('')}</span>`;
   }
 
   // ใช้กับลากคลุม/วาง/เติม/ลบ หลายช่อง: ตรวจค่าก่อน แล้วบันทึกครั้งเดียว (ค่าที่ไม่รู้จักจะไม่ถูกบันทึก)
@@ -178,12 +178,14 @@ export async function render(el, ctx) {
 
   function drawDay(box, students, m, edit) {
     box.innerHTML = `
-      <div class="row" style="justify-content:space-between;align-items:center">
-        <b>${esc(thaiDate(pref.date))}</b><span class="small muted touch-only">ปัดซ้าย/ขวาเพื่อเปลี่ยนวัน</span>
-        ${edit ? '<button class="btn btn-primary" id="allin">ทุกคนที่ยังว่าง = ทาน</button>' : ''}
+      <div class="day-card">
+        <div class="day-head">
+          <div class="day-title"><b>${esc(thaiDate(pref.date))}</b><span class="touch-only">ปัดซ้าย/ขวาเพื่อเปลี่ยนวัน</span></div>
+          ${edit ? '<button class="btn btn-primary" id="allin">ทุกคนที่ยังว่าง = ทาน</button>' : ''}
+        </div>
+        <div class="day-count" id="daycount"></div>
+        ${edit ? '<label class="g-selall"><span class="g-chkcell"><input class="g-chk g-all" type="checkbox" aria-label="เลือกนักเรียนทั้งหมด"></span><span>เลือกทั้งหมด · ตั้งสถานะพร้อมกัน</span></label>' : ''}
       </div>
-      <div class="small muted" id="daycount"></div>
-      ${edit ? '<label class="g-selall"><span class="g-chkcell"><input class="g-chk g-all" type="checkbox" aria-label="เลือกนักเรียนทั้งหมด"></span><span>เลือกทั้งหมด · แล้วตั้งสถานะให้หลายคนพร้อมกัน</span></label>' : ''}
       <div class="roll${edit ? ' roll-sel' : ''}">${students.map((s) => { const k = `${s.id}|${pref.date}`; const st = m.get(k)?.status;
         return `<div class="roll-row" data-k="${k}">${edit ? `<label class="g-chkcell"><input class="g-chk" type="checkbox" data-id="${esc(s.id)}" aria-label="เลือก ${esc(fullName(s))}"></label>` : ''}<span class="muted tabular">${s.number ?? ''}</span><span class="nm">${esc(fullName(s))}</span>
           <div class="seg">${Object.entries(MEAL).map(([key, v]) => `<button data-s="${key}" class="${st === key ? `on ${v.cls}` : ''}" ${edit ? '' : 'disabled'}>${v.label}</button>`).join('')}</div></div>`; }).join('')}
