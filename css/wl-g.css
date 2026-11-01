@@ -230,7 +230,7 @@ table.tbl.tbl-dense, .modal table.tbl { font-size: .9rem; }
 .dc-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .dc { padding: 1px 12px; border-radius: 999px; font-size: .9rem; background: var(--paper); border: 1px solid var(--g-border-soft); }
 .dc.st-present { background: var(--g-ok-bg); color: var(--g-ok-fg); border-color: transparent; }
-.dc.zero { opacity: .55; }
+.dc.zero { opacity: 1; background: transparent; color: var(--g-muted); border-color: var(--g-border-soft); }
 .day-card .g-selall { margin-top: 2px; padding-top: 6px; border-top: 1px solid var(--g-border-soft); }
 .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .legend-chips { display: inline-flex; flex-wrap: wrap; gap: 8px; }
@@ -292,3 +292,13 @@ table.tbl.tbl-dense, .modal table.tbl { font-size: .9rem; }
 .sheet-pick-btn.on { background: var(--g-primary); border-color: var(--g-primary); color: var(--g-on-primary); }
 .sheet-pick input, .sheet-pick button.cell, .sheet-pick select { pointer-events: none; }
 .sheet-pick td { cursor: cell; -webkit-tap-highlight-color: transparent; }
+
+/* ธีมมืด: จุดที่เคยเป็นสีขาวตายตัว */
+:root[data-theme="dark"] .wl-g .g-select select { background: rgba(255, 255, 255, .12); color: #fff; border-color: rgba(255, 255, 255, .35); }
+:root[data-theme="dark"] .wl-g .g-select select option { background: #1b1f1c; color: #fff; }
+:root[data-theme="dark"] .welcome .av { background: #0f1511; color: var(--g-gold); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .wl-g .g-select select { background: rgba(255, 255, 255, .12); color: #fff; border-color: rgba(255, 255, 255, .35); }
+  :root:not([data-theme="light"]) .wl-g .g-select select option { background: #1b1f1c; color: #fff; }
+  :root:not([data-theme="light"]) .welcome .av { background: #0f1511; color: var(--g-gold); }
+}
