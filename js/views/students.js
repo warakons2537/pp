@@ -1,11 +1,16 @@
-import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.10.31-14';
-import { getRoster } from '../data.js?v=2569.10.31-14';
-import { readDmcFile } from '../dmc.js?v=2569.10.31-14';
-import { icon } from '../icons.js?v=2569.10.31-14';
-import { sortableRows } from '../reorder.js?v=2569.10.31-14';
-import { reorderPlan } from '../reorder-core.js?v=2569.10.31-14';
+import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.10.31-15';
+import { getRoster } from '../data.js?v=2569.10.31-15';
+import { readDmcFile } from '../dmc.js?v=2569.10.31-15';
+import { icon } from '../icons.js?v=2569.10.31-15';
+import { sortableRows } from '../reorder.js?v=2569.10.31-15';
+import { reorderPlan } from '../reorder-core.js?v=2569.10.31-15';
 
 let selected = null;   // ห้องที่เลือกค้างไว้ระหว่างเปลี่ยนหน้า
+let chipFilter = 'all';   // ตัวกรองสถานะ: all | active | left
+
+// ไอคอนในป้ายสถานะ (ป้ายต้องมีไอคอนกำกับเสมอ ตามระบบดีไซน์ WL)
+const SVG_OK = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"></path></svg>';
+const SVG_CLOCK = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M8 4.8V8l2.2 1.6"></path></svg>';
 
 export async function render(el, ctx) {
   const rooms = ctx.myClassrooms;
@@ -26,52 +31,114 @@ export async function render(el, ctx) {
   const shown = [...active, ...roster.filter((s) => s.enroll_status === 'left')];     // ที่ย้ายออกแล้วอยู่ท้ายรายการ (ลากเรียงเฉพาะที่ยังเรียนอยู่)
   const boys = active.filter((s) => s.gender === 'ช').length;
 
+  const teachers = ctx.homeroomTeachers(room.id).map((t) => t.full_name).join(', ') || '—';
+  const demo = ctx.db.mode === 'demo';
+  const meta = (s) => `เลขที่ <span class="g-meta-no">${s.number ?? ''}</span> · รหัส ${esc(s.student_code ?? '–')}${s.gender ? ` · ${s.gender === 'ช' ? 'ชาย' : 'หญิง'}` : ''}`;
+  const pill = (s) => (s.enroll_status === 'left'
+    ? `<span class="g-pill g-warn">${SVG_CLOCK}<span>ย้ายออก ${esc(thaiDate(s.left_on, true))}</span></span>`
+    : `<span class="g-pill g-ok">${SVG_OK}<span>กำลังเรียน</span></span>`);
+  const chips = [['all', 'ทั้งหมด', roster.length], ['active', 'กำลังเรียน', active.length], ['left', 'ย้ายออก', roster.length - active.length]];
+
   el.innerHTML = `
-    <div class="page-head">
-      <div><h1>นักเรียน</h1><p>ทะเบียนนักเรียนรายห้อง · ครูประจำชั้น: ${esc(ctx.homeroomTeachers(room.id).map((t) => t.full_name).join(', ') || '—')}</p></div>
-      <div class="row">
-        <label class="field">ห้อง<select id="room">${options(rooms, selected, (r) => `ห้อง ${roomName(r)}`)}</select></label>
+    <div class="wl-g" id="wlg">
+      <header class="g-hero">
+        <span class="g-logo" aria-hidden="true"><img src="img/logo-64.png" alt="" width="42" height="42"></span>
+        <div class="g-hero-text">
+          <div class="g-eyebrow">WL Admin</div>
+          <h1 class="g-title">รายชื่อนักเรียน ${esc(roomName(room))}</h1>
+          <div class="g-sub">ครูประจำชั้น: ${esc(teachers)} · ปีการศึกษา ${esc(room.academic_year)}</div>
+        </div>
+        <div class="g-hero-side">
+          <label class="g-select"><span class="g-sr">ห้อง</span><select id="room">${options(rooms, selected, (r) => `ห้อง ${roomName(r)}`)}</select></label>
+          <span class="g-tag">${demo ? 'ข้อมูลตัวอย่าง ไม่ใช่รายชื่อจริง' : `รวม ${active.length} คน`}</span>
+        </div>
+      </header>
+
+      <div class="g-toolbar">
+        <label class="g-btn g-btn-cta g-top" id="g-dmc">นำเข้าจาก DMC<input type="file" id="dmc-file" accept=".xls,.xlsx,.csv" hidden></label>
+        <button class="g-btn" id="add" type="button">เพิ่มนักเรียน</button>
+        <button class="g-btn" id="renum" type="button">เรียงเลขที่ใหม่</button>
+        <span class="g-muted g-small">ชาย ${boys} · หญิง ${active.length - boys} · รวม ${active.length} คน</span>
       </div>
-    </div>
-    <div class="row">
-      <label class="btn btn-primary">นำเข้าจาก DMC<input type="file" id="dmc-file" accept=".xls,.xlsx,.csv" hidden></label>
-      <button class="btn" id="add">เพิ่มนักเรียน</button>
-      <button class="btn" id="renum">เรียงเลขที่ใหม่</button>
-      <span class="muted small">ชาย ${boys} · หญิง ${active.length - boys} · รวม ${active.length} คน</span>
-    </div>
-    ${active.length > 1 ? `<div class="ord-bar small muted" id="ord-bar" role="status"><span id="ord-msg">${icon('grip')} ลากที่ไอคอนหน้าชื่อเพื่อเรียงลำดับ แล้วเลขที่จะเปลี่ยนตามทันที (ใช้ลูกศรขึ้น/ลงแทนการลากได้)</span>
-      <button class="btn btn-sm" id="ord-undo" hidden>เลิกทำ</button></div>` : ''}
-    ${roster.length ? `<div class="tbl-wrap"><table class="tbl stu-tbl">
-      <thead><tr><th class="drag-h" aria-label="เรียงลำดับ"></th><th class="n">เลขที่</th><th class="hide-sm">เลขประจำตัว</th><th>ชื่อ-สกุล</th><th class="c hide-sm">เพศ</th><th>สถานะ</th><th></th></tr></thead>
-      <tbody>${shown.map((s) => `<tr data-sid="${esc(s.id)}" data-eid="${esc(s.enrollment_id)}" ${s.enroll_status === 'left' ? '' : 'data-sortable'}>
-        <td class="drag-cell">${s.enroll_status === 'left' ? '' : `<button type="button" class="drag" title="ลากเพื่อเรียงลำดับ" aria-label="ย้ายลำดับของ ${esc(fullName(s))} (ลากหรือกดลูกศรขึ้นลง)">${icon('grip')}</button>`}</td>
-        <td class="n">${s.number ?? ''}</td><td class="tabular hide-sm">${esc(s.student_code ?? '')}</td>
-        <td class="w">${esc(fullName(s))}</td><td class="c hide-sm">${esc(s.gender ?? '')}</td>
-        <td>${s.enroll_status === 'left' ? `<span class="chip chip-warn">ออก ${esc(thaiDate(s.left_on, true))}</span>` : '<span class="chip chip-ok">กำลังเรียน</span>'}</td>
-        <td class="n stu-act">
-          <button class="btn btn-sm" data-edit="${esc(s.id)}">แก้ไข</button>
-          <button class="btn btn-sm" data-info="${esc(s.id)}">ข้อมูล DMC</button>
-          ${s.enroll_status !== 'left' ? `<button class="btn btn-sm btn-ghost" data-leave="${esc(s.enrollment_id)}">ย้ายออก</button>` : ''}
-        </td></tr>`).join('')}</tbody></table></div>`
-    : '<div class="empty">ห้องนี้ยังไม่มีนักเรียน — กด "นำเข้าจาก DMC" เพื่อนำเข้ารายชื่อทั้งห้องในครั้งเดียว</div>'}`;
+      ${active.length > 1 ? `<div class="ord-bar g-muted g-small" id="ord-bar" role="status"><span id="ord-msg">${icon('grip')} ลากที่ไอคอนหน้าชื่อเพื่อเรียงลำดับ แล้วเลขที่จะเปลี่ยนตามทันที (ใช้ลูกศรขึ้น/ลงแทนการลากได้)</span>
+        <button class="g-btn" id="ord-undo" type="button" hidden>เลิกทำ</button></div>` : ''}
+
+      ${roster.length ? `
+      <div class="g-chips" role="group" aria-label="กรองตามสถานะ">
+        ${chips.map(([k, label, n]) => `<button class="g-chip" type="button" data-chip="${k}" aria-pressed="${chipFilter === k}"><span>${label}</span><span class="g-num" style="font-weight:700">${n}</span></button>`).join('')}
+      </div>
+      <div class="g-panel"><div class="g-scroll">
+        <table class="g-tbl stu-tbl">
+          <thead><tr><th class="g-c-chk"><label class="g-chkcell"><input class="g-chk" type="checkbox" id="g-all" aria-label="เลือกทั้งหมดที่แสดงอยู่"></label></th>
+            <th class="drag-h g-c-drag"><span class="g-sr">เรียงลำดับ</span></th><th class="g-c-no n">เลขที่</th><th class="g-c-sid">เลขประจำตัว</th><th class="g-c-name">ชื่อ-สกุล</th>
+            <th class="g-c-sex">เพศ</th><th class="g-c-status">สถานะ</th><th class="g-c-act"><span class="g-sr">จัดการ</span></th></tr></thead>
+          <tbody>${shown.map((s) => { const left = s.enroll_status === 'left'; return `<tr data-sid="${esc(s.id)}" data-eid="${esc(s.enrollment_id)}" data-st="${left ? 'left' : 'active'}" ${left ? '' : 'data-sortable'}>
+            <td class="g-c-chk"><label class="g-chkcell"><input class="g-chk" type="checkbox" data-sid="${esc(s.id)}" data-eid="${esc(s.enrollment_id)}" ${left ? 'disabled' : ''} aria-label="เลือก ${esc(fullName(s))}"></label></td>
+            <td class="drag-cell g-c-drag">${left ? '' : `<button type="button" class="drag" title="ลากเพื่อเรียงลำดับ" aria-label="ย้ายลำดับของ ${esc(fullName(s))} (ลากหรือกดลูกศรขึ้นลง)">${icon('grip')}</button>`}</td>
+            <td class="n g-c-no g-num">${s.number ?? ''}</td><td class="g-c-sid g-num">${esc(s.student_code ?? '')}</td>
+            <td class="w g-c-name">${esc(fullName(s))}</td><td class="g-c-sex">${esc(s.gender ?? '')}</td>
+            <td class="g-c-status">${pill(s)}</td>
+            <td class="g-c-act stu-act"><button class="g-btn g-btn-sm" type="button" data-edit="${esc(s.id)}">แก้ไข</button><button class="g-btn g-btn-sm" type="button" data-info="${esc(s.id)}">ข้อมูล DMC</button></td>
+            <td class="g-c-meta g-num">${meta(s)}</td></tr>`; }).join('')}</tbody>
+        </table>
+        <div class="g-empty g-muted" id="g-empty" hidden>ไม่มีนักเรียนในสถานะนี้</div>
+      </div></div>
+      <div class="g-muted g-small">แสดง <span class="g-num" id="g-shown">${roster.length}</span> จาก <span class="g-num">${roster.length}</span> คน</div>
+      <div class="g-bulk" id="g-bulk" role="region" aria-label="จัดการรายการที่เลือก" hidden>
+        <div class="g-bulk-top"><div>เลือกแล้ว <span class="g-num" id="g-sel">0</span> คน</div><button class="g-btn" id="g-clear" type="button">ล้างที่เลือก</button></div>
+        <div class="g-bulk-actions"><button class="g-btn g-btn-cta" id="g-leave" type="button">ย้ายออก</button></div>
+      </div>`
+      : '<div class="empty">ห้องนี้ยังไม่มีนักเรียน — กด "นำเข้าจาก DMC" เพื่อนำเข้ารายชื่อทั้งห้องในครั้งเดียว</div>'}
+    </div>`;
 
   const again = () => render(el, ctx);
   $('#room', el).addEventListener('change', (e) => { selected = e.target.value; again(); });
   if (focusSid) { const tr = el.querySelector(`tr[data-sid="${CSS.escape(focusSid)}"]`); if (tr) { tr.scrollIntoView({ block: 'center' }); tr.classList.add('flash'); setTimeout(() => tr.classList.remove('flash'), 1800); } }
   $('#dmc-file', el).addEventListener('change', (e) => importFlow(e.target, ctx, room, again));
   wireReorder(el, ctx, active, again);
+  wireSelection(el, ctx, again);
   $('#add', el).addEventListener('click', () => editStudent(ctx, room, null, active.length + 1, again));
   $('#renum', el).addEventListener('click', () => renumber(ctx, active, again));
   el.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () =>
     editStudent(ctx, room, roster.find((s) => s.id === b.dataset.edit), null, again)));
   el.querySelectorAll('[data-info]').forEach((b) => b.addEventListener('click', () => showDmc(ctx, b.dataset.info)));
-  el.querySelectorAll('[data-leave]').forEach((b) => b.addEventListener('click', async () => {
-    const r = await modal('ย้ายออกระหว่างภาค', `<label>วันที่ออก<input type="date" name="d" value="${todayIso()}" required></label>
-      <p class="muted small">ประวัติเวลาเรียนเดิมยังอยู่ และจะนับในรายงาน "ออกระหว่างภาคเรียน" ของปก ปพ.5</p>`);
+}
+
+// เลือกหลายคน + กรองตามสถานะ + แถบจัดการลอย (ย้ายออกทีละหลายคน)
+function wireSelection(el, ctx, again) {
+  const tbody = el.querySelector('.stu-tbl tbody'); if (!tbody) return;
+  const wrap = $('#wlg', el); const bulk = $('#g-bulk', el); const all = $('#g-all', el);
+  const rows = () => [...tbody.querySelectorAll('tr[data-sid]')];
+  const boxes = () => [...tbody.querySelectorAll('input.g-chk:not(:disabled)')];
+  const visible = () => boxes().filter((b) => !b.closest('tr').hidden);
+  const checked = () => boxes().filter((b) => b.checked);
+  const sync = () => {
+    const sel = checked(); const vis = visible(); const n = vis.filter((b) => b.checked).length;
+    $('#g-sel', el).textContent = sel.length; bulk.hidden = !sel.length; wrap.classList.toggle('g-sel-active', !!sel.length);
+    rows().forEach((tr) => tr.classList.toggle('g-selected', !!tr.querySelector('.g-chk')?.checked));
+    all.checked = vis.length > 0 && n === vis.length; all.indeterminate = n > 0 && n < vis.length;
+  };
+  const applyChip = () => {
+    let n = 0;
+    rows().forEach((tr) => { const show = chipFilter === 'all' || tr.dataset.st === chipFilter; tr.hidden = !show; if (show) n++; else { const b = tr.querySelector('.g-chk'); if (b) b.checked = false; } });
+    el.querySelectorAll('[data-chip]').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.chip === chipFilter)));
+    $('#g-shown', el).textContent = n; $('#g-empty', el).hidden = n > 0; sync();
+  };
+  tbody.addEventListener('change', (e) => { if (e.target.matches('.g-chk')) sync(); });
+  all.addEventListener('change', () => { visible().forEach((b) => { b.checked = all.checked; }); sync(); });
+  $('#g-clear', el).addEventListener('click', () => { boxes().forEach((b) => { b.checked = false; }); sync(); });
+  el.querySelectorAll('[data-chip]').forEach((c) => c.addEventListener('click', () => { chipFilter = c.dataset.chip; applyChip(); }));
+  $('#g-leave', el).addEventListener('click', async () => {
+    const list = checked(); if (!list.length) return;
+    const r = await modal(`ย้ายออกระหว่างภาค (${list.length} คน)`, `<label>วันที่ออก<input type="date" name="d" value="${todayIso()}" required></label>
+      <p class="muted small">ใช้วันที่เดียวกันกับทุกคนที่เลือก ประวัติเวลาเรียนเดิมยังอยู่ และจะนับในรายงาน "ออกระหว่างภาคเรียน" ของปก ปพ.5</p>`, { okText: 'ย้ายออก' });
     if (!r) return;
-    try { await ctx.db.update('enrollments', { id: b.dataset.leave }, { status: 'left', left_on: r.d }); toast('บันทึกแล้ว'); again(); }
-    catch (err) { toast(err.message, 'err'); }
-  }));
+    try {
+      for (let i = 0; i < list.length; i += 8) await Promise.all(list.slice(i, i + 8).map((b) => ctx.db.update('enrollments', { id: b.dataset.eid }, { status: 'left', left_on: r.d })));
+      toast(`ย้ายออก ${list.length} คนแล้ว`); again();
+    } catch (err) { toast(err.message, 'err'); again(); }
+  });
+  applyChip();
 }
 
 // ---------------------------------------------------------------------
@@ -123,7 +190,7 @@ function wireReorder(el, ctx, active, again) {
   const tbody = el.querySelector('.stu-tbl tbody'); if (!tbody || active.length < 2) return;
   const bar = $('#ord-msg', el); const undoBtn = $('#ord-undo', el); const hint = bar.innerHTML;
   let busy = Promise.resolve(); let prev = null;
-  const paint = (rows) => rows.forEach((r, i) => { const c = r.querySelector('td.n'); if (c) c.textContent = i + 1; });
+  const paint = (rows) => rows.forEach((r, i) => { const c = r.querySelector('td.n'); if (c) c.textContent = i + 1; const m = r.querySelector('.g-meta-no'); if (m) m.textContent = i + 1; });
   const apply = (changes, key) => {                                      // changes: [{ id, to }] · เขียนทีละกลุ่มเล็ก ๆ
     return (async () => { for (let i = 0; i < changes.length; i += 8) await Promise.all(changes.slice(i, i + 8).map((c) => ctx.db.update('enrollments', { id: c.id }, { number: c[key] }))); })();
   };

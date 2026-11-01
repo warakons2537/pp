@@ -1,8 +1,8 @@
 // ติดตามการแก้ 0 ร มส (เฉพาะ ม.1–ม.3)
 // ครูผู้สอน: วางแผน บันทึกผลแก้ แล้วส่งยืนยัน · ผู้ดูแลระบบ: ยืนยัน/ส่งกลับ · ไม่แก้เกรดใน ปพ.5
-import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso } from '../util.js?v=2569.10.31-14';
-import { CAUSES, PLANS, STATUS, NEW_GRADES, visibleCourses, canEditCase, loadRemedial, statusOf, originalOf, legacyLabel } from '../remedial.js?v=2569.10.31-14';
-import { importFlow } from './remedial-import-view.js?v=2569.10.31-14';
+import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso } from '../util.js?v=2569.10.31-15';
+import { CAUSES, PLANS, STATUS, NEW_GRADES, visibleCourses, canEditCase, loadRemedial, statusOf, originalOf, legacyLabel } from '../remedial.js?v=2569.10.31-15';
+import { importFlow } from './remedial-import-view.js?v=2569.10.31-15';
 
 const pref = { room: '', status: '', grade: '' };
 const gradeChip = (g) => `<span class="chip ${g === 'ร' ? 'chip-warn' : 'chip-bad'}">${esc(g)}</span>`;
