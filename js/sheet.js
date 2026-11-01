@@ -1,8 +1,8 @@
 // ตารางกรอกข้อมูลแบบ Excel: ลากคลุมหลายช่อง · คัดลอก/ตัด/วาง · ลบทั้งช่วง · ลากมุมขวาล่างเพื่อเติม (คัดลอก/เรียงเลข) · เลิกทำ
 // ทุกการเขียนผ่านฟังก์ชันบันทึกเดิมของหน้านั้น (set / setBatch) จึงตรวจค่าและสิทธิ์เหมือนกรอกเอง ค่าที่ไม่ผ่านจะไม่ถูกบันทึก
 // ช่องต้องมี data-r / data-c · ตัวเลือก: { cell: ตัวเลือก CSS ของช่อง, get(el), set(el, text) → true/false หรือ setBatch([{el,value}]) → [true/false], canEdit }
-import { toast, modal } from './util.js?v=2569.11.1-8';
-import { parseClip, toTsv, fillValues, wantSeries } from './sheet-core.js?v=2569.11.1-8';
+import { toast, modal } from './util.js?v=2569.11.1-9';
+import { parseClip, toTsv, fillValues, wantSeries } from './sheet-core.js?v=2569.11.1-9';
 
 let current = null;                                   // ตารางที่มีการเลือกอยู่ (มีได้ทีละตาราง)
 const isField = (t) => !!t?.closest?.('input, textarea, select');
@@ -53,9 +53,12 @@ export function attachSheet(table, o) {
 
   // คำแนะนำสั้น ๆ เหนือตาราง + แถบคำสั่งลอยกระจกใสด้านล่าง (ขึ้นเมื่อเลือกช่วง หรือมีรายการให้เลิกทำ)
   const HINT = canEdit ? 'ลากคลุมหลายช่องได้ · Ctrl+C คัดลอก · Delete ลบ · ลากมุมขวาล่างเพื่อเติม (กด Ctrl สลับคัดลอก/เรียงเลข)' : 'ลากคลุมหลายช่องแล้ว Ctrl+C เพื่อคัดลอกไปวางใน Excel ได้';
+  const touch = window.matchMedia('(pointer: coarse)').matches;                          // จอสัมผัสลากคลุมด้วยนิ้วไม่ได้ → ใช้โหมด "แตะช่องแรก แล้วแตะช่องสุดท้าย"
   const hint = document.createElement('div');
-  hint.className = 'sheet-hint small muted no-print'; hint.textContent = HINT;
+  hint.className = 'sheet-hint small muted no-print';
+  hint.innerHTML = `<span>${touch ? 'แตะ "เลือกช่วง" แล้วแตะช่องแรกและช่องสุดท้าย เพื่อคัดลอก/เติม/ลบหลายช่องพร้อมกัน' : HINT}</span>${touch ? '<button type="button" class="btn btn-sm sheet-pick-btn">เลือกช่วง</button>' : ''}`;
   wrap.insertAdjacentElement('beforebegin', hint);
+  let pickMode = false; let anchor = null;
 
   const host = document.getElementById('view') || document.body;
   host.querySelectorAll(':scope > .sheet-float').forEach((x) => x.remove());          // มีแถบนี้ได้ทีละตัว (กันค้างจากตารางที่ถูกวาดใหม่)
@@ -71,10 +74,11 @@ export function attachSheet(table, o) {
   const undo = [];
   const updateBar = () => {
     if (!table.isConnected) { bar.remove(); host.classList.remove('g-has-bar'); return; }
-    const show = !!sel || undo.length > 0;
+    const show = !!sel || undo.length > 0 || pickMode;
     bar.hidden = !show; host.classList.toggle('g-has-bar', show);
-    bar.querySelector('.sb-msg').textContent = sel ? `เลือก ${count(sel)} ช่อง` : 'ทำรายการแล้ว · เลิกทำได้';
-    bar.querySelector('[data-act=cancel]').hidden = !sel;
+    bar.querySelector('.sb-msg').textContent = pickMode ? (anchor ? 'แตะช่องสุดท้ายของช่วง' : 'แตะช่องแรกของช่วง') : sel ? `เลือก ${count(sel)} ช่อง` : 'ทำรายการแล้ว · เลิกทำได้';
+    const cancel = bar.querySelector('[data-act=cancel]'); cancel.hidden = !(sel || pickMode); cancel.textContent = pickMode ? 'ยกเลิก' : 'ยกเลิกเลือก';
+    hint.querySelector('.sheet-pick-btn')?.classList.toggle('on', pickMode);
     bar.querySelectorAll('[data-act]').forEach((b) => {
       const a = b.dataset.act;
       if (a === 'cancel') return;
@@ -281,10 +285,27 @@ export function attachSheet(table, o) {
   document.addEventListener('paste', onPaste, true);
   bar.addEventListener('click', (e) => {
     const a = e.target.closest('button')?.dataset.act; if (!a) return;
-    if (a === 'cancel') setSel(null); else if (a === 'copy') copyNow(); else if (a === 'clear') clearSel(); else if (a === 'undo') doUndo();
+    if (a === 'cancel') { if (pickMode) setPick(false); else setSel(null); } else if (a === 'copy') copyNow(); else if (a === 'clear') clearSel(); else if (a === 'undo') doUndo();
     else if (a === 'down') fillInside('down'); else if (a === 'right') fillInside('right');
   });
   window.addEventListener('resize', place);
+
+  // โหมดเลือกช่วงด้วยการแตะ: ช่องในตารางไม่รับการแตะ (ไม่เปิดคีย์บอร์ด/ไม่สลับสถานะ) แตะแรก = ต้นช่วง แตะสอง = ปลายช่วง แล้วออกจากโหมด
+  function setPick(on) {
+    const half = !on && !!anchor;                           // ยกเลิกกลางทาง: ล้างช่องต้นช่วงที่แตะไว้แล้วด้วย
+    pickMode = on; anchor = null; table.classList.toggle('sheet-pick', on);
+    if (on) { document.activeElement?.blur?.(); setSel(null); } else if (half) setSel(null);
+    updateBar();
+  }
+  hint.querySelector('.sheet-pick-btn')?.addEventListener('click', () => setPick(!pickMode));
+  table.addEventListener('click', (e) => {
+    if (!pickMode) return;
+    e.preventDefault(); e.stopPropagation();
+    const el = cellFrom(e.target); if (!el) return;
+    const p = pos(el);
+    if (!anchor) { anchor = p; setSel({ r1: p.r, c1: p.c, r2: p.r, c2: p.c }); return; }
+    setSel({ r1: anchor.r, c1: anchor.c, r2: p.r, c2: p.c }); pickMode = false; anchor = null; table.classList.remove('sheet-pick'); updateBar();
+  }, true);
   const watcher = new MutationObserver(() => { if (!table.isConnected) cleanup(); });      // ตารางถูกวาดใหม่/เปลี่ยนแท็บ → เก็บแถบลอยและตัวดักเหตุการณ์
   watcher.observe(host, { childList: true, subtree: true });
 

@@ -286,3 +286,9 @@ table.tbl.tbl-dense, .modal table.tbl { font-size: .9rem; }
 .sheet-hint { margin: 6px 0; min-height: 24px; }
 .sheet-float .g-bulk-actions .btn[hidden], .sheet-float .g-bulk-top .btn[hidden] { display: none; }
 .sheet-float .g-bulk-actions .btn:disabled { opacity: .4; }
+
+/* ---------- เลือกช่วงด้วยการแตะ (จอสัมผัส) ---------- */
+.sheet-hint { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.sheet-pick-btn.on { background: var(--g-primary); border-color: var(--g-primary); color: var(--g-on-primary); }
+.sheet-pick input, .sheet-pick button.cell, .sheet-pick select { pointer-events: none; }
+.sheet-pick td { cursor: cell; -webkit-tap-highlight-color: transparent; }
