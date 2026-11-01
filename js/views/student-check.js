@@ -2,9 +2,9 @@
 //  - 0 ร มส: กรอกช่องใดช่องหนึ่งก็ได้ (ชื่อ / นามสกุล / เลขประจำตัว)
 //  - ผลการเรียน: กรอกอย่างน้อย 2 ช่อง (เข้มกว่า เพราะเป็นผลทั้งหมด) และต้องเป็นภาคเรียนที่ผู้ดูแลระบบเปิดให้ดู
 //  - ที่กรอกตรงกับนักเรียนหลายคน = ไม่แสดงข้อมูลใคร ให้กรอกช่องอื่นเพิ่ม
-import { esc, $, toast } from '../util.js?v=2569.10.31-15';
-import { CAUSES, PLANS, STATUS } from '../remedial.js?v=2569.10.31-15';
-import { computeStudent, fmtGrade, gpa, weightOf } from '../grading.js?v=2569.10.31-15';
+import { esc, $, toast } from '../util.js?v=2569.11.1-1';
+import { CAUSES, PLANS, STATUS } from '../remedial.js?v=2569.11.1-1';
+import { computeStudent, fmtGrade, gpa, weightOf } from '../grading.js?v=2569.11.1-1';
 
 const FIELDS = ['first', 'last', 'code'];
 const filled = (f) => FIELDS.filter((k) => String(f[k] || '').trim()).length;
@@ -17,9 +17,9 @@ export function renderStudentCheck(root, db, onBack) {
       <h1>นักเรียนตรวจสอบผลการเรียน</h1>
       <p class="muted small" style="margin:0">กรอกข้อมูลของตัวเองให้ตรงกับทะเบียนนักเรียน ไม่ต้องใส่คำนำหน้าชื่อ · ถ้าชื่อซ้ำกับเพื่อน ระบบจะให้กรอกช่องอื่นเพิ่ม</p>
       <form id="sc-form" style="display:flex;flex-direction:column;gap:12px">
-        <div class="row"><label class="field" style="flex:1">ชื่อ<input name="first" autocomplete="off"></label>
-          <label class="field" style="flex:1">นามสกุล<input name="last" autocomplete="off"></label></div>
-        <label class="field">เลขประจำตัวนักเรียน<input name="code" inputmode="numeric" autocomplete="off"></label>
+        <div class="row"><label class="field" style="flex:1">ชื่อ<input name="first" type="text" autocomplete="off"></label>
+          <label class="field" style="flex:1">นามสกุล<input name="last" type="text" autocomplete="off"></label></div>
+        <label class="field">เลขประจำตัวนักเรียน<input name="code" type="text" inputmode="numeric" autocomplete="off"></label>
         <button class="btn btn-primary" type="submit" style="justify-content:center;padding-block:10px">ตรวจสอบ</button>
       </form>
       <div class="seg" id="sc-tabs" role="tablist" style="align-self:flex-start">
