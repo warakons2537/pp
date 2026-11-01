@@ -9,6 +9,10 @@
   --font-display: 'Sarabun', 'Noto Sans Thai', system-ui, sans-serif;
   --g-gold: #d9a531; --g-gold-text: #f0cf7a; --g-on-gold: #16202E; --g-hero-sub: #D6DEEA;
   --solid-amber: #d9a531;
+  /* แถบเมนูล่างแบบ liquid glass (สว่าง) */
+  --nav-glass: rgba(255, 255, 255, .46); --nav-glass-bd: rgba(255, 255, 255, .8); --nav-sheen: rgba(255, 255, 255, .5);
+  --nav-hl: inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 -1px 0 rgba(30, 58, 95, .12);
+  --lens-bg: rgba(10, 74, 38, .14); --lens-fg: #0a4a26;
 }
 /* สว่าง: เลือกสว่างเอง หรือไม่ได้เลือก + เครื่องเป็นสว่าง */
 :root[data-theme="light"] {
@@ -45,6 +49,8 @@
     --g-primary: var(--pen-wash); --g-on-primary: var(--on-pen-wash); --g-link: var(--pen); --g-line: var(--pen); --g-focus: var(--pen);
     --g-ok-bg: var(--pen-wash); --g-ok-fg: var(--on-pen-wash); --g-warn-bg: var(--amber-wash); --g-warn-fg: var(--on-amber-wash); --g-bad-bg: var(--red-wash); --g-bad-fg: var(--on-red-wash);
     --g-glass: rgba(25, 28, 25, .6); --g-glass-bd: rgba(255, 255, 255, .2); --g-glow: none;
+    --nav-glass: rgba(30, 34, 30, .5); --nav-glass-bd: rgba(255, 255, 255, .2); --nav-sheen: rgba(255, 255, 255, .14);
+    --nav-hl: inset 0 1px 0 rgba(255, 255, 255, .24), inset 0 -1px 0 rgba(0, 0, 0, .4); --lens-bg: color-mix(in srgb, var(--pen) 26%, transparent); --lens-fg: var(--pen);
   --g-hero-sub: var(--ink-soft);
 }
 @media (prefers-color-scheme: dark) {
@@ -53,6 +59,8 @@
     --g-primary: var(--pen-wash); --g-on-primary: var(--on-pen-wash); --g-link: var(--pen); --g-line: var(--pen); --g-focus: var(--pen);
     --g-ok-bg: var(--pen-wash); --g-ok-fg: var(--on-pen-wash); --g-warn-bg: var(--amber-wash); --g-warn-fg: var(--on-amber-wash); --g-bad-bg: var(--red-wash); --g-bad-fg: var(--on-red-wash);
     --g-glass: rgba(25, 28, 25, .6); --g-glass-bd: rgba(255, 255, 255, .2); --g-glow: none;
+    --nav-glass: rgba(30, 34, 30, .5); --nav-glass-bd: rgba(255, 255, 255, .2); --nav-sheen: rgba(255, 255, 255, .14);
+    --nav-hl: inset 0 1px 0 rgba(255, 255, 255, .24), inset 0 -1px 0 rgba(0, 0, 0, .4); --lens-bg: color-mix(in srgb, var(--pen) 26%, transparent); --lens-fg: var(--pen);
   --g-hero-sub: var(--ink-soft);
   }
 }
@@ -66,7 +74,7 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 700; }
 .side { background: var(--sheet); }
 .brand b { font-weight: 700; }
 .nav a.on svg.i { background: var(--g-primary); color: var(--g-on-primary); }              /* แถบเมนูซ้ายแบบ rail: ตัวที่เลือกเป็นแคปซูล primary */
-.bnav .on svg.i { background: var(--g-primary); color: var(--g-on-primary); }
+.bnav .on svg.i { background: var(--lens-bg); color: var(--lens-fg); box-shadow: var(--nav-hl), 0 2px 6px rgba(10, 74, 38, .16); }   /* ตัวที่เลือก = เลนส์กระจก */
 .topbar { background: var(--sheet); }
 .main-inner { gap: 22px; }
 
@@ -194,3 +202,18 @@ table.tbl.tbl-dense, .modal table.tbl { font-size: .9rem; }
 /* ขณะมีแถบจัดการลอย: ปุ่มทองมีปุ่มเดียวบนจอ (ปุ่มในแถบ) */
 .g-has-bar .btn-primary, .g-has-bar .btn-success { background: var(--sheet); border-color: var(--g-line); color: var(--g-link); font-weight: 500; filter: none; }
 .g-has-bar .g-bulk .btn-primary { background: var(--g-gold); border-color: var(--g-gold); color: var(--g-on-gold); font-weight: 700; }
+
+/* ---------- แถบเมนูล่างบนมือถือ: liquid glass ----------
+   ลอยห่างขอบ มุมโค้ง 28px · พื้นขาวโปร่ง เบลอ + เพิ่มความอิ่มสี · ขอบสว่าง + แสงสะท้อนมุมบนซ้าย
+   ถ้าเบราว์เซอร์ไม่รองรับเบลอ หรือผู้ใช้ตั้งลดความโปร่งใส → พื้นทึบ */
+@media (max-width: 599px) {
+  :root { --bnav-h: 84px; }                                  /* พื้นที่ที่แถบกินจริง: สูง 72 + เว้นขอบล่าง 10 (+ safe area) · ใช้เว้นที่ให้เนื้อหา toast แถบจัดการ */
+  .bnav { left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); height: 72px; padding: 0 6px; border-radius: 28px;
+    background: var(--nav-glass); border: 1px solid var(--nav-glass-bd); -webkit-backdrop-filter: blur(18px) saturate(180%); backdrop-filter: blur(18px) saturate(180%);
+    box-shadow: 0 12px 32px rgba(22, 32, 46, .22), 0 0 0 1px rgba(30, 58, 95, .14), var(--nav-hl); }
+  .bnav::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(135deg, var(--nav-sheen) 0%, rgba(255, 255, 255, 0) 42%, rgba(255, 255, 255, .1) 100%); }
+  .bnav a, .bnav button { position: relative; z-index: 1; }
+  .update-bar { bottom: calc(var(--bnav-h) + 12px + env(safe-area-inset-bottom, 0px)); }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { @media (max-width: 599px) { .bnav { background: var(--sheet); } } }
+@media (max-width: 599px) and (prefers-reduced-transparency: reduce) { .bnav { background: var(--sheet); -webkit-backdrop-filter: none; backdrop-filter: none; } }
