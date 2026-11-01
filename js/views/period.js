@@ -1,5 +1,6 @@
-import { esc, $, toast, options, fullName, todayIso, thaiDate, STATUS } from '../util.js?v=2569.11.1-3';
-import { getRoster } from '../data.js?v=2569.11.1-3';
+import { attachBulk } from '../bulk.js?v=2569.11.1-4';
+import { esc, $, toast, options, fullName, todayIso, thaiDate, STATUS } from '../util.js?v=2569.11.1-4';
+import { getRoster } from '../data.js?v=2569.11.1-4';
 
 const pref = { course: null, date: null, period: 1 };
 
@@ -41,8 +42,9 @@ export async function render(el, ctx) {
           ${canEdit ? '<button class="btn btn-primary" id="allin">ทุกคนที่ยังว่าง = มา</button>' : ''}
         </div>
         <div class="small muted" id="count"></div>
-        ${roster.length ? `<div class="roll">${roster.map((s) => { const st = marks.get(s.id)?.status;
-          return `<div class="roll-row" data-sid="${esc(s.id)}"><span class="muted tabular">${s.number ?? ''}</span><span class="nm">${esc(fullName(s))}</span>
+        ${roster.length && canEdit ? '<label class="g-selall"><span class="g-chkcell"><input class="g-chk g-all" type="checkbox" aria-label="เลือกนักเรียนทั้งหมด"></span><span>เลือกทั้งหมด · แล้วตั้งสถานะให้หลายคนพร้อมกัน</span></label>' : ''}
+        ${roster.length ? `<div class="roll${canEdit ? ' roll-sel' : ''}">${roster.map((s) => { const st = marks.get(s.id)?.status;
+          return `<div class="roll-row" data-sid="${esc(s.id)}">${canEdit ? `<label class="g-chkcell"><input class="g-chk" type="checkbox" data-id="${esc(s.id)}" aria-label="เลือก ${esc(fullName(s))}"></label>` : ''}<span class="muted tabular">${s.number ?? ''}</span><span class="nm">${esc(fullName(s))}</span>
             <div class="seg">${Object.entries(STATUS).map(([k, v]) => `<button data-s="${k}" class="${st === k ? `on ${v.cls}` : ''}" ${canEdit ? '' : 'disabled'}>${v.label}</button>`).join('')}</div></div>`; }).join('')}</div>`
           : '<div class="empty">ห้องนี้ยังไม่มีนักเรียน</div>'}
       </div>
@@ -113,6 +115,17 @@ export async function render(el, ctx) {
       toast(`บันทึก "มา" ${blank.length} คน`); refreshSummary();
     } catch (err) { blank.forEach((s) => { marks.delete(s.id); paint(s.id); }); toast(err.message, 'err'); }
   });
+  async function setMany(sids, status) {
+    const prev = sids.map((sid) => [sid, marks.get(sid)]);
+    sids.forEach((sid) => { marks.set(sid, { student_id: sid, status }); paint(sid); });
+    try {
+      await ctx.db.upsert('period_attendance', sids.map((sid) => ({ ...key, student_id: sid, status })), 'course_id,student_id,date,period');
+      toast(`ตั้งเป็น "${STATUS[status].label}" ${sids.length} คน`); refreshSummary();
+    } catch (err) { prev.forEach(([sid, p0]) => { if (p0) marks.set(sid, p0); else marks.delete(sid); paint(sid); }); toast(err.message, 'err'); }
+  }
+  // เลือกนักเรียนหลายคน → ตั้งสถานะพร้อมกันจากแถบลอย
+  if (canEdit && roster.length) attachBulk({ root: el.querySelector('.roll').parentElement, host: el, rowSel: '.roll-row',
+    actions: Object.entries(STATUS).map(([k, v]) => ({ label: `ตั้งเป็น${v.label}`, cta: k === 'present', run: async (ids, { clear }) => { await setMany(ids, k); clear(); } })) });
   $('#course', el).addEventListener('change', (e) => { pref.course = e.target.value; render(el, ctx); });
   $('#date', el).addEventListener('change', (e) => { if (e.target.value) { pref.date = e.target.value; render(el, ctx); } });
   $('#period', el).addEventListener('change', (e) => { pref.period = Number(e.target.value); render(el, ctx); });

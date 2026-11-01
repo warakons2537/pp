@@ -1,8 +1,8 @@
 // หน้าต่างนำเข้ารายการ 0 ร มส จากไฟล์ (ผู้ดูแลระบบ): เลือกไฟล์ → ตรวจสอบ/ดูตัวอย่างทุกแถว → ยืนยันนำเข้า
-import { esc, $, toast, roomName, fullName } from '../util.js?v=2569.11.1-3';
-import { getRoster } from '../data.js?v=2569.11.1-3';
-import { CAUSES, PLANS } from '../remedial.js?v=2569.11.1-3';
-import { parseCsv, toCsv, rowsFromTable, planImport, applyImport, TEMPLATE_HEADERS } from '../remedial-import.js?v=2569.11.1-3';
+import { esc, $, toast, roomName, fullName } from '../util.js?v=2569.11.1-4';
+import { getRoster } from '../data.js?v=2569.11.1-4';
+import { CAUSES, PLANS } from '../remedial.js?v=2569.11.1-4';
+import { parseCsv, toCsv, rowsFromTable, planImport, applyImport, TEMPLATE_HEADERS } from '../remedial-import.js?v=2569.11.1-4';
 
 const LEVEL = { ok: ['chip-ok', 'พร้อมนำเข้า'], warn: ['chip-warn', 'นำเข้าได้ (มีข้อสังเกต)'], skip: ['', 'ข้าม'], error: ['chip-bad', 'นำเข้าไม่ได้'] };
 

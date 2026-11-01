@@ -179,3 +179,18 @@ table.tbl.tbl-dense, .modal table.tbl { font-size: .9rem; }
   .page-head h1 { font-size: 28px; }
 }
 @media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+
+/* ---------- เลือกหลายรายการ + แถบจัดการลอย (js/bulk.js) ---------- */
+.g-selall { display: inline-flex; align-items: center; gap: 4px; min-height: 48px; color: var(--g-muted); font-size: 15px; }
+.g-selall .g-chkcell { min-height: 48px; width: 44px; }
+.roll.roll-sel .roll-row { grid-template-columns: 44px 34px minmax(0, 1fr) auto; }
+.roll-row.g-selected, .tbl tbody tr.g-selected td { background: var(--g-row-hover); }
+.tbl td.tc-chk, .tbl th.tc-chk { width: 56px; padding: 0 4px; text-align: center; }
+.g-bulk-actions { flex-wrap: wrap; }
+@media (max-width: 520px) { .roll.roll-sel .roll-row { grid-template-columns: 44px 28px minmax(0, 1fr); } }
+@media (max-width: 640px) { .g-bulk-top { flex: 1 1 100%; justify-content: space-between; } .g-bulk-actions { flex: 1 1 100%; } .g-bulk-actions .btn { flex: 1 1 0; padding: 0 12px; } }
+@media (max-width: 600px) { .tbl-card.has-chk td.tc-chk { order: -2; flex: 0 0 auto; padding: 0; } .tbl-card.has-chk td.tc-ttl { flex: 1 1 calc(100% - 84px); min-width: 0; white-space: normal; padding: 4px 0; } .tbl-card.has-chk td.tc-chk { min-width: 48px; } .tbl-card tbody tr.g-selected { background: var(--g-row-hover); } .tbl tbody tr.g-selected td { background: transparent; } }
+
+/* ขณะมีแถบจัดการลอย: ปุ่มทองมีปุ่มเดียวบนจอ (ปุ่มในแถบ) */
+.g-has-bar .btn-primary, .g-has-bar .btn-success { background: var(--sheet); border-color: var(--g-line); color: var(--g-link); font-weight: 500; filter: none; }
+.g-has-bar .g-bulk .btn-primary { background: var(--g-gold); border-color: var(--g-gold); color: var(--g-on-gold); font-weight: 700; }

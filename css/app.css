@@ -693,7 +693,7 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
 .g-chip:hover { border-color: var(--g-line); }
 .g-chip[aria-pressed="true"] { background: var(--g-primary); border-color: var(--g-primary); color: var(--g-on-primary); }
 .g-chip:active { transform: scale(.97); }
-.wl-g .g-btn:focus-visible, .g-chip:focus-visible, .wl-g .g-chk:focus-visible, .wl-g .drag:focus-visible { outline: 3px solid var(--g-focus); outline-offset: 2px; }
+.wl-g .g-btn:focus-visible, .g-chip:focus-visible, .g-chk:focus-visible, .wl-g .drag:focus-visible { outline: 3px solid var(--g-focus); outline-offset: 2px; }
 .wl-g .ord-bar { min-height: 48px; }
 
 /* ตาราง */
@@ -710,10 +710,10 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
 .wl-g .g-tbl .g-c-meta { display: none; }
 .wl-g .g-tbl .g-c-act { display: flex; gap: 8px; justify-content: flex-end; }
 .wl-g .g-tbl tr.g-selected { background: var(--g-row-hover); }
-.wl-g .g-chkcell { display: flex; align-items: center; justify-content: center; min-height: 48px; cursor: pointer; }
-.wl-g .g-chk { width: 24px; height: 24px; accent-color: var(--g-primary); cursor: pointer; margin: 0; }
+.g-chkcell { display: flex; align-items: center; justify-content: center; min-height: 48px; cursor: pointer; }
+.g-chk { width: 24px; height: 24px; accent-color: var(--g-primary); cursor: pointer; margin: 0; }
 .wl-g .g-tbl thead .g-chk { accent-color: var(--g-gold); }
-:root[data-theme="dark"] .wl-g .g-chk { accent-color: var(--pen); }
+:root[data-theme="dark"] .g-chk { accent-color: var(--pen); }
 .wl-g .g-tbl .drag-cell, .wl-g .g-tbl .drag-h { width: auto; padding: 0; }
 .wl-g .g-tbl .drag { width: 44px; height: 44px; color: var(--g-muted); }
 .wl-g .g-tbl tr.dragging { background: var(--g-card); box-shadow: 0 6px 20px rgba(22, 32, 46, .25); }
@@ -726,24 +726,24 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
 .wl-g .g-empty[hidden] { display: none; }
 
 /* แถบจัดการลอยกระจกใส */
-.wl-g .g-bulk { position: sticky; bottom: 12px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 12px 18px;
+.g-bulk { position: sticky; bottom: 12px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 12px 18px;
   background: var(--g-glass); border: 1px solid var(--g-glass-bd); border-radius: 28px; -webkit-backdrop-filter: blur(10px) saturate(170%); backdrop-filter: blur(10px) saturate(170%);
   box-shadow: 0 12px 32px rgba(22, 32, 46, .22), 0 0 0 1px rgba(30, 58, 95, .28), inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 -1px 0 rgba(30, 58, 95, .12); animation: g-bulk-in .22s ease-out; }
-.wl-g .g-bulk[hidden] { display: none; }
-.wl-g .g-bulk::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(135deg, rgba(255, 255, 255, .38) 0%, rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, .10) 100%); }
-:root[data-theme="dark"] .wl-g .g-bulk::before { display: none; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .wl-g .g-bulk::before { display: none; } }
-.wl-g .g-bulk-top, .wl-g .g-bulk-actions { position: relative; }
-.wl-g .g-bulk-top { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; min-width: 0; font-weight: 500; }
-.wl-g .g-bulk-top > div { text-shadow: var(--g-glow); }
-.wl-g .g-bulk-actions { display: flex; gap: 8px; }
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .wl-g .g-bulk { background: var(--g-card); } }
-@media (prefers-reduced-transparency: reduce) { .wl-g .g-bulk { background: var(--g-card); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+.g-bulk[hidden] { display: none; }
+.g-bulk::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(135deg, rgba(255, 255, 255, .38) 0%, rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, .10) 100%); }
+:root[data-theme="dark"] .g-bulk::before { display: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .g-bulk::before { display: none; } }
+.g-bulk-top, .g-bulk-actions { position: relative; }
+.g-bulk-top { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; min-width: 0; font-weight: 500; }
+.g-bulk-top > div { text-shadow: var(--g-glow); }
+.g-bulk-actions { display: flex; gap: 8px; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .g-bulk { background: var(--g-card); } }
+@media (prefers-reduced-transparency: reduce) { .g-bulk { background: var(--g-card); -webkit-backdrop-filter: none; backdrop-filter: none; } }
 @keyframes g-bulk-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .wl-g .g-btn, .g-chip, .wl-g .g-tbl tr, .wl-g .g-pill { transition: none; } .wl-g .g-btn:active, .g-chip:active { transform: none; } .wl-g .g-bulk { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .wl-g .g-btn, .g-chip, .wl-g .g-tbl tr, .wl-g .g-pill { transition: none; } .wl-g .g-btn:active, .g-chip:active { transform: none; } .g-bulk { animation: none; } }
 
 /* มือถือ: แถวเป็นการ์ด (ที่ลากอยู่ซ้าย) · แถบจัดการอยู่เหนือแถบเมนูล่างของแอป */
-@media (max-width: 860px) { .wl-g .g-bulk { bottom: calc(var(--bnav-h) + 12px + env(safe-area-inset-bottom, 0px)); } }
+@media (max-width: 599px) { .g-bulk { bottom: calc(var(--bnav-h) + 12px + env(safe-area-inset-bottom, 0px)); } }
 @media (max-width: 640px) {
   .wl-g .g-hero { padding: 22px 16px 22px 88px; }
   .wl-g .g-logo { left: 16px; width: 52px; height: 52px; }
@@ -758,7 +758,7 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
   .wl-g .g-tbl .g-c-meta { grid-area: meta; display: block; color: var(--g-muted); font-size: 15px; }
   .wl-g .g-tbl .g-c-act { grid-area: act; justify-content: flex-start; padding-top: 6px; flex-wrap: wrap; }
   .wl-g .g-tbl .g-c-no, .wl-g .g-tbl .g-c-sid, .wl-g .g-tbl .g-c-sex { display: none; }
-  .wl-g .g-bulk-top { flex: 1 1 100%; justify-content: space-between; }
-  .wl-g .g-bulk-actions { flex: 1 1 100%; }
-  .wl-g .g-bulk-actions .g-btn { flex: 1 1 0; padding: 0 12px; }
+  .g-bulk-top { flex: 1 1 100%; justify-content: space-between; }
+  .g-bulk-actions { flex: 1 1 100%; }
+  .g-bulk-actions .g-btn { flex: 1 1 0; padding: 0 12px; }
 }

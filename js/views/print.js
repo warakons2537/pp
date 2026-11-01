@@ -1,16 +1,16 @@
 // พิมพ์เอกสาร ปพ.: ปพ.6 รายบุคคล · ปก ปพ.5 รายชั้น · ปก ปพ.5 รายวิชา · ใบรับรองผลการศึกษา
-import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js?v=2569.11.1-3';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-3';
-import { loadRoomYear, personName } from '../yeardata.js?v=2569.11.1-3';
-import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.11.1-3';
-import { icon } from '../icons.js?v=2569.11.1-3';
-import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js?v=2569.11.1-3';
-import { bookView } from './pp-book-view.js?v=2569.11.1-3';
-import { listView, studentView, missingOf, termsOf } from './pp6-hub.js?v=2569.11.1-3';
-import { pp6FormsView } from './pp6-forms-view.js?v=2569.11.1-3';
+import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js?v=2569.11.1-4';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-4';
+import { loadRoomYear, personName } from '../yeardata.js?v=2569.11.1-4';
+import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.11.1-4';
+import { icon } from '../icons.js?v=2569.11.1-4';
+import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js?v=2569.11.1-4';
+import { bookView } from './pp-book-view.js?v=2569.11.1-4';
+import { listView, studentView, missingOf, termsOf } from './pp6-hub.js?v=2569.11.1-4';
+import { pp6FormsView } from './pp6-forms-view.js?v=2569.11.1-4';
 
 const DOCS = { book: 'เล่ม ปพ. (เหมือนไฟล์ต้นฉบับ)', pp6: 'ปพ.6 รายบุคคล', coverClass: 'ปก ปพ.5 รายชั้น', coverCourse: 'ปก ปพ.5 รายวิชา', cert: 'ใบรับรองผลการศึกษา' };
-const pref = { doc: 'book', room: null, from: 1, to: 99, scope: 'term', page2: true, course: null, pp6View: 'list', stu: null,
+const pref = { doc: 'book', room: null, only: null, from: 1, to: 99, scope: 'term', page2: true, course: null, pp6View: 'list', stu: null,
   certDate: null, certNo: '', certText: '', certGpa: true };
 let cache = { key: null, data: null };
 
@@ -58,9 +58,9 @@ export async function render(el, ctx) {
   const again = () => render(el, ctx);
   wireTabs(el, again);
   $('#pp6-back', el)?.addEventListener('click', () => { pref.pp6View = 'list'; again(); });
-  $('#room', el).addEventListener('change', (e) => { pref.room = e.target.value; pref.from = 1; pref.to = 99; pref.pp6View = 'list'; again(); });
-  $('#from', el)?.addEventListener('change', (e) => { pref.from = Number(e.target.value) || 1; again(); });
-  $('#to', el)?.addEventListener('change', (e) => { pref.to = Number(e.target.value) || 99; again(); });
+  $('#room', el).addEventListener('change', (e) => { pref.room = e.target.value; pref.from = 1; pref.to = 99; pref.only = null; pref.pp6View = 'list'; again(); });
+  $('#from', el)?.addEventListener('change', (e) => { pref.from = Number(e.target.value) || 1; pref.only = null; again(); });
+  $('#to', el)?.addEventListener('change', (e) => { pref.to = Number(e.target.value) || 99; pref.only = null; again(); });
   $('#scope', el)?.addEventListener('change', (e) => { pref.scope = e.target.value; again(); });
   $('#page2', el)?.addEventListener('change', (e) => { pref.page2 = e.target.checked; again(); });
   $('#c-date', el)?.addEventListener('change', (e) => { pref.certDate = e.target.value || todayIso(); again(); });
@@ -81,7 +81,7 @@ export async function render(el, ctx) {
       sel.value = pref.course ?? '';
       sel.addEventListener('change', (e) => { pref.course = e.target.value; again(); });
     }
-    const pick = d.roster.filter((s) => (s.number ?? 0) >= pref.from && (s.number ?? 0) <= pref.to);
+    const pick = d.roster.filter((s) => (s.number ?? 0) >= pref.from && (s.number ?? 0) <= pref.to && (!pref.only || pref.only.includes(s.id)));
     if (pref.doc === 'pp6') {
       // ล็อกการพิมพ์: ไม่แสดงคนที่ยังมีวิชาไม่มีเกรดหรือคะแนนไม่ครบ
       const ok = pick.filter((s) => !missingOf(d, termsOf(ctx, d, pref.scope), s).length);
@@ -108,6 +108,7 @@ const tabsHtml = (ctx) => tabGroups([['เล่ม ปพ.', 'book', ['book']],
   .map(([label, ic, keys]) => ({ label, icon: ic, tabs: keys.map((k) => ({ key: k, label: esc(DOCS[k]) })) })), pref.doc, 'doc', 'no-print');
 const wireTabs = (el, again) => { el.querySelectorAll('[data-doc]').forEach((b) => b.addEventListener('click', () => {
   if (b.dataset.doc === 'pp6' && pref.doc !== 'pp6') pref.pp6View = 'list';
+  if (b.dataset.doc !== pref.doc) pref.only = null;
   pref.doc = b.dataset.doc; again(); })); wireTabGroups(el); };
 async function getData(ctx, room) {
   const key = `${room.id}|${ctx.term.id}`;
@@ -130,7 +131,8 @@ async function hub(el, ctx, rooms, room) {
   $('#room', el).addEventListener('change', (e) => { pref.room = e.target.value; pref.pp6View = 'list'; pref.stu = null; again(); });
   $('#scope', el).addEventListener('change', (e) => { pref.scope = e.target.value; again(); });
   const box = $('#hub', el);
-  const toPaper = (from, to) => { pref.from = from; pref.to = to; pref.pp6View = 'paper'; again(); };
+  const toPaper = (from, to) => { pref.from = from; pref.to = to; pref.only = null; pref.pp6View = 'paper'; again(); };
+  const toPaperSelected = (ids) => { pref.from = 1; pref.to = 999; pref.only = ids; pref.pp6View = 'paper'; again(); };
   try {
     const d = await getData(ctx, room);
     const common = { scope: pref.scope, onPrint: (s) => toPaper(s.number ?? 0, s.number ?? 0) };
@@ -138,7 +140,7 @@ async function hub(el, ctx, rooms, room) {
       studentView(box, ctx, d, pref.stu, { ...common, onBack: () => { pref.pp6View = 'list'; again(); } });
     } else {
       pref.pp6View = 'list';
-      listView(box, ctx, d, { ...common, onView: (id) => { pref.stu = id; pref.pp6View = 'student'; again(); }, onPrintAll: () => toPaper(1, 999) });
+      listView(box, ctx, d, { ...common, onView: (id) => { pref.stu = id; pref.pp6View = 'student'; again(); }, onPrintAll: () => toPaper(1, 999), onPrintSelected: toPaperSelected });
     }
   } catch (err) { console.error(err); box.innerHTML = `<div class="empty">โหลดข้อมูลไม่สำเร็จ: ${esc(err.message)}</div>`; toast(err.message, 'err'); }
   return () => { cache = { key: null, data: null }; };
