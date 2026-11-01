@@ -217,3 +217,42 @@ table.tbl.tbl-dense, .modal table.tbl { font-size: .9rem; }
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { @media (max-width: 599px) { .bnav { background: var(--sheet); } } }
 @media (max-width: 599px) and (prefers-reduced-transparency: reduce) { .bnav { background: var(--sheet); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+
+/* ---------- ชุดควบคุมใต้ฮีโร่ · การ์ดวัน · คำอธิบายสถานะ (เช็กชื่อ/เช็กอาหาร) ---------- */
+.day-card { display: flex; flex-direction: column; gap: 12px; padding: 16px; background: var(--g-card); border: 1px solid var(--g-border); border-radius: 20px; }
+.day-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; }
+.day-title { display: flex; flex-direction: column; line-height: 1.35; }
+.day-title b { font-size: 1.25rem; }
+.day-title .touch-only { display: none; }
+@media (pointer: coarse) { .day-title .touch-only { display: block; margin: 0; font-size: .9rem; color: var(--g-muted); } }
+.day-count { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: .95rem; }
+.dc-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.dc { padding: 1px 12px; border-radius: 999px; font-size: .9rem; background: var(--paper); border: 1px solid var(--g-border-soft); }
+.dc.st-present { background: var(--g-ok-bg); color: var(--g-ok-fg); border-color: transparent; }
+.dc.zero { opacity: .55; }
+.day-card .g-selall { margin-top: 2px; padding-top: 6px; border-top: 1px solid var(--g-border-soft); }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.legend-chips { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.legend-hint::before { content: "· "; }
+@media (max-width: 640px) {
+  /* ตัวเลือกใต้ฮีโร่ → การ์ดเดียว: สลับมุมมองเต็มความกว้างอยู่บน · ห้อง/วันที่เรียงคู่กัน */
+  .page-head > .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: end; padding: 14px; background: var(--g-card); border: 1px solid var(--g-border); border-radius: 20px; }
+  .page-head > .row .seg { grid-column: 1 / -1; order: -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .page-head > .row .seg button { justify-content: center; }
+  .page-head > .row > .field, .page-head > .row > label { min-width: 0; }
+  .page-head > .row > label.field:has(#course) { grid-column: 1 / -1; }
+  .page-head > .row select, .page-head > .row input[type=date], .page-head > .row input[type=text], .page-head > .row input[type=month] { width: 100%; }
+  .page-head > .row > .btn, .page-head > .row > span, .page-head > .row > .print-note { grid-column: 1 / -1; }
+  /* คำอธิบายสถานะ: ชิปเรียงเท่ากันเป็นแถวเดียว · คำอธิบายอยู่ใต้ */
+  .legend { flex-direction: column; align-items: stretch; gap: 8px; }
+  .legend-chips { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
+  .legend-chips .chip { justify-content: center; padding: 2px 4px; font-size: .82rem; white-space: nowrap; }
+  .legend-hint::before { content: ""; }
+  /* การ์ดวัน: ชื่อวันอยู่บน · ปุ่มเต็มความกว้าง */
+  .day-count { flex-direction: column; align-items: stretch; gap: 8px; }
+  .dc-list { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
+  .dc { padding: 1px 4px; font-size: .85rem; text-align: center; white-space: nowrap; }
+  .day-head { flex-direction: column; align-items: stretch; }
+  .day-head .btn { width: 100%; }
+  .day-card { padding: 14px; }
+}
