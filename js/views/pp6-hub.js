@@ -2,11 +2,11 @@
 //  ปพ.6: ตารางรายชื่อ (ล็อกการพิมพ์เมื่อเกรดยังไม่ครบ) · หน้าเกรดรายคน · สรุปเกรด (Excel)
 //  ใช้ข้อมูลชุดเดียวกับหน้าพิมพ์ ปพ.6 (loadRoomYear) ไม่มีการเขียนฐานข้อมูล
 // =====================================================================
-import { esc, $, roomName, fullName, levelName, modal } from '../util.js?v=2569.11.1-2';
-import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.11.1-2';
-import { ACTIVITIES } from '../assess.js?v=2569.11.1-2';
-import { icon } from '../icons.js?v=2569.11.1-2';
-import { Sheet, buildXlsx, safeSheetName, downloadBytes } from '../xlsx-write.js?v=2569.11.1-2';
+import { esc, $, roomName, fullName, levelName, modal } from '../util.js?v=2569.11.1-3';
+import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.11.1-3';
+import { ACTIVITIES } from '../assess.js?v=2569.11.1-3';
+import { icon } from '../icons.js?v=2569.11.1-3';
+import { Sheet, buildXlsx, safeSheetName, downloadBytes } from '../xlsx-write.js?v=2569.11.1-3';
 
 const termTxt = (t) => `ภาคเรียนที่ ${t.term} ปีการศึกษา ${t.academic_year}`;
 const g2 = (v) => (v === null || v === undefined ? '-' : Number(v).toFixed(2));
@@ -59,7 +59,7 @@ export function listView(box, ctx, d, { scope, onView, onPrint, onPrintAll }) {
         </div>
       </div>
       <label class="pp6-search">${icon('search')}<input type="text" id="q" placeholder="ค้นหาชื่อหรือรหัสนักเรียน" aria-label="ค้นหาชื่อหรือรหัสนักเรียน"></label>
-      <div class="tbl-wrap" style="box-shadow:none"><table class="tbl pp6-tbl"><thead><tr><th class="c">เลขที่</th><th>รหัสประจำตัว</th><th>ชื่อ - นามสกุล</th>
+      <div class="tbl-wrap" style="box-shadow:none"><table class="tbl tbl-card pp6-tbl"><thead><tr><th class="c">เลขที่</th><th>รหัสประจำตัว</th><th>ชื่อ - นามสกุล</th>
         <th class="c">ดูข้อมูล/ตรวจสอบเกรด</th><th class="c">พิมพ์ ปพ.6</th></tr></thead><tbody id="rows"></tbody></table></div>
     </div>`;
 
@@ -67,9 +67,9 @@ export function listView(box, ctx, d, { scope, onView, onPrint, onPrintAll }) {
     const k = q.trim().toLowerCase();
     const list = rows.filter(({ s }) => !k || fullName(s).toLowerCase().includes(k) || String(s.student_code ?? '').includes(k));
     $('#rows', box).innerHTML = list.map(({ s, miss }) => `<tr>
-      <td class="c">${s.number ?? ''}</td><td class="tabular">${esc(s.student_code ?? '')}</td><td>${esc(fullName(s))}</td>
-      <td class="c"><button class="btn btn-sm btn-info btn-pill" data-view="${esc(s.id)}">${icon('search')}ดูข้อมูล/เกรด</button></td>
-      <td class="c">${!nCourse ? `<button class="btn btn-sm btn-pill" disabled>${icon('lock')}ไม่พบรายวิชาเรียน</button>`
+      <td class="c" data-l="เลขที่">${s.number ?? ''}</td><td class="tabular" data-l="รหัส">${esc(s.student_code ?? '')}</td><td class="tc-ttl">${esc(fullName(s))}</td>
+      <td class="c tc-act"><button class="btn btn-sm btn-info btn-pill" data-view="${esc(s.id)}">${icon('search')}ดูข้อมูล/เกรด</button></td>
+      <td class="c tc-act">${!nCourse ? `<button class="btn btn-sm btn-pill" disabled>${icon('lock')}ไม่พบรายวิชาเรียน</button>`
         : miss.length ? `<button class="btn btn-sm btn-warn btn-pill" data-miss="${esc(s.id)}">${icon('lock')}ขาด ${miss.length} วิชา</button>`
         : `<button class="btn btn-sm btn-success btn-pill" data-print="${esc(s.id)}">${icon('print')}พิมพ์ ปพ.6</button>`}</td></tr>`).join('')
       || '<tr><td colspan="5" class="c muted">ไม่พบนักเรียน</td></tr>';

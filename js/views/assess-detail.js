@@ -3,14 +3,14 @@
 //  บันทึกคะแนนรายข้อใน assess_detail แล้วเขียนผลสรุปรายข้อลง trait_scores ให้อัตโนมัติ
 //  (ปพ.6 และแท็บสรุปเดิมจึงได้ผลเดียวกัน)
 // =====================================================================
-import { esc, $, toast, modal, fullName, levelName, roomName } from '../util.js?v=2569.11.1-2';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-2';
-import { attachSheet } from '../sheet.js?v=2569.11.1-2';
-import { attachGrid } from '../grid.js?v=2569.11.1-2';
-import { TRAITS, SUBS, subResult, traitResult, traitOverall, LV4, COMPETENCIES, compResult, compOverall, COMP_LV, FORMS } from '../assess-forms.js?v=2569.11.1-2';
-import { traitWorkbook, competencyWorkbook } from '../assess-export.js?v=2569.11.1-2';
-import { buildXlsx, downloadBytes } from '../xlsx-write.js?v=2569.11.1-2';
-import { sheetName as stuName } from '../achievement.js?v=2569.11.1-2';
+import { esc, $, toast, modal, fullName, levelName, roomName } from '../util.js?v=2569.11.1-3';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-3';
+import { attachSheet } from '../sheet.js?v=2569.11.1-3';
+import { attachGrid } from '../grid.js?v=2569.11.1-3';
+import { TRAITS, SUBS, subResult, traitResult, traitOverall, LV4, COMPETENCIES, compResult, compOverall, COMP_LV, FORMS } from '../assess-forms.js?v=2569.11.1-3';
+import { traitWorkbook, competencyWorkbook } from '../assess-export.js?v=2569.11.1-3';
+import { buildXlsx, downloadBytes } from '../xlsx-write.js?v=2569.11.1-3';
+import { sheetName as stuName } from '../achievement.js?v=2569.11.1-3';
 
 const pref = { trait8: '1.1', competency5: '1' };
 const chip = (label, lv) => `<span class="chip ${lv === 0 ? 'chip-bad' : lv === 3 ? 'chip-ok' : 'chip-info'}">${esc(label)}</span>`;
@@ -52,7 +52,7 @@ export async function detailPane(pane, ctx, room, roster, ids, canEdit, form) {
   if (!cur) {
     if (isTrait) {
       const ovs = roster.map((s) => traitOverall(getter(s.id)));
-      view.innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th class="n">ที่</th><th>ชื่อ-สกุล</th>
+      view.innerHTML = `<div class="tbl-wrap"><table class="tbl tbl-dense"><thead><tr><th class="n">ที่</th><th>ชื่อ-สกุล</th>
         ${TRAITS.map((t) => `<th class="n" title="${esc(t.name)}">${t.no}</th>`).join('')}<th class="n">เฉลี่ย</th><th>ผลการประเมิน</th><th class="n">กรอกแล้ว</th></tr></thead>
         <tbody>${roster.map((s, i) => { const o = ovs[i]; return `<tr><td class="n">${s.number ?? ''}</td><td>${esc(fullName(s))}</td>
           ${o.per.map((p) => `<td class="n">${p.filled ? p.avg.toFixed(2) : '<span class="muted">–</span>'}</td>`).join('')}
@@ -62,7 +62,7 @@ export async function detailPane(pane, ctx, room, roster, ids, canEdit, form) {
         ${countTable(TRAITS.map((t, k) => [t.name, ovs.map((o) => (o.per[k].filled ? o.per[k].level : null))]), LV4, ['ภาพรวม', ovs.map((o) => (o.filled ? o.level : null))])}`;
     } else {
       const ovs = roster.map((s) => compOverall(getter(s.id)));
-      view.innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th class="n">ที่</th><th>ชื่อ-สกุล</th>
+      view.innerHTML = `<div class="tbl-wrap"><table class="tbl tbl-dense"><thead><tr><th class="n">ที่</th><th>ชื่อ-สกุล</th>
         ${COMPETENCIES.map((c) => `<th class="n" title="${esc(c.name)}">${c.no}</th>`).join('')}<th class="n">รวม</th><th>แปลผล</th><th class="n">กรอกแล้ว</th></tr></thead>
         <tbody>${roster.map((s, i) => { const o = ovs[i]; return `<tr><td class="n">${s.number ?? ''}</td><td>${esc(fullName(s))}</td>
           ${o.per.map((p) => `<td class="n">${p.filled ? p.level : '<span class="muted">–</span>'}</td>`).join('')}
@@ -201,7 +201,7 @@ function countTable(rows, labels, overall) {
     return `<tr><td>${bold ? `<b>${esc(name)}</b>` : esc(name)}</td>${labels.map((_, k) => { const n = have.filter((x) => x === k).length; return `<td class="n">${n}</td><td class="n small muted">${pct(n, have.length)}</td>`; }).join('')}<td class="n">${have.length}</td></tr>`;
   };
   return `<h3 style="margin-top:18px">สรุปจำนวนนักเรียนตามระดับคุณภาพ</h3>
-    <div class="tbl-wrap"><table class="tbl"><thead><tr><th rowspan="2">รายการ</th>${labels.map((l) => `<th colspan="2" class="n">${esc(l)}</th>`).join('')}<th rowspan="2" class="n">ประเมินแล้ว</th></tr>
+    <div class="tbl-wrap"><table class="tbl tbl-dense"><thead><tr><th rowspan="2">รายการ</th>${labels.map((l) => `<th colspan="2" class="n">${esc(l)}</th>`).join('')}<th rowspan="2" class="n">ประเมินแล้ว</th></tr>
       <tr>${labels.map(() => '<th class="n small">คน</th><th class="n small">ร้อยละ</th>').join('')}</tr></thead>
       <tbody>${rows.map((r) => line(r)).join('')}${line(overall, true)}</tbody></table></div>`;
 }

@@ -4,14 +4,14 @@
 //  - ดูตัวอย่างทุกหน้า เลือกพิมพ์รายหน้า → พิมพ์ / บันทึกเป็น PDF ได้ในแอป (ไม่ต้องมี Excel)
 //  - หรือสร้างไฟล์ Excel ที่หน้าตาเหมือนต้นฉบับ
 // =====================================================================
-import { esc, $, $$, toast, roomName, confirmBox } from '../util.js?v=2569.11.1-2';
-import { Template } from '../xlsx-template.js?v=2569.11.1-2';
-import { buildBookData, makeBook, prepareBook, defaultBook } from '../pp-book.js?v=2569.11.1-2';
-import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-2';
-import { Workbook } from '../xl-model.js?v=2569.11.1-2';
-import { Engine } from '../xl-formula.js?v=2569.11.1-2';
-import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-2';
-import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-2';
+import { esc, $, $$, toast, roomName, confirmBox } from '../util.js?v=2569.11.1-3';
+import { Template } from '../xlsx-template.js?v=2569.11.1-3';
+import { buildBookData, makeBook, prepareBook, defaultBook } from '../pp-book.js?v=2569.11.1-3';
+import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-3';
+import { Workbook } from '../xl-model.js?v=2569.11.1-3';
+import { Engine } from '../xl-formula.js?v=2569.11.1-3';
+import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-3';
+import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-3';
 
 const PATH = 'pp/template';
 let cache = { at: null, bytes: null, t: null };          // ไฟล์ต้นฉบับที่โหลดแล้ว (อยู่ในหน่วยความจำ)
@@ -82,7 +82,7 @@ export async function bookView(paper, ctx, room) {
         </div>
       </div>
       <p class="small muted">ติ๊กแผ่นที่จะพิมพ์ · ลูกศรเลื่อนลำดับ · เลือกแนวกระดาษและการย่อรายแผ่นได้ · แผ่นรายคน (เช่น ปพ.6) พิมพ์ทุกคนในห้อง หรือระบุเลขที่ เช่น 1-5, 8 · เลือก/ไม่เลือกรายหน้าได้ในตัวอย่าง · ระบบจำการจัดหน้าไว้ให้ครั้งต่อไป</p>
-      <div class="tbl-wrap" style="max-height:52vh"><table class="tbl" id="b-list"><thead><tr><th class="n">พิมพ์</th><th class="n">ลำดับ</th><th>แผ่นงาน</th><th>แนวกระดาษ</th><th>การย่อ</th><th>นักเรียน <span class="small muted">(แผ่นรายคน)</span></th><th></th></tr></thead><tbody></tbody></table></div>
+      <div class="tbl-wrap" style="max-height:52vh"><table class="tbl tbl-dense" id="b-list"><thead><tr><th class="n">พิมพ์</th><th class="n">ลำดับ</th><th>แผ่นงาน</th><th>แนวกระดาษ</th><th>การย่อ</th><th>นักเรียน <span class="small muted">(แผ่นรายคน)</span></th><th></th></tr></thead><tbody></tbody></table></div>
       <details style="margin-top:8px"><summary class="small">ขั้นสูง</summary>
         <label class="small">ความกว้างคอลัมน์คิดแบบ <select id="b-dpi">${Object.entries(DPI).map(([v, l]) => `<option value="${v}" ${+v === +layout.dpi ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
         <p class="small muted" style="margin:4px 0 0">Excel คำนวณความกว้างคอลัมน์จากขนาดตัวอักษรบนจอ ไฟล์ ปพ. ต้นฉบับจัดหน้าบนจอ 125% ถ้าพิมพ์จาก Excel ในเครื่องที่ตั้งจอ 100% ตารางจะแคบลงเล็กน้อย</p>

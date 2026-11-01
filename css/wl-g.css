@@ -136,6 +136,26 @@ input:focus, select:focus, textarea:focus { border-color: var(--g-focus); box-sh
 .seg { border-color: var(--g-border); }
 .notice { border-radius: 16px; }
 
+/* ---------- ตารางรายการ: ให้เหมือนหน้านักเรียน (ตัวอักษร 17px · แถวสูง 60px · ปุ่มในแถว 48px) ----------
+   ตารางแน่น (ข้อมูลหลายแถว/ในกล่องโต้ตอบ) ใช้ .tbl-dense หรืออยู่ใน .modal เพื่อคงขนาดเดิม · ตารางกรอก (.reg) ไม่เกี่ยวข้อง */
+table.tbl { font-size: calc(17px * var(--fs, 1)); }
+table.tbl th { height: 56px; padding: 0 14px; font-size: 15px; font-weight: 500; white-space: nowrap; }
+.tbl td.n, .tbl td.c, .tbl td.tabular { white-space: nowrap; }
+table.tbl td { height: 60px; padding: 8px 14px; }
+.tbl .btn-sm { min-height: 48px; padding: 0 16px; }
+.tbl .chip { font-size: 15px; }
+table.tbl.tbl-dense, .modal table.tbl { font-size: .9rem; }
+.tbl-dense th, .modal .tbl th { height: auto; padding: 12px; font-size: .9rem; white-space: normal; }
+.tbl-dense td, .modal .tbl td { height: auto; padding: 8px 12px; }
+.tbl-dense .btn-sm, .modal .tbl .btn-sm { min-height: 40px; padding: 0 14px; }
+.tbl-dense .chip, .modal .tbl .chip { font-size: .9rem; }
+@media (max-width: 600px) {
+  table.tbl.tbl-card { font-size: calc(17px * var(--fs, 1)); }
+  .tbl-card tr { padding: 14px; gap: 4px 14px; }
+  .tbl.tbl-card td { height: auto; }
+  .tbl-card td[data-l]::before { font-size: .9rem; }
+}
+
 /* ---------- กล่องโต้ตอบ · แจ้งเตือน ---------- */
 .modal { background: var(--g-card); border-radius: 24px; }
 .modal h3 { font-size: 1.35rem; font-weight: 700; }

@@ -1,8 +1,8 @@
 // ติดตามการแก้ 0 ร มส (เฉพาะ ม.1–ม.3)
 // ครูผู้สอน: วางแผน บันทึกผลแก้ แล้วส่งยืนยัน · ผู้ดูแลระบบ: ยืนยัน/ส่งกลับ · ไม่แก้เกรดใน ปพ.5
-import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso } from '../util.js?v=2569.11.1-2';
-import { CAUSES, PLANS, STATUS, NEW_GRADES, visibleCourses, canEditCase, loadRemedial, statusOf, originalOf, legacyLabel } from '../remedial.js?v=2569.11.1-2';
-import { importFlow } from './remedial-import-view.js?v=2569.11.1-2';
+import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso } from '../util.js?v=2569.11.1-3';
+import { CAUSES, PLANS, STATUS, NEW_GRADES, visibleCourses, canEditCase, loadRemedial, statusOf, originalOf, legacyLabel } from '../remedial.js?v=2569.11.1-3';
+import { importFlow } from './remedial-import-view.js?v=2569.11.1-3';
 
 const pref = { room: '', status: '', grade: '' };
 const gradeChip = (g) => `<span class="chip ${g === 'ร' ? 'chip-warn' : 'chip-bad'}">${esc(g)}</span>`;
@@ -28,9 +28,8 @@ export async function render(el, ctx) {
     const count = (st) => inRoom.filter((it) => statusOf(it) === st).length;
     const list = inRoom.filter((it) => (!pref.status || statusOf(it) === pref.status) && (!pref.grade || originalOf(it) === pref.grade));
     const todo = list.filter((it) => !it.case && canEditCase(ctx, it.course, null));
-    const stats = ['none', 'planned', 'in_progress', 'submitted', 'unresolved', 'approved']
-      .map((st) => `<button type="button" class="card stat-btn${pref.status === st ? ' on' : ''}" data-st="${st}">
-        <div class="stat"><b>${count(st)}</b><span>${STATUS[st].label}</span></div></button>`).join('');
+    const stats = [['', 'ทั้งหมด', inRoom.length], ...['none', 'planned', 'in_progress', 'submitted', 'unresolved', 'approved'].map((st) => [st, STATUS[st].label, count(st)])]
+      .map(([st, label, n]) => `<button type="button" class="g-chip" data-st="${st}" aria-pressed="${pref.status === st}"><span>${label}</span><span class="g-num" style="font-weight:700">${n}</span></button>`).join('');
 
     el.innerHTML = `
       <div class="page-head"><div><h1>ติดตาม 0 ร มส</h1>
@@ -41,24 +40,24 @@ export async function render(el, ctx) {
             ${['0', 'ร', 'มส'].map((g) => `<option value="${g}" ${pref.grade === g ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
           ${ctx.isAdmin ? '<button class="btn" id="imp">นำเข้ารายการจากไฟล์</button>' : ''}
         </div></div>
-      <div class="stat-row">${stats}</div>
+      <div class="g-chips" role="group" aria-label="กรองตามสถานะ">${stats}</div>
       ${todo.length ? `<div class="notice row" style="align-items:center;justify-content:space-between"><span>มี ${todo.length} รายการที่ยังไม่เปิด — นักเรียนจะเห็นผลของตัวเองในหน้า "นักเรียนตรวจสอบผล" ต่อเมื่อเปิดรายการแล้ว</span>
         <button class="btn btn-sm btn-primary" id="open-all">เปิดรายการทั้งหมด (${todo.length})</button></div>` : ''}
       ${ctx.isAdmin && count('submitted') ? `<div class="notice">มี ${count('submitted')} รายการรอยืนยันผลแก้ — กดปุ่ม "ตรวจ" ที่แถวสถานะ "รอยืนยัน"</div>` : ''}
-      ${list.length ? `<div class="tbl-wrap"><table class="tbl">
+      ${list.length ? `<div class="tbl-wrap"><table class="tbl tbl-card">
         <thead><tr><th>ห้อง</th><th class="n">เลขที่</th><th>ชื่อ-สกุล</th><th>วิชา</th><th class="c">ผลเดิม</th><th class="hide-sm">สาเหตุ</th><th class="hide-sm">วิธีแก้</th>
           <th class="hide-sm">กำหนด</th><th>สถานะ</th><th class="c">ผลหลังแก้</th><th></th></tr></thead>
         <tbody>${list.map((it) => {
           const c = it.case; const edit = canEditCase(ctx, it.course, c);
-          return `<tr><td class="tabular">${esc(roomName(it.course.classroom))}</td><td class="n tabular">${it.student.number ?? ''}</td>
-            <td class="w">${esc(fullName(it.student))}</td>
-            <td>${esc(it.course.subject?.code ?? '')}<br><span class="muted small">${esc(it.course.subject?.name ?? '')}</span>${it.course.legacy ? `<br><span class="chip">${esc(legacyLabel(it.course))}</span>` : ''}</td>
-            <td class="c">${gradeChip(originalOf(it))}</td>
+          return `<tr><td class="tabular" data-l="ห้อง">${esc(roomName(it.course.classroom))}</td><td class="n tabular" data-l="เลขที่">${it.student.number ?? ''}</td>
+            <td class="w tc-ttl">${esc(fullName(it.student))}</td>
+            <td data-l="วิชา">${esc(it.course.subject?.code ?? '')}<br><span class="muted small">${esc(it.course.subject?.name ?? '')}</span>${it.course.legacy ? `<br><span class="chip">${esc(legacyLabel(it.course))}</span>` : ''}</td>
+            <td class="c" data-l="ผลเดิม">${gradeChip(originalOf(it))}</td>
             <td class="hide-sm">${esc(CAUSES[c?.cause] ?? '–')}</td><td class="hide-sm">${esc(PLANS[c?.plan] ?? '–')}</td>
             <td class="hide-sm">${dateOrDash(c?.due_date)}</td>
-            <td>${stChip(statusOf(it))}${c?.review_note && statusOf(it) !== 'approved' ? `<br><span class="small muted" title="หมายเหตุจากผู้ดูแลระบบ">${esc(c.review_note)}</span>` : ''}</td>
-            <td class="c">${c?.new_grade ? `<b>${esc(c.new_grade)}</b>${c.status === 'approved' ? '' : '<sup>รอยืนยัน</sup>'}` : '<span class="muted">–</span>'}</td>
-            <td class="n"><button class="btn btn-sm${c?.status === 'submitted' && ctx.isAdmin ? ' btn-primary' : ''}" data-k="${esc(it.key)}">${
+            <td data-l="สถานะ">${stChip(statusOf(it))}${c?.review_note && statusOf(it) !== 'approved' ? `<br><span class="small muted" title="หมายเหตุจากผู้ดูแลระบบ">${esc(c.review_note)}</span>` : ''}</td>
+            <td class="c" data-l="ผลหลังแก้">${c?.new_grade ? `<b>${esc(c.new_grade)}</b>${c.status === 'approved' ? '' : '<sup>รอยืนยัน</sup>'}` : '<span class="muted">–</span>'}</td>
+            <td class="n tc-act"><button class="btn btn-sm${c?.status === 'submitted' && ctx.isAdmin ? ' btn-primary' : ''}" data-k="${esc(it.key)}">${
               ctx.isAdmin ? (c?.status === 'submitted' ? 'ตรวจ' : 'แก้ไข') : edit ? (c ? 'แก้ไข' : 'วางแผน') : 'ดู'}</button></td></tr>`; }).join('')}</tbody></table></div>`
       : `<div class="empty">${items.length ? 'ไม่มีรายการตามตัวกรองที่เลือก' : 'ไม่มีนักเรียนที่ได้ 0 ร หรือ มส ในวิชาที่คุณดูแล'}</div>`}
       <p class="muted small">0 ที่เกิดจากช่องคะแนนยังว่างจะไม่ถูกนับ จนกว่าจะกรอกคะแนนครบ</p>`;
