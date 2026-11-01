@@ -1,6 +1,6 @@
-import { attachBulk } from '../bulk.js?v=2569.11.1-6';
-import { esc, $, toast, options, fullName, todayIso, thaiDate, STATUS } from '../util.js?v=2569.11.1-6';
-import { getRoster } from '../data.js?v=2569.11.1-6';
+import { attachBulk } from '../bulk.js?v=2569.11.1-7';
+import { esc, $, toast, options, fullName, todayIso, thaiDate, STATUS } from '../util.js?v=2569.11.1-7';
+import { getRoster } from '../data.js?v=2569.11.1-7';
 
 const pref = { course: null, date: null, period: 1 };
 
@@ -36,13 +36,15 @@ export async function render(el, ctx) {
       </div>
     </div>
     <div class="grid" style="grid-template-columns:minmax(0,2fr) minmax(0,1fr);align-items:start" id="cols">
-      <div class="card">
-        <div class="row" style="justify-content:space-between;align-items:center">
-          <b>${esc(thaiDate(pref.date))} · คาบ ${pref.period}</b>
-          ${canEdit ? '<button class="btn btn-primary" id="allin">ทุกคนที่ยังว่าง = มา</button>' : ''}
+      <div class="period-main" style="display:flex;flex-direction:column;gap:16px;min-width:0">
+        <div class="day-card">
+          <div class="day-head">
+            <div class="day-title"><b>${esc(thaiDate(pref.date))} · คาบ ${pref.period}</b></div>
+            ${canEdit ? '<button class="btn btn-primary" id="allin">ทุกคนที่ยังว่าง = มา</button>' : ''}
+          </div>
+          <div class="day-count" id="count"></div>
+          ${roster.length && canEdit ? '<label class="g-selall"><span class="g-chkcell"><input class="g-chk g-all" type="checkbox" aria-label="เลือกนักเรียนทั้งหมด"></span><span>เลือกทั้งหมด · ตั้งสถานะพร้อมกัน</span></label>' : ''}
         </div>
-        <div class="small muted" id="count"></div>
-        ${roster.length && canEdit ? '<label class="g-selall"><span class="g-chkcell"><input class="g-chk g-all" type="checkbox" aria-label="เลือกนักเรียนทั้งหมด"></span><span>เลือกทั้งหมด · แล้วตั้งสถานะให้หลายคนพร้อมกัน</span></label>' : ''}
         ${roster.length ? `<div class="roll${canEdit ? ' roll-sel' : ''}">${roster.map((s) => { const st = marks.get(s.id)?.status;
           return `<div class="roll-row" data-sid="${esc(s.id)}">${canEdit ? `<label class="g-chkcell"><input class="g-chk" type="checkbox" data-id="${esc(s.id)}" aria-label="เลือก ${esc(fullName(s))}"></label>` : ''}<span class="muted tabular">${s.number ?? ''}</span><span class="nm">${esc(fullName(s))}</span>
             <div class="seg">${Object.entries(STATUS).map(([k, v]) => `<button data-s="${k}" class="${st === k ? `on ${v.cls}` : ''}" ${canEdit ? '' : 'disabled'}>${v.label}</button>`).join('')}</div></div>`; }).join('')}</div>`
@@ -78,7 +80,7 @@ export async function render(el, ctx) {
   const count = () => {
     const c = {}; for (const r of marks.values()) c[r.status] = (c[r.status] || 0) + 1;
     const out = $('#count', el);
-    if (out) out.textContent = `บันทึกแล้ว ${marks.size}/${roster.length} คน · ${Object.entries(STATUS).map(([k, s]) => `${s.label} ${c[k] || 0}`).join(' · ')}`;
+    if (out) out.innerHTML = `<b>บันทึกแล้ว ${marks.size}/${roster.length} คน</b><span class="dc-list">${Object.entries(STATUS).map(([k, s]) => `<span class="dc ${s.cls}${c[k] ? '' : ' zero'}">${s.label} ${c[k] || 0}</span>`).join('')}</span>`;
   };
   const paint = (sid, flash) => {
     const row = el.querySelector(`.roll-row[data-sid="${sid}"]`); if (!row) return;
