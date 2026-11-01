@@ -1,5 +1,5 @@
-import { esc, $, toast, options, fullName, todayIso, thaiDate, STATUS } from '../util.js?v=2569.11.1-2';
-import { getRoster } from '../data.js?v=2569.11.1-2';
+import { esc, $, toast, options, fullName, todayIso, thaiDate, STATUS } from '../util.js?v=2569.11.1-3';
+import { getRoster } from '../data.js?v=2569.11.1-3';
 
 const pref = { course: null, date: null, period: 1 };
 
@@ -49,7 +49,7 @@ export async function render(el, ctx) {
       <div class="card">
         <h3>เวลาเรียนสะสมวิชานี้</h3>
         <p class="small muted">ต่ำกว่า 80% มีสิทธิ์ได้ มส · นับจาก ${sessions.length} คาบที่เช็กชื่อแล้ว</p>
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th class="n">ที่</th><th>ชื่อ</th><th class="n">มา/คาบ</th><th class="n">%</th></tr></thead>
+        <div class="tbl-wrap"><table class="tbl tbl-dense"><thead><tr><th class="n">ที่</th><th>ชื่อ</th><th class="n">มา/คาบ</th><th class="n">%</th></tr></thead>
           <tbody id="sum">${roster.map((s) => sumRow(s, sum[s.id])).join('')}</tbody></table></div>
         ${sessions.length ? `<details class="small"><summary>คาบที่เช็กแล้ว</summary>
           <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${sessions.slice(0, 40).map((x) => { const [d, p] = x.split('#');

@@ -1,15 +1,15 @@
-import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.11.1-2';
-import { GRANTABLE, MENU_GROUPS, plain } from '../menus.js?v=2569.11.1-2';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-2';
-import { ROUNDING } from '../grading.js?v=2569.11.1-2';
-import { excelRefToRows } from '../assess.js?v=2569.11.1-2';
-import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.11.1-2';
-import { subjectImportFlow } from './subject-import-view.js?v=2569.11.1-2';
-import { teacherImportFlow } from './teacher-import-view.js?v=2569.11.1-2';
-import { indicatorImportFlow } from './indicator-import-view.js?v=2569.11.1-2';
-import { clearGrowthRef } from '../data.js?v=2569.11.1-2';
-import { teacherKey, displayName } from '../teacher-import.js?v=2569.11.1-2';
-import { applyCourseOrder, inheritedOrder } from '../course-order.js?v=2569.11.1-2';
+import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.11.1-3';
+import { GRANTABLE, MENU_GROUPS, plain } from '../menus.js?v=2569.11.1-3';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-3';
+import { ROUNDING } from '../grading.js?v=2569.11.1-3';
+import { excelRefToRows } from '../assess.js?v=2569.11.1-3';
+import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.11.1-3';
+import { subjectImportFlow } from './subject-import-view.js?v=2569.11.1-3';
+import { teacherImportFlow } from './teacher-import-view.js?v=2569.11.1-3';
+import { indicatorImportFlow } from './indicator-import-view.js?v=2569.11.1-3';
+import { clearGrowthRef } from '../data.js?v=2569.11.1-3';
+import { teacherKey, displayName } from '../teacher-import.js?v=2569.11.1-3';
+import { applyCourseOrder, inheritedOrder } from '../course-order.js?v=2569.11.1-3';
 
 let tab = 'school';
 const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', rooms: 'ห้องเรียน', subjects: 'รายวิชา', roomsubj: 'รายวิชาตามชั้น', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', notify: 'การแจ้งเตือน', backup: 'สำรองข้อมูล' };
@@ -111,9 +111,9 @@ function rooms(pane, ctx, run) {
   pane.innerHTML = `<div class="card">
     <div class="row"><button class="btn btn-primary" id="add">เพิ่มห้องเรียน</button>
       <span class="muted small">ปีการศึกษา ${year} · นำเข้าไฟล์ DMC ทั้งโรงเรียนที่หน้า "นักเรียน" จะสร้างห้องให้อัตโนมัติ</span></div>
-    ${ctx.classrooms.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>ห้อง</th><th>ครูประจำชั้น</th><th></th></tr></thead><tbody>
-      ${ctx.classrooms.map((c) => `<tr><td><b>${esc(roomName(c))}</b></td><td>${esc(ctx.homeroomTeachers(c.id).map((t) => t.full_name).join(', ') || '—')}</td>
-        <td class="n"><button class="btn btn-sm" data-ht="${c.id}">กำหนดครูประจำชั้น</button> <button class="btn btn-sm btn-danger" data-del="${c.id}">ลบ</button></td></tr>`).join('')}
+    ${ctx.classrooms.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>ห้อง</th><th>ครูประจำชั้น</th><th></th></tr></thead><tbody>
+      ${ctx.classrooms.map((c) => `<tr><td class="tc-ttl"><b>${esc(roomName(c))}</b></td><td data-l="ครูประจำชั้น">${esc(ctx.homeroomTeachers(c.id).map((t) => t.full_name).join(', ') || '—')}</td>
+        <td class="n tc-act"><button class="btn btn-sm" data-ht="${c.id}">กำหนดครูประจำชั้น</button> <button class="btn btn-sm btn-danger" data-del="${c.id}">ลบ</button></td></tr>`).join('')}
     </tbody></table></div>` : '<div class="empty">ยังไม่มีห้องเรียน</div>'}</div>`;
   $('#add', pane).addEventListener('click', async () => {
     const r = await modal('เพิ่มห้องเรียน', `<div class="row">
@@ -378,9 +378,9 @@ async function growth(pane, ctx, run) {
   pane.innerHTML = `<div class="card">
     <h2>ตารางอ้างอิงการเจริญเติบโต</h2>
     <p class="small">ใช้แปลผลน้ำหนักตามอายุ ส่วนสูงตามอายุ และน้ำหนักตามส่วนสูง (แบ่งช่วงด้วย ±1.5 SD, ±2 SD และ +3 SD เหมือนไฟล์ Excel เดิม)</p>
-    ${Object.keys(sets).length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>ชุดตาราง</th><th class="n">จำนวนแถว</th><th></th></tr></thead><tbody>
-      ${Object.entries(sets).map(([k, n]) => `<tr><td>${esc(k === 'excel' ? 'excel (ตารางจากไฟล์ Excel เดิม)' : k)}</td><td class="n">${n}</td>
-        <td class="n">${k === active ? '<span class="chip chip-ok">กำลังใช้</span>' : `<button class="btn btn-sm" data-use="${esc(k)}">ใช้ชุดนี้</button>`}
+    ${Object.keys(sets).length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>ชุดตาราง</th><th class="n">จำนวนแถว</th><th></th></tr></thead><tbody>
+      ${Object.entries(sets).map(([k, n]) => `<tr><td class="tc-ttl">${esc(k === 'excel' ? 'excel (ตารางจากไฟล์ Excel เดิม)' : k)}</td><td class="n" data-l="จำนวนแถว">${n}</td>
+        <td class="n tc-act">${k === active ? '<span class="chip chip-ok">กำลังใช้</span>' : `<button class="btn btn-sm" data-use="${esc(k)}">ใช้ชุดนี้</button>`}
           <button class="btn btn-sm btn-danger" data-del="${esc(k)}">ลบ</button></td></tr>`).join('')}</tbody></table></div>`
       : '<div class="empty">ยังไม่มีตารางอ้างอิง กดปุ่มด้านล่างเพื่อโหลดตารางจากไฟล์ Excel เดิม</div>'}
     ${!sets[active] ? `<p class="small" style="color:var(--red)">ชุดที่ตั้งให้ใช้ (${esc(active)}) ยังไม่มีข้อมูล ระบบจึงแปลผลโภชนาการไม่ได้</p>` : ''}
@@ -397,7 +397,7 @@ async function growth(pane, ctx, run) {
   $('#g-tpl', pane).href = URL.createObjectURL(new Blob(['\ufeff' + tpl], { type: 'text/csv' }));
   const upsertRows = async (rows) => { for (let i = 0; i < rows.length; i += 500) await ctx.db.upsert('growth_reference', rows.slice(i, i + 500), 'ref_set,sex,basis,key,measure'); clearGrowthRef(); };
   $('#load-excel', pane).addEventListener('click', () => run(async () => {
-    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.11.1-2');
+    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.11.1-3');
     await upsertRows(excelRefToRows(EXCEL_AGE, EXCEL_HT));
   }, 'โหลดตารางจาก Excel เดิมแล้ว'));
   pane.querySelectorAll('[data-use]').forEach((b) => b.addEventListener('click', () =>

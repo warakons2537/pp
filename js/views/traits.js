@@ -1,12 +1,12 @@
-import { esc, $, toast, modal, options, roomName, fullName } from '../util.js?v=2569.11.1-2';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-2';
-import { getRoster } from '../data.js?v=2569.11.1-2';
-import { attachSheet } from '../sheet.js?v=2569.11.1-2';
-import { attachGrid } from '../grid.js?v=2569.11.1-2';
-import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.11.1-2';
-import { detailPane } from './assess-detail.js?v=2569.11.1-2';
-import { FORMS } from '../assess-forms.js?v=2569.11.1-2';
-import { assessImportFlow } from './assess-import-view.js?v=2569.11.1-2';
+import { esc, $, toast, modal, options, roomName, fullName } from '../util.js?v=2569.11.1-3';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-3';
+import { getRoster } from '../data.js?v=2569.11.1-3';
+import { attachSheet } from '../sheet.js?v=2569.11.1-3';
+import { attachGrid } from '../grid.js?v=2569.11.1-3';
+import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.11.1-3';
+import { detailPane } from './assess-detail.js?v=2569.11.1-3';
+import { FORMS } from '../assess-forms.js?v=2569.11.1-3';
+import { assessImportFlow } from './assess-import-view.js?v=2569.11.1-3';
 
 const pref = { room: null, tab: 'trait8' };
 const TABS = { ...Object.fromEntries(Object.entries(TRAIT_KINDS).map(([k, v]) => [k, v.short])),
@@ -154,7 +154,7 @@ async function activities(pane, ctx, roster, ids, canEdit) {
       <option value=""></option><option value="1" ${p === true ? 'selected' : ''}>ผ่าน</option><option value="0" ${p === false ? 'selected' : ''}>ไม่ผ่าน</option></select>`; };
   pane.innerHTML = `
     <div class="small muted">ผ่าน (ผ) / ไม่ผ่าน (มผ) · กดปุ่มใต้ชื่อกิจกรรมเพื่อให้ทุกคนที่ยังว่าง "ผ่าน"</div>
-    <div class="tbl-wrap"><table class="tbl" id="agrid"><thead><tr><th class="n">ที่</th><th>ชื่อ-สกุล</th>
+    <div class="tbl-wrap"><table class="tbl tbl-dense" id="agrid"><thead><tr><th class="n">ที่</th><th>ชื่อ-สกุล</th>
       ${Object.entries(ACTIVITIES).map(([k, v]) => `<th>${esc(v)}${canEdit ? `<br><button class="btn btn-sm" data-all="${k}">ผ่านทุกคน</button>` : ''}</th>`).join('')}<th>ชื่อชุมนุม</th></tr></thead>
       <tbody>${roster.map((s) => `<tr data-sid="${s.id}"><td class="n">${s.number ?? ''}</td><td>${esc(fullName(s))}</td>
         ${Object.keys(ACTIVITIES).map((a) => `<td>${sel(s, a)}</td>`).join('')}
