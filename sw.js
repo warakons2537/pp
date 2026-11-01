@@ -1,11 +1,11 @@
 // Service worker ของ WL Admin: เก็บไฟล์ของแอปไว้ในเครื่องให้เปิดเร็วและเปิดได้แม้สัญญาณหลุด
 // - ข้อมูลจากฐานข้อมูล (Supabase) ไม่ผ่านที่นี่เลย จึงสดเสมอ
 // - เลขเวอร์ชันด้านล่างเปลี่ยนพร้อม js/brand.js ทุกครั้ง (มีชุดทดสอบตรวจ) แคชเวอร์ชันเก่าจะถูกล้างอัตโนมัติ
-const VERSION = '2569.10.31-15';
+const VERSION = '2569.11.1-1';
 const APP = `wl-pp-${VERSION}`;
 const EXT = 'wl-pp-ext';                                       // ไลบรารี/ฟอนต์จากภายนอก (เวอร์ชันตายตัว เก็บข้ามเวอร์ชันแอปได้)
 const EXT_HOSTS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
-const CORE = ['./', 'index.html', `css/app.css?v=${VERSION}`, `css/print.css?v=${VERSION}`, `js/app.js?v=${VERSION}`,
+const CORE = ['./', 'index.html', `css/app.css?v=${VERSION}`, `css/wl-g.css?v=${VERSION}`, `css/print.css?v=${VERSION}`, `js/app.js?v=${VERSION}`,
   'manifest.webmanifest', 'img/logo-64.png', 'img/logo-192.png'];
 const OFFLINE = `<!doctype html><html lang="th"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WL Admin · ออฟไลน์</title><body style="font-family:sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#f6fbf6;color:#404940;text-align:center">
