@@ -2,11 +2,12 @@
 //  ปพ.6: ตารางรายชื่อ (ล็อกการพิมพ์เมื่อเกรดยังไม่ครบ) · หน้าเกรดรายคน · สรุปเกรด (Excel)
 //  ใช้ข้อมูลชุดเดียวกับหน้าพิมพ์ ปพ.6 (loadRoomYear) ไม่มีการเขียนฐานข้อมูล
 // =====================================================================
-import { esc, $, roomName, fullName, levelName, modal } from '../util.js?v=2569.11.1-3';
-import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.11.1-3';
-import { ACTIVITIES } from '../assess.js?v=2569.11.1-3';
-import { icon } from '../icons.js?v=2569.11.1-3';
-import { Sheet, buildXlsx, safeSheetName, downloadBytes } from '../xlsx-write.js?v=2569.11.1-3';
+import { attachBulk } from '../bulk.js?v=2569.11.1-4';
+import { esc, $, roomName, fullName, levelName, modal } from '../util.js?v=2569.11.1-4';
+import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.11.1-4';
+import { ACTIVITIES } from '../assess.js?v=2569.11.1-4';
+import { icon } from '../icons.js?v=2569.11.1-4';
+import { Sheet, buildXlsx, safeSheetName, downloadBytes } from '../xlsx-write.js?v=2569.11.1-4';
 
 const termTxt = (t) => `ภาคเรียนที่ ${t.term} ปีการศึกษา ${t.academic_year}`;
 const g2 = (v) => (v === null || v === undefined ? '-' : Number(v).toFixed(2));
@@ -40,7 +41,7 @@ export function showMissing(s, miss, multiTerm) {
 // ---------------------------------------------------------------------
 //  ตารางรายชื่อ
 // ---------------------------------------------------------------------
-export function listView(box, ctx, d, { scope, onView, onPrint, onPrintAll }) {
+export function listView(box, ctx, d, { scope, onView, onPrint, onPrintAll, onPrintSelected }) {
   const terms = termsOf(ctx, d, scope);
   const nCourse = courseCount(d, terms);
   const rows = d.roster.map((s) => ({ s, miss: missingOf(d, terms, s) }));
@@ -59,7 +60,8 @@ export function listView(box, ctx, d, { scope, onView, onPrint, onPrintAll }) {
         </div>
       </div>
       <label class="pp6-search">${icon('search')}<input type="text" id="q" placeholder="ค้นหาชื่อหรือรหัสนักเรียน" aria-label="ค้นหาชื่อหรือรหัสนักเรียน"></label>
-      <div class="tbl-wrap" style="box-shadow:none"><table class="tbl tbl-card pp6-tbl"><thead><tr><th class="c">เลขที่</th><th>รหัสประจำตัว</th><th>ชื่อ - นามสกุล</th>
+      <label class="g-selall"><span class="g-chkcell"><input class="g-chk g-all" type="checkbox" aria-label="เลือกทั้งหมดที่แสดงอยู่"></span><span>ติ๊กเลือกนักเรียน แล้วพิมพ์ ปพ.6 เฉพาะที่เลือกจากแถบด้านล่าง</span></label>
+      <div class="tbl-wrap" style="box-shadow:none"><table class="tbl tbl-card has-chk pp6-tbl"><thead><tr><th class="tc-chk"></th><th class="c">เลขที่</th><th>รหัสประจำตัว</th><th>ชื่อ - นามสกุล</th>
         <th class="c">ดูข้อมูล/ตรวจสอบเกรด</th><th class="c">พิมพ์ ปพ.6</th></tr></thead><tbody id="rows"></tbody></table></div>
     </div>`;
 
@@ -67,16 +69,26 @@ export function listView(box, ctx, d, { scope, onView, onPrint, onPrintAll }) {
     const k = q.trim().toLowerCase();
     const list = rows.filter(({ s }) => !k || fullName(s).toLowerCase().includes(k) || String(s.student_code ?? '').includes(k));
     $('#rows', box).innerHTML = list.map(({ s, miss }) => `<tr>
+      <td class="tc-chk"><label class="g-chkcell"><input class="g-chk" type="checkbox" data-id="${esc(s.id)}" aria-label="เลือก ${esc(fullName(s))}"></label></td>
       <td class="c" data-l="เลขที่">${s.number ?? ''}</td><td class="tabular" data-l="รหัส">${esc(s.student_code ?? '')}</td><td class="tc-ttl">${esc(fullName(s))}</td>
       <td class="c tc-act"><button class="btn btn-sm btn-info btn-pill" data-view="${esc(s.id)}">${icon('search')}ดูข้อมูล/เกรด</button></td>
       <td class="c tc-act">${!nCourse ? `<button class="btn btn-sm btn-pill" disabled>${icon('lock')}ไม่พบรายวิชาเรียน</button>`
         : miss.length ? `<button class="btn btn-sm btn-warn btn-pill" data-miss="${esc(s.id)}">${icon('lock')}ขาด ${miss.length} วิชา</button>`
         : `<button class="btn btn-sm btn-success btn-pill" data-print="${esc(s.id)}">${icon('print')}พิมพ์ ปพ.6</button>`}</td></tr>`).join('')
-      || '<tr><td colspan="5" class="c muted">ไม่พบนักเรียน</td></tr>';
+      || '<tr><td colspan="6" class="c muted">ไม่พบนักเรียน</td></tr>';
+    bulk?.refresh();
   };
-  draw();
-
   const byId = Object.fromEntries(rows.map((x) => [x.s.id, x]));
+  let bulk = null;
+  draw();
+  bulk = attachBulk({ root: box, unit: 'คน', actions: [{ label: 'พิมพ์ ปพ.6 ที่เลือก', cta: true, run: async (ids) => {
+    const ok = ids.filter((id) => !byId[id].miss.length); const skip = ids.length - ok.length;
+    if (!nCourse) return toast('ไม่พบรายวิชาเรียน พิมพ์ไม่ได้', 'err');
+    if (!ok.length) return toast('ที่เลือกยังมีวิชาไม่มีเกรดหรือคะแนนไม่ครบทุกคน จึงพิมพ์ไม่ได้', 'err');
+    if (skip) toast(`ข้าม ${skip} คนที่ยังมีวิชาไม่มีเกรดหรือคะแนนไม่ครบ`, 'err');
+    onPrintSelected(ok);
+  } }] });
+
   $('#q', box).addEventListener('input', (e) => { q = e.target.value; draw(); });
   $('#rows', box).addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;

@@ -1,10 +1,12 @@
 // ติดตามการแก้ 0 ร มส (เฉพาะ ม.1–ม.3)
 // ครูผู้สอน: วางแผน บันทึกผลแก้ แล้วส่งยืนยัน · ผู้ดูแลระบบ: ยืนยัน/ส่งกลับ · ไม่แก้เกรดใน ปพ.5
-import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso } from '../util.js?v=2569.11.1-3';
-import { CAUSES, PLANS, STATUS, NEW_GRADES, visibleCourses, canEditCase, loadRemedial, statusOf, originalOf, legacyLabel } from '../remedial.js?v=2569.11.1-3';
-import { importFlow } from './remedial-import-view.js?v=2569.11.1-3';
+import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso } from '../util.js?v=2569.11.1-4';
+import { CAUSES, PLANS, STATUS, NEW_GRADES, visibleCourses, canEditCase, loadRemedial, statusOf, originalOf, legacyLabel } from '../remedial.js?v=2569.11.1-4';
+import { importFlow } from './remedial-import-view.js?v=2569.11.1-4';
+import { attachBulk } from '../bulk.js?v=2569.11.1-4';
 
 const pref = { room: '', status: '', grade: '' };
+const sel = new Set();      // รายการที่ติ๊กเลือก (จำไว้ข้ามการวาดใหม่ เช่น เปลี่ยนตัวกรอง)
 const gradeChip = (g) => `<span class="chip ${g === 'ร' ? 'chip-warn' : 'chip-bad'}">${esc(g)}</span>`;
 const stChip = (st) => `<span class="chip ${STATUS[st].chip}">${STATUS[st].label}</span>`;
 const dateOrDash = (d) => (d ? esc(thaiDate(d, true)) : '<span class="muted">–</span>');
@@ -44,12 +46,15 @@ export async function render(el, ctx) {
       ${todo.length ? `<div class="notice row" style="align-items:center;justify-content:space-between"><span>มี ${todo.length} รายการที่ยังไม่เปิด — นักเรียนจะเห็นผลของตัวเองในหน้า "นักเรียนตรวจสอบผล" ต่อเมื่อเปิดรายการแล้ว</span>
         <button class="btn btn-sm btn-primary" id="open-all">เปิดรายการทั้งหมด (${todo.length})</button></div>` : ''}
       ${ctx.isAdmin && count('submitted') ? `<div class="notice">มี ${count('submitted')} รายการรอยืนยันผลแก้ — กดปุ่ม "ตรวจ" ที่แถวสถานะ "รอยืนยัน"</div>` : ''}
-      ${list.length ? `<div class="tbl-wrap"><table class="tbl tbl-card">
-        <thead><tr><th>ห้อง</th><th class="n">เลขที่</th><th>ชื่อ-สกุล</th><th>วิชา</th><th class="c">ผลเดิม</th><th class="hide-sm">สาเหตุ</th><th class="hide-sm">วิธีแก้</th>
+      ${list.length ? `<div class="rem-list">
+        ${list.some((it) => canEditCase(ctx, it.course, it.case)) ? '<label class="g-selall"><span class="g-chkcell"><input class="g-chk g-all" type="checkbox" aria-label="เลือกทั้งหมดที่แสดงอยู่"></span><span>เลือกรายการ แล้วจัดการหลายรายการพร้อมกันจากแถบด้านล่าง</span></label>' : ''}
+        <div class="tbl-wrap"><table class="tbl tbl-card has-chk">
+        <thead><tr><th class="tc-chk"></th><th>ห้อง</th><th class="n">เลขที่</th><th>ชื่อ-สกุล</th><th>วิชา</th><th class="c">ผลเดิม</th><th class="hide-sm">สาเหตุ</th><th class="hide-sm">วิธีแก้</th>
           <th class="hide-sm">กำหนด</th><th>สถานะ</th><th class="c">ผลหลังแก้</th><th></th></tr></thead>
         <tbody>${list.map((it) => {
           const c = it.case; const edit = canEditCase(ctx, it.course, c);
-          return `<tr><td class="tabular" data-l="ห้อง">${esc(roomName(it.course.classroom))}</td><td class="n tabular" data-l="เลขที่">${it.student.number ?? ''}</td>
+          return `<tr><td class="tc-chk"><label class="g-chkcell"><input class="g-chk" type="checkbox" data-id="${esc(it.key)}" ${edit ? '' : 'disabled'} aria-label="เลือก ${esc(fullName(it.student))}"></label></td>
+            <td class="tabular" data-l="ห้อง">${esc(roomName(it.course.classroom))}</td><td class="n tabular" data-l="เลขที่">${it.student.number ?? ''}</td>
             <td class="w tc-ttl">${esc(fullName(it.student))}</td>
             <td data-l="วิชา">${esc(it.course.subject?.code ?? '')}<br><span class="muted small">${esc(it.course.subject?.name ?? '')}</span>${it.course.legacy ? `<br><span class="chip">${esc(legacyLabel(it.course))}</span>` : ''}</td>
             <td class="c" data-l="ผลเดิม">${gradeChip(originalOf(it))}</td>
@@ -58,7 +63,7 @@ export async function render(el, ctx) {
             <td data-l="สถานะ">${stChip(statusOf(it))}${c?.review_note && statusOf(it) !== 'approved' ? `<br><span class="small muted" title="หมายเหตุจากผู้ดูแลระบบ">${esc(c.review_note)}</span>` : ''}</td>
             <td class="c" data-l="ผลหลังแก้">${c?.new_grade ? `<b>${esc(c.new_grade)}</b>${c.status === 'approved' ? '' : '<sup>รอยืนยัน</sup>'}` : '<span class="muted">–</span>'}</td>
             <td class="n tc-act"><button class="btn btn-sm${c?.status === 'submitted' && ctx.isAdmin ? ' btn-primary' : ''}" data-k="${esc(it.key)}">${
-              ctx.isAdmin ? (c?.status === 'submitted' ? 'ตรวจ' : 'แก้ไข') : edit ? (c ? 'แก้ไข' : 'วางแผน') : 'ดู'}</button></td></tr>`; }).join('')}</tbody></table></div>`
+              ctx.isAdmin ? (c?.status === 'submitted' ? 'ตรวจ' : 'แก้ไข') : edit ? (c ? 'แก้ไข' : 'วางแผน') : 'ดู'}</button></td></tr>`; }).join('')}</tbody></table></div></div>`
       : `<div class="empty">${items.length ? 'ไม่มีรายการตามตัวกรองที่เลือก' : 'ไม่มีนักเรียนที่ได้ 0 ร หรือ มส ในวิชาที่คุณดูแล'}</div>`}
       <p class="muted small">0 ที่เกิดจากช่องคะแนนยังว่างจะไม่ถูกนับ จนกว่าจะกรอกคะแนนครบ</p>`;
 
@@ -76,12 +81,60 @@ export async function render(el, ctx) {
       const it = items.find((x) => x.key === b.dataset.k);
       if (await editCase(ctx, it)) { await load(); draw(); }
     }));
+    attachBulk({ root: el.querySelector('.rem-list') || el, host: el, unit: 'รายการ', state: sel, actions: bulkActions() });
   };
+
+  // ---- จัดการหลายรายการ (แถบลอย) ----
+  const picks = (ids) => ids.map((k) => items.find((x) => x.key === k)).filter(Boolean);
+  const done = async (n, skipped, what) => { toast(`${what} ${n} รายการ${skipped ? ` · ข้าม ${skipped} รายการที่ทำไม่ได้` : ''}`, n ? 'ok' : 'err'); sel.clear(); await load(); draw(); };
+  const bulkActions = () => {
+    const fail = (err) => toast(err.message, 'err');
+    const list = [
+      { label: 'เปิดรายการ', cta: true, run: async (ids) => {
+        const its = picks(ids); const ent = its.filter((it) => !it.case && canEditCase(ctx, it.course, null)).map((it) => ({ it, patch: { status: 'planned' } }));
+        if (!ent.length) return toast('ที่เลือกมีรายการเปิดแล้วทั้งหมด', 'err');
+        try { await applyPatches(ctx, ent); await done(ent.length, its.length - ent.length, 'เปิดรายการ'); } catch (err) { fail(err); }
+      } },
+      { label: 'ตั้งสาเหตุ/วิธีแก้…', run: async (ids) => {
+        const r = await modal('ตั้งสาเหตุและวิธีแก้', `<p class="muted small" style="margin:0">ใช้กับ ${ids.length} รายการที่เลือก (เฉพาะที่คุณแก้ไขได้) ช่องที่เลือก "ไม่เปลี่ยน" จะคงค่าเดิมไว้</p>
+          <label>สาเหตุ<select name="cause"><option value="">ไม่เปลี่ยน</option>${Object.entries(CAUSES).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join('')}</select></label>
+          <label>วิธีแก้<select name="plan"><option value="">ไม่เปลี่ยน</option>${Object.entries(PLANS).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join('')}</select></label>`, { okText: 'ตั้งค่า' });
+        if (!r) return;
+        if (!r.cause && !r.plan) return toast('ยังไม่ได้เลือกสาเหตุหรือวิธีแก้', 'err');
+        const its = picks(ids); const ent = its.filter((it) => canEditCase(ctx, it.course, it.case))
+          .map((it) => ({ it, patch: { ...(r.cause ? { cause: r.cause } : {}), ...(r.plan ? { plan: r.plan } : {}), status: it.case?.status || 'planned' } }));
+        if (!ent.length) return toast('ไม่มีรายการที่คุณแก้ไขได้ในที่เลือก', 'err');
+        try { await applyPatches(ctx, ent); await done(ent.length, its.length - ent.length, 'ตั้งสาเหตุ/วิธีแก้'); } catch (err) { fail(err); }
+      } },
+    ];
+    if (ctx.isAdmin) list.push(
+      { label: 'ยืนยันผลแก้', run: async (ids) => {
+        const its = picks(ids); const ent = its.filter((it) => it.case?.status === 'submitted').map((it) => ({ it, patch: { status: 'approved', reviewed_by: ctx.me.id, reviewed_on: todayIso() } }));
+        if (!ent.length) return toast('ที่เลือกไม่มีรายการสถานะ "รอยืนยัน"', 'err');
+        try { await applyPatches(ctx, ent); await done(ent.length, its.length - ent.length, 'ยืนยันผลแก้'); } catch (err) { fail(err); }
+      } },
+      { label: 'ส่งกลับให้แก้', run: async (ids) => {
+        const its = picks(ids).filter((it) => it.case?.status === 'submitted');
+        if (!its.length) return toast('ที่เลือกไม่มีรายการสถานะ "รอยืนยัน"', 'err');
+        const r = await modal(`ส่งกลับให้แก้ ${its.length} รายการ`, '<label>เหตุผล (ครูจะเห็น)<textarea name="note" rows="3" placeholder="เช่น ผลหลังแก้ยังไม่ครบ กรุณาตรวจสอบ"></textarea></label>', { okText: 'ส่งกลับ' });
+        if (!r) return;
+        try { await applyPatches(ctx, its.map((it) => ({ it, patch: { status: 'in_progress', review_note: r.note || null } }))); await done(its.length, ids.length - its.length, 'ส่งกลับ'); } catch (err) { fail(err); }
+      } });
+    return list;
+  };
+
 
   await load();
   draw();
   const off = ctx.db.subscribe('remedial_cases', null, () => { clearTimeout(timer); timer = setTimeout(async () => { await load(); draw(); }, 400); });
   return () => { off(); clearTimeout(timer); };
+}
+
+// เขียนหลายรายการ: วิชาในภาคปัจจุบัน = upsert ครั้งเดียว (ทุกแถวต้องมีคีย์ชุดเดียวกัน ไม่งั้นช่องที่ขาดจะถูกเขียนทับเป็นว่าง) · วิชาค้าง = แก้ทีละแถวตาม id
+async function applyPatches(ctx, entries) {
+  const course = entries.filter((e) => !e.it.course.legacy); const legacy = entries.filter((e) => e.it.course.legacy);
+  if (course.length) await ctx.db.upsert('remedial_cases', course.map(({ it, patch }) => ({ course_id: it.course.id, student_id: it.student.id, original_grade: originalOf(it), ...patch })), 'course_id,student_id');
+  for (let i = 0; i < legacy.length; i += 8) await Promise.all(legacy.slice(i, i + 8).map(({ it, patch }) => ctx.db.update('remedial_cases', { id: it.case.id }, patch)));
 }
 
 // คืน true เมื่อมีการบันทึก
