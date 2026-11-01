@@ -75,8 +75,9 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 700; }
 .page-head > div:first-child { position: relative; display: flex; flex-direction: column; justify-content: center; min-height: 108px; overflow: hidden;
   padding: 26px 24px 26px 108px; border-radius: 24px; border-bottom: 4px solid var(--g-gold); background-color: var(--g-primary); color: var(--g-on-primary);
   background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, .06) 0 2px, transparent 2px 14px); background-size: 45% 100%; background-position: right; background-repeat: no-repeat; }
-.page-head > div:first-child::before { content: "WL Admin"; font-size: 14px; line-height: 1.4; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; color: var(--g-gold-text); }
-.page-head > div:first-child::after { content: ""; position: absolute; left: 24px; top: 50%; transform: translateY(-50%); width: 60px; height: 60px; border: 2px solid var(--g-gold); border-radius: 50%;
+.page-head > div:first-child::before { content: "WL Admin"; position: absolute; z-index: 1; left: 12px; width: 84px; top: calc(50% + 28px); text-align: center; white-space: nowrap;
+  font-size: 12px; line-height: 1.3; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; color: var(--g-gold-text); }   /* ชื่อแอปอยู่ใต้โลโก้ ไม่ทับชื่อหน้า */
+.page-head > div:first-child::after { content: ""; position: absolute; left: 24px; top: 50%; transform: translateY(-58%); width: 60px; height: 60px; border: 2px solid var(--g-gold); border-radius: 50%;
   background: #fff url("../img/logo-64.png") center / 42px 42px no-repeat; }
 .page-head h1 { font-size: 36px; line-height: 1.25; font-weight: 700; color: inherit; text-wrap: balance; }
 .page-head h1::after { display: none; }
@@ -154,6 +155,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--g-focus); box-sh
 @media (max-width: 640px) {
   .page-head > div:first-child { padding: 22px 16px 22px 88px; min-height: 96px; }
   .page-head > div:first-child::after { left: 16px; width: 52px; height: 52px; background-size: 36px 36px; }
+  .page-head > div:first-child::before { left: 4px; width: 76px; top: calc(50% + 24px); }
   .page-head h1 { font-size: 28px; }
 }
 @media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
