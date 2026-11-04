@@ -6,13 +6,13 @@
 //  เฟส 3: ผลประเมินตัวชี้วัดและคะแนนรายวิชา (วิชาที่ 1–n)
 //  เฟส 4: คุณลักษณะ · สมรรถนะ · กิจกรรม · คะแนนรายชั้น · เกรดรายชั้น · สรุปเกรดร้อยละ
 // =====================================================================
-import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-18';
-import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-18';
-import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout } from '../pp-forms.js?v=2569.11.1-18';
-import { Renderer } from '../xl-render.js?v=2569.11.1-18';
-import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-18';
-import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-18';
-import { adjOpt, adjText, adjustDialog } from '../page-adjust.js?v=2569.11.1-18';
+import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-19';
+import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-19';
+import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout } from '../pp-forms.js?v=2569.11.1-19';
+import { Renderer } from '../xl-render.js?v=2569.11.1-19';
+import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-19';
+import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-19';
+import { adjOpt, adjText, adjustDialog } from '../page-adjust.js?v=2569.11.1-19';
 
 // ค่าปรับหน้าที่ผู้ใช้ตั้งไว้ (จำในเบราว์เซอร์ ใช้กับทุกห้อง/ภาคเรียน) · ชื่อแผ่น → { mt, mb, ml, mr, font, row, col, scale, hCenter }
 const ADJ_KEY = 'pp5-page-adjust';
@@ -21,6 +21,8 @@ const saveAdj = (a) => { try { localStorage.setItem(ADJ_KEY, JSON.stringify(a));
 
 const ZOOM = { 0.32: 'เล็ก', 0.5: 'กลาง', 0.8: 'ใหญ่' };
 const pref = { zoom: 0.32, off: new Set(), init: null };      // off = แผ่นที่ติ๊กออก (จำไว้ระหว่างเปลี่ยนห้อง/ภาค)
+// ทางลัดไปหน้าแก้ข้อมูลที่ขึ้นในใบ ปพ.5 (ข้อมูลทุกช่องในใบแก้ได้จากในระบบ)
+const EDIT_LINKS = [['students', 'นักเรียน · บิดามารดา · ผู้ปกครอง · ที่อยู่'], ['setup', 'โรงเรียน · ห้อง · รายวิชา · ภาคเรียน'], ['scores', 'คะแนน · ตัวชี้วัด'], ['daily', 'เวลาเรียน'], ['health', 'น้ำหนัก-ส่วนสูง'], ['traits', 'คุณลักษณะ · กิจกรรม']];
 const fileName = (room, term) => `ปพ.5 ${roomName(room)} ภาค${term.term}-${term.academic_year}`.replace(/[^0-9A-Za-zก-๙ ._()-]+/g, '-');
 
 export async function pp5FormsView(paper, ctx, room) {
@@ -72,11 +74,14 @@ export async function pp5FormsView(paper, ctx, room) {
       </div>
       <div class="no-print"><p class="small muted" style="margin:0">ปุ่ม "ปรับหน้า…" ที่หน้าแรกของแต่ละแผ่น = ปรับขอบ ขนาดตัวอักษร ระยะบรรทัด ย่อ/ขยาย (จำไว้ในเครื่องนี้) · หน้าตาตามชุด ปพ.5 ที่โรงเรียนพิมพ์ (ปก ทะเบียน เวลาเรียน น้ำหนัก-ส่วนสูง โภชนาการ ผลรายวิชา คุณลักษณะ กิจกรรม สรุปคะแนน เกรด) · ติ๊กออกเพื่อไม่พิมพ์แผ่นนั้น · กระดาษ A4</p>
         <div class="row" style="flex-wrap:wrap;gap:4px 14px;margin:4px 0">${groups.map((g) => `<label class="small" style="display:flex;gap:4px;align-items:center"><input type="checkbox" data-n="${esc(g.n)}" ${pref.off.has(g.n) ? '' : 'checked'}>${esc(g.n)}</label>`).join('')}</div>
+        <div class="row small" style="flex-wrap:wrap;gap:4px 8px;margin:4px 0;align-items:center"><span class="muted">แก้ข้อมูลที่ใช้ในใบ:</span>
+          ${EDIT_LINKS.filter(([v]) => ctx.menus?.has(v)).map(([v, l]) => `<button type="button" class="btn btn-sm" data-go="${v}">${l}</button>`).join('')}</div>
         <div>${warnHtml(issuesNow())}</div></div>
       <div class="pv-grid" style="justify-content:flex-start">${list.map((g) => g.pages.map((p, i) => `
         <div class="pv-card"><span class="pv-cap">${esc(g.n)}${g.pages.length > 1 ? ` · ${i + 1}/${g.pages.length}` : ''}${g.err ? ` · ${esc(g.err)}` : ''}${i === 0 ? ` <button type="button" class="btn btn-sm ${adjAll[g.n] ? 'btn-primary' : ''}" data-adj-n="${esc(g.n)}" title="${esc(adjText(adjAll[g.n]) || 'ขอบกระดาษ ขนาดตัวอักษร ระยะบรรทัด ขนาดย่อ/ขยาย')}">ปรับหน้า…</button>` : ''}</span>
           <span class="pv-box" style="width:${Math.round(p.w * z * 4 / 3)}px;height:${Math.round(p.h * z * 4 / 3)}px"><span class="pv-inner" style="transform:scale(${z})">${p.html}</span></span></div>`).join('')).join('')}</div>`;
     $$('input[data-n]', paper).forEach((cb) => cb.addEventListener('change', () => { if (cb.checked) pref.off.delete(cb.dataset.n); else pref.off.add(cb.dataset.n); draw(); }));
+    $$('[data-go]', paper).forEach((b) => b.addEventListener('click', () => ctx.go(b.dataset.go)));
     $$('[data-adj-n]', paper).forEach((b) => b.addEventListener('click', async () => {
       const n = b.dataset.adjN; const { opt } = pp5Layout(n);
       const res = await adjustDialog(n, adjAll[n], { margins: F.wb.sheet(n)?.page.margins, scale: opt.adj?.scale ?? null });
