@@ -263,6 +263,31 @@ export class Template {
     this.setSheetXml(name, x);
   }
 
+  // ขอบกระดาษ (นิ้ว): m = { top, bottom, left, right } ใส่เฉพาะด้านที่ต้องการเปลี่ยน
+  setMargins(name, m) {
+    let x = this.sheetXml(name); if (x === null || !m) return;
+    const keys = ['top', 'bottom', 'left', 'right'].filter((k) => Number.isFinite(m[k]) && m[k] >= 0);
+    if (!keys.length) return;
+    const put = (tag) => keys.reduce((t, k) => (new RegExp(`\\s${k}="`).test(t) ? t.replace(new RegExp(`\\s${k}="[^"]*"`), ` ${k}="${m[k].toFixed(4)}"`) : t.replace('<pageMargins', `<pageMargins ${k}="${m[k].toFixed(4)}"`)), tag);
+    if (/<pageMargins\b[^>]*\/>/.test(x)) x = x.replace(/<pageMargins\b[^>]*\/>/, put);
+    else {
+      const tag = put('<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>');
+      x = /<pageSetup\b/.test(x) ? x.replace(/<pageSetup\b/, `${tag}<pageSetup`) : x.replace(/(<\/sheetData>[\s\S]*?)(<(?:drawing|legacyDrawing|headerFooter|rowBreaks|colBreaks|tableParts|extLst)\b|<\/worksheet>)/, `$1${tag}$2`);
+    }
+    this.setSheetXml(name, x);
+  }
+
+  // ย่อ/ขยายเป็น % (ปิดการพอดีหน้า)
+  setScale(name, pct) {
+    if (!Number.isFinite(pct) || pct < 10 || pct > 400) return;
+    this.setFit(name, 'none');
+    let x = this.sheetXml(name); if (x === null) return;
+    const v = String(Math.round(pct));
+    if (/<pageSetup\b[^>]*\/?>/.test(x)) x = x.replace(/<pageSetup\b[^>]*\/?>/, (t) => t.replace(/\sscale="[^"]*"/, ` scale="${v}"`));
+    else x = x.replace(/(<pageMargins\b[^>]*\/>)/, `$1<pageSetup paperSize="9" scale="${v}"/>`);
+    this.setSheetXml(name, x);
+  }
+
   /**
    * เลือก/เรียงแผ่นงานที่จะแสดง
    * @param order รายชื่อแผ่นที่ต้องการแสดงตามลำดับ · แผ่นอื่นถูกซ่อน (ยังอยู่ในไฟล์ ต่อท้าย)

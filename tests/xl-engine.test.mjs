@@ -86,4 +86,17 @@ assert.equal(land.orient, 'landscape'); assert.ok(land.paper.w > land.paper.h);
 const html = R.renderSheet('สรุป รวม')[0].html;
 assert.ok(html.includes('xl-page') && html.includes('130'), 'วาดหน้าได้');
 
+// ปรับหน้ากระดาษรายแผ่น (adj): ขอบ · ระยะบรรทัด · ตัวอักษร · ย่อ/ขยายเอง
+const base = R.paginate('สรุป รวม');
+const wide = R.paginate('สรุป รวม', { adj: { ml: 1, mr: 1 } });
+assert.ok(wide.availW < base.availW && wide.left === 72, 'ขอบซ้าย-ขวาเปลี่ยน');
+const tight = R.paginate('สรุป รวม', { adj: { row: 50 } });
+assert.ok(Math.abs(tight.g.rh(1) - base.g.rh(1) / 2) < 0.01 && base.g.rh(1) > 0, 'ลดความสูงแถวครึ่งหนึ่ง');
+const man = R.paginate('สรุป รวม', { fit: 'page', adj: { scale: 50 } });
+assert.equal(man.scale, 0.5, 'กำหนดย่อเองชนะการพอดีหน้า');
+const big = R.renderSheet('สรุป รวม', { adj: { font: 200 } })[0].html;
+const small = R.renderSheet('สรุป รวม')[0].html;
+assert.notEqual(big, small, 'ขนาดตัวอักษรเปลี่ยนผลวาด');
+assert.equal(R.fontK, 1, 'คืนค่าขนาดตัวอักษรหลังวาด');
+
 console.log('xl-engine: ผ่านทั้งหมด');

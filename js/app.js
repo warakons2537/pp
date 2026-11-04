@@ -1,29 +1,29 @@
-import { db } from './db.js?v=2569.11.1-10';
-import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.11.1-10';
-import { icon } from './icons.js?v=2569.11.1-10';
-import { prefetchOffline } from './prefetch.js?v=2569.11.1-10';
-import { initPwa } from './pwa.js?v=2569.11.1-10';
-import { initDateFields } from './datefield.js?v=2569.11.1-10';
-import { trackWrites, saveState } from './savestate.js?v=2569.11.1-10';
-import { BRAND, VERSION } from './brand.js?v=2569.11.1-10';
-import { mountNav, labelHtml } from './navbar.js?v=2569.11.1-10';
-import { computeAlerts, computeBadges, badge, showAlerts } from './notify.js?v=2569.11.1-10';
-import { openSearch, initSearchKey } from './search.js?v=2569.11.1-10';
-import { openPrefs } from './prefs.js?v=2569.11.1-10';
-import * as home from './views/home.js?v=2569.11.1-10';
-import * as students from './views/students.js?v=2569.11.1-10';
-import * as daily from './views/daily.js?v=2569.11.1-10';
-import * as period from './views/period.js?v=2569.11.1-10';
-import * as reports from './views/reports.js?v=2569.11.1-10';
-import * as setup from './views/setup.js?v=2569.11.1-10';
-import * as scores from './views/scores.js?v=2569.11.1-10';
-import * as meals from './views/meals.js?v=2569.11.1-10';
-import * as health from './views/health.js?v=2569.11.1-10';
-import * as traits from './views/traits.js?v=2569.11.1-10';
-import * as remedial from './views/remedial.js?v=2569.11.1-10';
-import { renderStudentCheck } from './views/student-check.js?v=2569.11.1-10';
-import { NAV, MENU_GROUPS, MENU_ORDER, allowedMenus } from './menus.js?v=2569.11.1-10';
-import * as print from './views/print.js?v=2569.11.1-10';
+import { db } from './db.js?v=2569.11.1-12';
+import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.11.1-12';
+import { icon } from './icons.js?v=2569.11.1-12';
+import { prefetchOffline } from './prefetch.js?v=2569.11.1-12';
+import { initPwa } from './pwa.js?v=2569.11.1-12';
+import { initDateFields } from './datefield.js?v=2569.11.1-12';
+import { trackWrites, saveState } from './savestate.js?v=2569.11.1-12';
+import { BRAND, VERSION } from './brand.js?v=2569.11.1-12';
+import { mountNav, labelHtml } from './navbar.js?v=2569.11.1-12';
+import { computeAlerts, computeBadges, badge, showAlerts } from './notify.js?v=2569.11.1-12';
+import { openSearch, initSearchKey } from './search.js?v=2569.11.1-12';
+import { openPrefs } from './prefs.js?v=2569.11.1-12';
+import * as home from './views/home.js?v=2569.11.1-12';
+import * as students from './views/students.js?v=2569.11.1-12';
+import * as daily from './views/daily.js?v=2569.11.1-12';
+import * as period from './views/period.js?v=2569.11.1-12';
+import * as reports from './views/reports.js?v=2569.11.1-12';
+import * as setup from './views/setup.js?v=2569.11.1-12';
+import * as scores from './views/scores.js?v=2569.11.1-12';
+import * as meals from './views/meals.js?v=2569.11.1-12';
+import * as health from './views/health.js?v=2569.11.1-12';
+import * as traits from './views/traits.js?v=2569.11.1-12';
+import * as remedial from './views/remedial.js?v=2569.11.1-12';
+import { renderStudentCheck } from './views/student-check.js?v=2569.11.1-12';
+import { NAV, MENU_GROUPS, MENU_ORDER, allowedMenus } from './menus.js?v=2569.11.1-12';
+import * as print from './views/print.js?v=2569.11.1-12';
 
 const VIEWS = { home, students, daily, meals, period, reports, setup, scores, health, traits, remedial, print };
 const root = document.getElementById('app');
@@ -196,7 +196,7 @@ function renderShell(ctx) {
           ${MENU_GROUPS.map((g) => { const vs = g.items.filter((v) => ctx.menus.has(v)); return vs.length ? `<div class="sec">${g.label}</div>${vs.map(item).join('')}` : ''; }).join('')}
           ${ctx.isAdmin ? `<div class="sec">ผู้ดูแลระบบ</div>${item('setup')}` : ''}
           <div class="sec">แอปในเครือ</div>
-          <a href="../">${icon('link')}<span>ทางเข้า WL (ทุกแอป)</span></a>
+          ${BRAND.siblings.map((s) => `<a href="${esc(s.url)}" class="ext">${icon('link')}<span>${esc(s.name)}</span></a>`).join('')}
         </nav>
       </aside>
       <main class="main">
@@ -216,7 +216,7 @@ function renderShell(ctx) {
         <button class="btn btn-sm" id="demo-reset">ล้างข้อมูลทดลอง</button></div>` : ''}<div class="main-inner" id="view" tabindex="-1"></div></div></main>
     </div>
     <div id="bnav-root"></div>`;
-  navCtl = mountNav($('#bnav-root'), { labels: NAV, version: VERSION,
+  navCtl = mountNav($('#bnav-root'), { labels: NAV, version: VERSION, ext: BRAND.siblings,
     ok: MENU_ORDER.filter((v) => ctx.menus.has(v)) });
   $('#logout').addEventListener('click', logout);
   $('#btn-search').addEventListener('click', () => openSearch(ctx, { logout }));
