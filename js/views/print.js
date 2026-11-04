@@ -1,14 +1,14 @@
 // พิมพ์เอกสาร ปพ.: ปพ.6 รายบุคคล · ปก ปพ.5 รายชั้น · ปก ปพ.5 รายวิชา · ใบรับรองผลการศึกษา
-import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js?v=2569.11.1-17';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-17';
-import { loadRoomYear, personName } from '../yeardata.js?v=2569.11.1-17';
-import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.11.1-17';
-import { icon } from '../icons.js?v=2569.11.1-17';
-import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js?v=2569.11.1-17';
-import { bookView } from './pp-book-view.js?v=2569.11.1-17';
-import { listView, studentView, missingOf, termsOf } from './pp6-hub.js?v=2569.11.1-17';
-import { pp6FormsView } from './pp6-forms-view.js?v=2569.11.1-17';
-import { pp5FormsView } from './pp5-forms-view.js?v=2569.11.1-17';
+import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js?v=2569.11.1-18';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-18';
+import { loadRoomYear, personName } from '../yeardata.js?v=2569.11.1-18';
+import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.11.1-18';
+import { icon } from '../icons.js?v=2569.11.1-18';
+import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js?v=2569.11.1-18';
+import { bookView } from './pp-book-view.js?v=2569.11.1-18';
+import { listView, studentView, missingOf, termsOf } from './pp6-hub.js?v=2569.11.1-18';
+import { pp6FormsView } from './pp6-forms-view.js?v=2569.11.1-18';
+import { pp5FormsView } from './pp5-forms-view.js?v=2569.11.1-18';
 
 const DOCS = { pp5: 'ปพ.5 ครบชุด (แบบพิมพ์ในระบบ)', book: 'เล่ม ปพ. (เหมือนไฟล์ต้นฉบับ)', pp6: 'ปพ.6 รายบุคคล', coverClass: 'ปก ปพ.5 รายชั้น', coverCourse: 'ปก ปพ.5 รายวิชา', cert: 'ใบรับรองผลการศึกษา' };
 const pref = { doc: 'book', room: null, only: null, from: 1, to: 99, scope: 'term', page2: true, course: null, pp6View: 'list', stu: null,

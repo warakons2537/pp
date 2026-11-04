@@ -6,12 +6,18 @@
 //  เฟส 3: ผลประเมินตัวชี้วัดและคะแนนรายวิชา (วิชาที่ 1–n)
 //  เฟส 4: คุณลักษณะ · สมรรถนะ · กิจกรรม · คะแนนรายชั้น · เกรดรายชั้น · สรุปเกรดร้อยละ
 // =====================================================================
-import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-17';
-import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-17';
-import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout } from '../pp-forms.js?v=2569.11.1-17';
-import { Renderer } from '../xl-render.js?v=2569.11.1-17';
-import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-17';
-import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-17';
+import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-18';
+import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-18';
+import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout } from '../pp-forms.js?v=2569.11.1-18';
+import { Renderer } from '../xl-render.js?v=2569.11.1-18';
+import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-18';
+import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-18';
+import { adjOpt, adjText, adjustDialog } from '../page-adjust.js?v=2569.11.1-18';
+
+// ค่าปรับหน้าที่ผู้ใช้ตั้งไว้ (จำในเบราว์เซอร์ ใช้กับทุกห้อง/ภาคเรียน) · ชื่อแผ่น → { mt, mb, ml, mr, font, row, col, scale, hCenter }
+const ADJ_KEY = 'pp5-page-adjust';
+const loadAdj = () => { try { return JSON.parse(localStorage.getItem(ADJ_KEY) || '{}') || {}; } catch { return {}; } };
+const saveAdj = (a) => { try { localStorage.setItem(ADJ_KEY, JSON.stringify(a)); } catch { /* */ } };
 
 const ZOOM = { 0.32: 'เล็ก', 0.5: 'กลาง', 0.8: 'ใหญ่' };
 const pref = { zoom: 0.32, off: new Set(), init: null };      // off = แผ่นที่ติ๊กออก (จำไว้ระหว่างเปลี่ยนห้อง/ภาค)
@@ -20,22 +26,26 @@ const fileName = (room, term) => `ปพ.5 ${roomName(room)} ภาค${term.ter
 export async function pp5FormsView(paper, ctx, room) {
   paper.innerHTML = '<p class="muted">กำลังเตรียมแบบพิมพ์ ปพ.5…</p>';
   const term = ctx.term.term;
-  let sheets = []; const groups = []; let data;
+  let sheets = []; const groups = []; let data; let F; let m;
+  const renderers = new Map();      // ตามฐาน dpi ของแต่ละแผ่น (ดู pp5Layout)
+  const adjAll = loadAdj();
+  // วาดแผ่นเดียว: ค่าตั้งต้นของใบตัวอย่าง (pp5Layout) + ค่าที่ผู้ใช้ปรับ (ทับค่าตั้งต้น)
+  const renderGroup = (n) => {
+    if (!F.fill(n, m)) return { n, pages: [], err: 'ยังไม่มีแบบพิมพ์' };
+    try {
+      const { dpi, opt } = pp5Layout(n);
+      if (!renderers.has(dpi)) renderers.set(dpi, new Renderer(F.wb, F.eng, { dpi }));
+      const adj = { ...(opt.adj || {}), ...(adjOpt(adjAll[n]) || {}) };
+      return { n, pages: renderers.get(dpi).renderSheet(n, { ...opt, adj: Object.keys(adj).length ? adj : undefined }) };
+    } catch (err) { return { n, pages: [], err: err.message }; }
+  };
   try {
     await useThaiFont();
     data = await buildBookData(ctx, room);
-    const m = classModel(data);
-    const F = await Forms.open(await loadFormsBytes());
+    m = classModel(data);
+    F = await Forms.open(await loadFormsBytes());
     sheets = pp5Set(term, data.subjects.length);
-    const renderers = new Map();      // ตามฐาน dpi ของแต่ละแผ่น (ดู pp5Layout)
-    for (const n of sheets) {
-      if (!F.fill(n, m)) { groups.push({ n, pages: [], err: 'ยังไม่มีแบบพิมพ์' }); continue; }
-      try {
-        const { dpi, opt } = pp5Layout(n);
-        if (!renderers.has(dpi)) renderers.set(dpi, new Renderer(F.wb, F.eng, { dpi }));
-        groups.push({ n, pages: renderers.get(dpi).renderSheet(n, opt) });
-      } catch (err) { groups.push({ n, pages: [], err: err.message }); }
-    }
+    for (const n of sheets) groups.push(renderGroup(n));
   } catch (err) { console.error(err); paper.innerHTML = `<div class="empty">เตรียมแบบพิมพ์ไม่สำเร็จ: ${esc(err.message)}</div>`; toast(err.message, 'err'); return; }
 
   // เปิดห้อง/ภาคนี้ครั้งแรก: ติ๊กออกแผ่นโภชนาการของครั้งที่ยังไม่ได้ชั่งน้ำหนัก-วัดส่วนสูง (ติ๊กกลับเองได้)
@@ -60,13 +70,21 @@ export async function pp5FormsView(paper, ctx, room) {
           <label class="field">ขนาด<select id="p5-zoom">${Object.entries(ZOOM).map(([v, l]) => `<option value="${v}" ${+v === z ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
           <button class="btn btn-primary" id="p5-print" ${total ? '' : 'disabled'}>พิมพ์ / บันทึกเป็น PDF (${total} หน้า)</button></div>
       </div>
-      <div class="no-print"><p class="small muted" style="margin:0">หน้าตาตามชุด ปพ.5 ที่โรงเรียนพิมพ์ (ปก ทะเบียน เวลาเรียน น้ำหนัก-ส่วนสูง โภชนาการ ผลรายวิชา คุณลักษณะ กิจกรรม สรุปคะแนน เกรด) · ติ๊กออกเพื่อไม่พิมพ์แผ่นนั้น · กระดาษ A4</p>
+      <div class="no-print"><p class="small muted" style="margin:0">ปุ่ม "ปรับหน้า…" ที่หน้าแรกของแต่ละแผ่น = ปรับขอบ ขนาดตัวอักษร ระยะบรรทัด ย่อ/ขยาย (จำไว้ในเครื่องนี้) · หน้าตาตามชุด ปพ.5 ที่โรงเรียนพิมพ์ (ปก ทะเบียน เวลาเรียน น้ำหนัก-ส่วนสูง โภชนาการ ผลรายวิชา คุณลักษณะ กิจกรรม สรุปคะแนน เกรด) · ติ๊กออกเพื่อไม่พิมพ์แผ่นนั้น · กระดาษ A4</p>
         <div class="row" style="flex-wrap:wrap;gap:4px 14px;margin:4px 0">${groups.map((g) => `<label class="small" style="display:flex;gap:4px;align-items:center"><input type="checkbox" data-n="${esc(g.n)}" ${pref.off.has(g.n) ? '' : 'checked'}>${esc(g.n)}</label>`).join('')}</div>
         <div>${warnHtml(issuesNow())}</div></div>
       <div class="pv-grid" style="justify-content:flex-start">${list.map((g) => g.pages.map((p, i) => `
-        <div class="pv-card"><span class="pv-cap">${esc(g.n)}${g.pages.length > 1 ? ` · ${i + 1}/${g.pages.length}` : ''}${g.err ? ` · ${esc(g.err)}` : ''}</span>
+        <div class="pv-card"><span class="pv-cap">${esc(g.n)}${g.pages.length > 1 ? ` · ${i + 1}/${g.pages.length}` : ''}${g.err ? ` · ${esc(g.err)}` : ''}${i === 0 ? ` <button type="button" class="btn btn-sm ${adjAll[g.n] ? 'btn-primary' : ''}" data-adj-n="${esc(g.n)}" title="${esc(adjText(adjAll[g.n]) || 'ขอบกระดาษ ขนาดตัวอักษร ระยะบรรทัด ขนาดย่อ/ขยาย')}">ปรับหน้า…</button>` : ''}</span>
           <span class="pv-box" style="width:${Math.round(p.w * z * 4 / 3)}px;height:${Math.round(p.h * z * 4 / 3)}px"><span class="pv-inner" style="transform:scale(${z})">${p.html}</span></span></div>`).join('')).join('')}</div>`;
     $$('input[data-n]', paper).forEach((cb) => cb.addEventListener('change', () => { if (cb.checked) pref.off.delete(cb.dataset.n); else pref.off.add(cb.dataset.n); draw(); }));
+    $$('[data-adj-n]', paper).forEach((b) => b.addEventListener('click', async () => {
+      const n = b.dataset.adjN; const { opt } = pp5Layout(n);
+      const res = await adjustDialog(n, adjAll[n], { margins: F.wb.sheet(n)?.page.margins, scale: opt.adj?.scale ?? null });
+      if (!res) return;
+      const targets = res.all ? on().map((g) => g.n) : [n];
+      for (const t of targets) { if (res.adj) adjAll[t] = { ...res.adj }; else delete adjAll[t]; const i = groups.findIndex((g) => g.n === t); if (i >= 0) groups[i] = renderGroup(t); }
+      saveAdj(adjAll); draw();
+    }));
     $('#p5-zoom', paper).addEventListener('change', (e) => { pref.zoom = +e.target.value; draw(); });
     $('#p5-font', paper).addEventListener('change', (e) => { setThaiFont(e.target.value); toast('เปลี่ยนฟอนต์แล้ว กำลังจัดหน้าใหม่'); pp5FormsView(paper, ctx, room); });
     $('#p5-print', paper).addEventListener('click', async (e) => {
