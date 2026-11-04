@@ -4,13 +4,13 @@
 //  → หน้าตา สูตร และการแบ่งหน้าเหมือนต้นฉบับทุกหน้า
 //  ไม่แตะเซลล์ที่ไฟล์ต้นฉบับล็อกไว้ (เช่น ชื่อโรงเรียนที่ผู้พัฒนาโปรแกรมล็อก)
 // =====================================================================
-import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-19';
-import { levelName } from './util.js?v=2569.11.1-19';
-import { getRoster, loadGrowthRef } from './data.js?v=2569.11.1-19';
-import { ageMonths, classify } from './assess.js?v=2569.11.1-19';
-import { occupationOf, personName, addressShort } from './student-family.js?v=2569.11.1-19';
-import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-19';
-import { enrollmentCounts } from './yeardata.js?v=2569.11.1-19';
+import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-20';
+import { levelName } from './util.js?v=2569.11.1-20';
+import { getRoster, loadGrowthRef, termRange } from './data.js?v=2569.11.1-20';
+import { ageMonths, classify } from './assess.js?v=2569.11.1-20';
+import { occupationOf, personName, addressShort } from './student-family.js?v=2569.11.1-20';
+import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-20';
+import { enrollmentCounts } from './yeardata.js?v=2569.11.1-20';
 
 export const MONTHS = [['พ.ค.', 5], ['มิ.ย.', 6], ['ก.ค.', 7], ['ส.ค.', 8], ['ก.ย.', 9], ['ต.ค.', 10], ['พ.ย.', 11], ['ธ.ค.', 12], ['ม.ค.', 1], ['ก.พ.', 2], ['มี.ค.', 3], ['เม.ย.', 4]];
 export const SUBJECT_ROWS = [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];   // แถวในแผ่น "รายวิชา" ของวิชาที่ 1–20
@@ -202,7 +202,7 @@ export async function buildBookData(ctx, room) {
 
   return {
     level: levelName(room.level), levelShort: room.level, room: room.room, term: term.term, year: term.academic_year,
-    counts: enrollmentCounts(everyone, term),
+    counts: enrollmentCounts(everyone, term), termFrom: termRange(term).from, termTo: termRange(term).to,
     school: ctx.settings, students, subjects, rounds: rounds.map((r) => r.date), warnings, approveDate: term.approve_date || null,
     homeroom: (ctx.homeroomTeachers?.(room.id) || []).map((x) => x.full_name).filter(Boolean),
   };

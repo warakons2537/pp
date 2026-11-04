@@ -1,7 +1,7 @@
-import { esc, roomName, thaiDate, todayIso, fullName, iso, fromIso, THAI_DOW, levelName } from '../util.js?v=2569.11.1-19';
-import { getRoster, termRange } from '../data.js?v=2569.11.1-19';
-import { icon } from '../icons.js?v=2569.11.1-19';
-import { MENU_ORDER, plain, hasNoDuties } from '../menus.js?v=2569.11.1-19';
+import { esc, roomName, thaiDate, todayIso, fullName, iso, fromIso, THAI_DOW, levelName } from '../util.js?v=2569.11.1-20';
+import { getRoster, termRange } from '../data.js?v=2569.11.1-20';
+import { icon } from '../icons.js?v=2569.11.1-20';
+import { MENU_ORDER, plain, hasNoDuties } from '../menus.js?v=2569.11.1-20';
 
 export async function render(el, ctx) {
   const { db } = ctx;
