@@ -4,14 +4,14 @@
 //  - ดูตัวอย่างทุกหน้า เลือกพิมพ์รายหน้า → พิมพ์ / บันทึกเป็น PDF ได้ในแอป (ไม่ต้องมี Excel)
 //  - หรือสร้างไฟล์ Excel ที่หน้าตาเหมือนต้นฉบับ
 // =====================================================================
-import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-12';
-import { Template } from '../xlsx-template.js?v=2569.11.1-12';
-import { buildBookData, makeBook, prepareBook, defaultBook } from '../pp-book.js?v=2569.11.1-12';
-import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-12';
-import { Workbook } from '../xl-model.js?v=2569.11.1-12';
-import { Engine } from '../xl-formula.js?v=2569.11.1-12';
-import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-12';
-import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-12';
+import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-13';
+import { Template } from '../xlsx-template.js?v=2569.11.1-13';
+import { buildBookData, makeBook, prepareBook, defaultBook, bookChecks } from '../pp-book.js?v=2569.11.1-13';
+import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-13';
+import { Workbook } from '../xl-model.js?v=2569.11.1-13';
+import { Engine } from '../xl-formula.js?v=2569.11.1-13';
+import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-13';
+import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-13';
 
 const PATH = 'pp/template';
 let cache = { at: null, bytes: null, t: null };          // ไฟล์ต้นฉบับที่โหลดแล้ว (อยู่ในหน่วยความจำ)
@@ -59,7 +59,7 @@ export async function bookView(paper, ctx, room) {
   const all = t.sheets.filter((s) => s.state === 'visible');
   // เลย์เอาต์ที่จำไว้ (ต่อผู้ใช้/เบราว์เซอร์)
   let layout = loadLayout(tplName);
-  const fresh = () => ({ order: all.map((s) => s.name), on: defaultBook(t.sheets, nSubjects), orient: {}, fit: {}, skip: {}, adj: {}, dpi: layout?.dpi || 120, zoom: layout?.zoom || 0.32 });
+  const fresh = () => ({ order: all.map((s) => s.name), on: defaultBook(t.sheets, nSubjects, { term: ctx.term.term }), orient: {}, fit: {}, skip: {}, adj: {}, dpi: layout?.dpi || 120, zoom: layout?.zoom || 0.32 });
   if (!layout || !Array.isArray(layout.order)) layout = fresh();
   layout.order = [...layout.order.filter((n) => all.some((s) => s.name === n)), ...all.map((s) => s.name).filter((n) => !layout.order.includes(n))];
   layout.orient ||= {}; layout.fit ||= {}; layout.skip ||= {}; layout.dpi ||= 120; layout.zoom ||= 0.32;
@@ -261,6 +261,10 @@ export async function bookView(paper, ctx, room) {
       await new Promise((r) => setTimeout(r, 0));
       if (myRun !== runId) return;   // มีการเปลี่ยนแปลงระหว่างจัดหน้า เริ่มใหม่แล้ว
     }
+    // ตรวจก่อนพิมพ์: หน้าที่หายจากชุดมาตรฐาน / ยังไม่ได้ลงข้อมูล (แผ่นที่ติ๊กออกทุกหน้าถือว่าไม่พิมพ์)
+    const expected = defaultBook(t.sheets, nSubjects, { term: ctx.term.term });
+    const issuesNow = () => bookChecks(book.data, groups.filter((g) => g.pages.some((_, i) => !(layout.skip[g.n] || []).includes(i))).map((g) => g.n), expected, ctx.term.term);
+    let issues = issuesNow();
     const total = groups.reduce((s, g) => s + g.pages.length, 0);
     const picked = () => groups.reduce((s, g) => s + g.pages.filter((_, i) => !(layout.skip[g.n] || []).includes(i)).length, 0);
     const legacyOk = true;   // ใช้ฟอนต์ที่ฝังในแอป (js/thai-fonts.js)
@@ -276,6 +280,7 @@ export async function bookView(paper, ctx, room) {
           <button class="btn btn-primary" id="pv-print">พิมพ์ / บันทึกเป็น PDF</button>
         </div>
       </div>
+      <div id="pv-warn">${warnHtml(issues)}</div>
       <p class="small muted" style="margin:4px 0">${esc(reportHtml(book.data, book.report, true))} · ติ๊กออกเพื่อไม่พิมพ์หน้านั้น · ปุ่มพิมพ์จะเปิดหน้าต่างพิมพ์ของเบราว์เซอร์: เลือกเครื่องพิมพ์ หรือ <b>บันทึกเป็น PDF</b> · กระดาษ A4</p>
       ${legacyOk ? '' : `<p class="small" style="color:var(--amber);margin:4px 0">เครื่องนี้ไม่มีฟอนต์ TH SarabunPSK จึงใช้ฟอนต์ Sarabun แทน รูปร่างตัวอักษรต่างจากที่พิมพ์จาก Excel เล็กน้อย (ตำแหน่งและขนาดตารางเหมือนเดิม) — ติดตั้งฟอนต์ TH SarabunPSK ในเครื่องเพื่อให้เหมือนที่สุด</p>`}
       <div id="pv-body">${groups.map((g) => `
@@ -289,7 +294,7 @@ export async function bookView(paper, ctx, room) {
             </label>`).join('')}</div>
         </section>`).join('')}</div>`;
     ensureCss();
-    const count = () => { $('#pv-count', pv).textContent = `· พิมพ์ ${picked()} จาก ${total} หน้า`; };
+    const count = () => { $('#pv-count', pv).textContent = `· พิมพ์ ${picked()} จาก ${total} หน้า`; issues = issuesNow(); const w = $('#pv-warn', pv); if (w) w.innerHTML = warnHtml(issues); };
     count();
     // วาดภาพย่อเมื่อเลื่อนมาถึง
     io?.disconnect();
@@ -318,6 +323,8 @@ export async function bookView(paper, ctx, room) {
     $('#pv-print', pv).addEventListener('click', async (e) => {
       const list = []; for (const g of groups) g.pages.forEach((p, i) => { if (!(layout.skip[g.n] || []).includes(i)) list.push(p); });
       if (!list.length) { toast('ไม่ได้เลือกหน้าใดเลย', 'err'); return; }
+      issues = issuesNow();
+      if (issues.length && (await modal('ตรวจก่อนพิมพ์', `<p style="margin:0">พบ ${issues.length} ข้อที่ควรตรวจก่อนพิมพ์:</p><ul class="small" style="margin:6px 0 0;padding-left:20px;max-height:50vh;overflow:auto">${issues.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul>`, { okText: 'พิมพ์ต่อ', cancelText: 'กลับไปตรวจ' })) === null) return;
       const btn = e.currentTarget; btn.disabled = true;
       // มือถือ/แท็บเล็ต: เปิดแท็บใหม่ทันที (ต้องเปิดในจังหวะที่กดปุ่ม ไม่งั้นถูกบล็อก)
       const tab = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? window.open('', '_blank') : null;
@@ -327,6 +334,13 @@ export async function bookView(paper, ctx, room) {
   $('#b-prev', paper).addEventListener('click', () => { pv.hidden = false; showPreview(); pv.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   if (book) { pv.hidden = false; showPreview(); }
   wireUpload(paper, ctx, () => bookView(paper, ctx, room));
+}
+
+// กล่องแจ้งเตือนก่อนพิมพ์
+function warnHtml(issues) {
+  if (!issues.length) return '<p class="small" style="margin:4px 0;color:var(--green,#1a7f37)">✓ ตรวจแล้ว: ไม่พบหน้าที่ขาดหรือข้อมูลที่ยังไม่ได้ลง</p>';
+  return `<div class="small" style="margin:6px 0;padding:8px 10px;border:1px solid var(--amber,#b7791f);border-radius:8px;background:color-mix(in srgb,var(--amber,#b7791f) 12%,transparent)">
+    <b>⚠ ตรวจก่อนพิมพ์ — พบ ${issues.length} ข้อ</b><ul style="margin:4px 0 0;padding-left:20px">${issues.map((x) => `<li style="${x.level === 'err' ? 'color:var(--red,#c0392b)' : ''}">${esc(x.text)}</li>`).join('')}</ul></div>`;
 }
 
 // ค่าปรับหน้า (มม.) → ค่าที่ตัวแสดงผลใช้ (นิ้ว)
