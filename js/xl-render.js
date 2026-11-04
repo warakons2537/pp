@@ -5,10 +5,10 @@
 //  - ผสานเซลล์ · เส้นขอบ · สีพื้น · ฟอนต์ · การจัดแนว/ตัดบรรทัด/ข้อความล้นเซลล์ · หมุนข้อความ
 //  - รูปแบบตัวเลข · การจัดรูปแบบตามเงื่อนไข · รูปภาพ/รูปร่าง/กล่องข้อความ
 // =====================================================================
-import { MAXCOL, XErr, Mat } from './xl-formula.js?v=2569.11.1-9';
-import { formatValue, isDateFormat } from './xl-numfmt.js?v=2569.11.1-9';
-import { parseDrawing, key } from './xl-model.js?v=2569.11.1-9';
-import { shiftFormula } from './xlsx-template.js?v=2569.11.1-9';
+import { MAXCOL, XErr, Mat } from './xl-formula.js?v=2569.11.1-11';
+import { formatValue, isDateFormat } from './xl-numfmt.js?v=2569.11.1-11';
+import { parseDrawing, key } from './xl-model.js?v=2569.11.1-11';
+import { shiftFormula } from './xlsx-template.js?v=2569.11.1-11';
 
 export const PAPER = { 9: [595.28, 841.89], 1: [612, 792], 5: [612, 1008], 8: [841.89, 1190.55], 11: [419.53, 595.28] };
 const PT_PER_PX = 0.75; const EMU_PER_PT = 12700;
@@ -96,22 +96,25 @@ export class Renderer {
     this.dpi = opts.dpi || 120;
     this.mdw = opts.mdw || Math.max(5, Math.round((nf.sz || 11) * (this.dpi / 72) * em));
     this.geo = new Map();
+    this.fontK = 1;   // สัดส่วนขนาดตัวอักษรตามที่ผู้ใช้ปรับ (ใช้ระหว่างวาดแผ่นหนึ่ง)
   }
 
   // ---- เรขาคณิตของแผ่น ----
-  geometry(sh) {
-    let g = this.geo.get(sh.name); if (g) return g;
+  // rowK / colK = สัดส่วนความสูงแถว (ระยะบรรทัด) / ความกว้างคอลัมน์ที่ผู้ใช้ปรับ (1 = ตามต้นฉบับ)
+  geometry(sh, rowK = 1, colK = 1) {
+    const gk = `${sh.name}|${rowK}|${colK}`;
+    let g = this.geo.get(gk); if (g) return g;
     const mdw = this.mdw;
     const pxOfWidth = (w) => Math.trunc(((256 * w + Math.trunc(128 / mdw)) / 256) * mdw);
     const defW = sh.defaultColWidth ?? (Math.trunc(((sh.baseColWidth ?? 8) * mdw + 5) / mdw * 256) / 256);
     const colW = new Map();
-    for (const c of sh.cols) for (let i = c.min; i <= Math.min(c.max, 16384); i++) colW.set(i, c.hidden ? 0 : pxOfWidth(c.width ?? defW) * PT_PER_PX);
-    const defColPt = pxOfWidth(defW) * PT_PER_PX;
+    for (const c of sh.cols) for (let i = c.min; i <= Math.min(c.max, 16384); i++) colW.set(i, c.hidden ? 0 : pxOfWidth(c.width ?? defW) * PT_PER_PX * colK);
+    const defColPt = pxOfWidth(defW) * PT_PER_PX * colK;
     const defRowPt = sh.zeroHeight ? 0 : sh.defaultRowHeight;
     const colStyle = new Map(); for (const c of sh.cols) if (c.style) for (let i = c.min; i <= Math.min(c.max, 16384); i++) colStyle.set(i, c.style);
     g = {
       cw: (c) => (colW.has(c) ? colW.get(c) : defColPt),
-      rh: (r) => { const x = sh.rows.get(r); if (x) { if (x.hidden) return 0; if (x.ht !== null) return x.ht; } return defRowPt; },
+      rh: (r) => { const x = sh.rows.get(r); if (x) { if (x.hidden) return 0; if (x.ht !== null) return x.ht * rowK; } return defRowPt * rowK; },
       colStyle,
     };
     // ตำแหน่งสะสม (ใช้วางรูปวาด)
@@ -124,7 +127,7 @@ export class Renderer {
       g.mergeAt.set(key(m.r1, m.c1), m);
       for (let r = m.r1; r <= m.r2; r++) for (let c = m.c1; c <= m.c2; c++) g.inMerge.set(key(r, c), m);
     }
-    this.geo.set(sh.name, g);
+    this.geo.set(gk, g);
     return g;
   }
 
@@ -150,15 +153,19 @@ export class Renderer {
    * แบ่งหน้า
    * @returns { pages: [{ rows:[[a,b]...], cols:[[a,b]...] }], scale, paper:{w,h}, orient, area }
    */
-  paginate(name, { orientation = null, fit = null } = {}) {
+  // adj = ปรับแต่งหน้ากระดาษรายแผ่น (เหมือน Word): { mt, mb, ml, mr (นิ้ว), scale (%), font (%), row (%), col (%), hCenter }
+  paginate(name, { orientation = null, fit = null, adj = null } = {}) {
     const sh = this.wb.sheet(name); if (!sh) return null;
-    const g = this.geometry(sh);
+    const a = adj || {};
+    const pct = (x) => (Number.isFinite(+x) && +x > 0 ? Math.max(0.3, Math.min(3, +x / 100)) : 1);
+    const g = this.geometry(sh, pct(a.row), pct(a.col));
     const info = this.wb.printInfo(name);
     const areas = info.areas.length ? info.areas.map((a) => ({ ...a, r2: Math.min(a.r2, Math.max(sh.maxRow, a.r1)), c2: Math.min(a.c2, Math.max(sh.maxCol, a.c1)) })) : [this.usedRange(sh)];
     const orient = orientation || sh.page.orientation || 'portrait';
     const base = PAPER[sh.page.paperSize] || PAPER[9];
     const paper = orient === 'landscape' ? { w: base[1], h: base[0] } : { w: base[0], h: base[1] };
-    const m = sh.page.margins;
+    const m = { ...sh.page.margins };
+    for (const k of ['top', 'bottom', 'left', 'right']) { const v = a['m' + k[0]]; if (Number.isFinite(v) && v >= 0) m[k] = v; }
     const hasHF = !!(sh.headerFooter.oddHeader || sh.headerFooter.oddFooter);
     const top = m.top * 72; const bottom = m.bottom * 72;
     const availW = paper.w - (m.left + m.right) * 72; const availH = paper.h - top - bottom;
@@ -202,9 +209,10 @@ export class Renderer {
       return pages;
     };
     // fit: null = ตามไฟล์ · 'page' = พอดี 1 หน้า · 'width' = พอดีความกว้าง 1 หน้า · 'none' = 100% แบ่งหน้าตามตัวแบ่งเดิม
-    let scale = fit === 'none' ? 1 : Math.max(0.1, Math.min(4, (sh.page.scale || 100) / 100));
+    const manualScale = Number.isFinite(+a.scale) && +a.scale >= 10 && +a.scale <= 400;
+    let scale = manualScale ? +a.scale / 100 : fit === 'none' ? 1 : Math.max(0.1, Math.min(4, (sh.page.scale || 100) / 100));
     let pages;
-    const doFit = fit === 'page' || fit === 'width' || (fit === null && sh.page.fitToPage);
+    const doFit = !manualScale && (fit === 'page' || fit === 'width' || (fit === null && sh.page.fitToPage));
     if (doFit) {
       const fw = fit === 'page' || fit === 'width' ? 1 : sh.page.fitToWidth; const fh = fit === 'page' ? 1 : fit === 'width' ? 0 : sh.page.fitToHeight;
       // เริ่มจากค่าประมาณแล้วลดทีละ 1%
@@ -226,11 +234,16 @@ export class Renderer {
       }
       scale = p / 100;
     } else pages = run(scale, true);
-    return { pages, scale, paper, orient, availW, availH, top, left: m.left * 72, hasHF, sh, g };
+    return { pages, scale, paper, orient, availW, availH, top, left: m.left * 72, hasHF, sh, g, hCenter: a.hCenter === undefined || a.hCenter === null ? sh.page.hCenter : !!a.hCenter };
   }
 
   // ---- วาดทุกหน้าของแผ่น ----
   renderSheet(name, opts = {}) {
+    const k = Number.isFinite(+opts.adj?.font) && +opts.adj.font > 0 ? Math.max(0.3, Math.min(3, +opts.adj.font / 100)) : 1;
+    this.fontK = k;
+    try { return this.renderSheetNow(name, opts); } finally { this.fontK = 1; }
+  }
+  renderSheetNow(name, opts) {
     const pg = this.paginate(name, opts); if (!pg) return [];
     return pg.pages.map((p, i) => ({ sheet: name, index: i, count: pg.pages.length, orient: pg.orient, w: pg.paper.w, h: pg.paper.h, scale: pg.scale, html: this.renderPage(pg, p, i, pg.pages.length) }));
   }
@@ -247,7 +260,7 @@ export class Renderer {
     let x = 0; for (const b of colBlocks) { b.off = x; b.size = 0; for (let c = b.a; c <= b.b; c++) b.size += g.cw(c); x += b.size; }
     const contentW = x; const contentH = y;
     let ox = pg.left; let oy = pg.top;
-    if (sh.page.hCenter) ox = pg.left + Math.max(0, (pg.availW - contentW * scale) / 2);
+    if (pg.hCenter) ox = pg.left + Math.max(0, (pg.availW - contentW * scale) / 2);
     if (sh.page.vCenter) oy = pg.top + Math.max(0, (pg.availH - contentH * scale) / 2);
     const parts = [];
     for (const rb of rowBlocks) for (const cb of colBlocks) parts.push(this.renderBlock(sh, g, rb, cb, p.area));
@@ -342,6 +355,7 @@ export class Renderer {
       if (typeof v === 'number' && v === 0 && !sh.showZeros) continue;
       if (xf.hidden && sh.protected && false) continue;
       const font = { ...(st.fonts[xf.fontId] || {}), ...(cf?.font || {}) };
+      if (this.fontK !== 1) font.sz = (font.sz || 11) * this.fontK;
       const code = cf?.numFmt || st.numFmts[xf.numFmtId] || 'General';
       const fmt = formatValue(v, code);
       if (fmt.text === '' && !(v instanceof String && v.runs)) continue;
@@ -497,7 +511,7 @@ export class Renderer {
     if (indent) css.push(hAlign === 'right' ? `padding-right:${f2(indent + pad)}pt` : `padding-left:${f2(indent + pad)}pt`);
     let inner;
     if (v instanceof String && v.runs) {
-      inner = v.runs.map((run) => { const f = run.font ? { ...font, ...run.font } : font; const col = cssColor(f.color); return `<span style="${fontCss(f, legacy)}${col ? `;color:${col}` : ''}">${esc(run.t)}</span>`; }).join('');
+      inner = v.runs.map((run) => { const f = run.font ? { ...font, ...run.font, ...(run.font.sz && this.fontK !== 1 ? { sz: run.font.sz * this.fontK } : {}) } : font; const col = cssColor(f.color); return `<span style="${fontCss(f, legacy)}${col ? `;color:${col}` : ''}">${esc(run.t)}</span>`; }).join('');
     } else if (hAlign === 'fill') {
       const one = this.measure(text, fontForMeasure) || 1; inner = esc(text.repeat(Math.max(1, Math.floor((w - 2 * pad) / one))));
     } else inner = esc(wrap ? text : text.replace(/\n/g, ' '));

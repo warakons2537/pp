@@ -7,7 +7,15 @@ export const BRAND = {
   name: 'WL Admin (ปพ.)',
   tagline: 'ธุรการชั้นเรียน & ปพ. บ้านวังลึก (ย.น.)',
   logo: 'img/logo-192.png',
+  // ลิงก์ไปแอปอื่นในเครือ (แสดงในเมนู) — เปลี่ยนได้ถ้าย้ายที่อยู่
+  siblings: [
+    { name: 'ทางเข้า WL (ทุกแอป)', url: '../' },
+    { name: 'WL Scheduler (ตารางสอน)', url: '../planner/' },
+    { name: 'WL Substitution (สอนแทน)', url: '../substitution/' },
+    { name: 'WL Academic (งานวิชาการ)', url: '../wl-academic/' },
+    { name: 'WL Draft (ร่างหนังสือ)', url: '../wl-draft/' },
+  ],
 };
 
 // เลขเวอร์ชัน: เปลี่ยนทุกครั้งที่ส่งไฟล์อัปเดต (ปี พ.ศ..เดือน.วัน-ครั้งที่) · ถ้าในแอปยังเป็นเลขเก่า = เบราว์เซอร์ยังใช้ไฟล์เดิม ให้กด Ctrl+F5
-export const VERSION = '2569.11.1-9';
+export const VERSION = '2569.11.1-11';

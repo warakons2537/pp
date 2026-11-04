@@ -4,14 +4,14 @@
 //  - ดูตัวอย่างทุกหน้า เลือกพิมพ์รายหน้า → พิมพ์ / บันทึกเป็น PDF ได้ในแอป (ไม่ต้องมี Excel)
 //  - หรือสร้างไฟล์ Excel ที่หน้าตาเหมือนต้นฉบับ
 // =====================================================================
-import { esc, $, $$, toast, roomName, confirmBox } from '../util.js?v=2569.11.1-9';
-import { Template } from '../xlsx-template.js?v=2569.11.1-9';
-import { buildBookData, makeBook, prepareBook, defaultBook } from '../pp-book.js?v=2569.11.1-9';
-import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-9';
-import { Workbook } from '../xl-model.js?v=2569.11.1-9';
-import { Engine } from '../xl-formula.js?v=2569.11.1-9';
-import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-9';
-import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-9';
+import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-11';
+import { Template } from '../xlsx-template.js?v=2569.11.1-11';
+import { buildBookData, makeBook, prepareBook, defaultBook } from '../pp-book.js?v=2569.11.1-11';
+import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-11';
+import { Workbook } from '../xl-model.js?v=2569.11.1-11';
+import { Engine } from '../xl-formula.js?v=2569.11.1-11';
+import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-11';
+import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-11';
 
 const PATH = 'pp/template';
 let cache = { at: null, bytes: null, t: null };          // ไฟล์ต้นฉบับที่โหลดแล้ว (อยู่ในหน่วยความจำ)
@@ -59,11 +59,11 @@ export async function bookView(paper, ctx, room) {
   const all = t.sheets.filter((s) => s.state === 'visible');
   // เลย์เอาต์ที่จำไว้ (ต่อผู้ใช้/เบราว์เซอร์)
   let layout = loadLayout(tplName);
-  const fresh = () => ({ order: all.map((s) => s.name), on: defaultBook(t.sheets, nSubjects), orient: {}, fit: {}, skip: {}, dpi: layout?.dpi || 120, zoom: layout?.zoom || 0.32 });
+  const fresh = () => ({ order: all.map((s) => s.name), on: defaultBook(t.sheets, nSubjects), orient: {}, fit: {}, skip: {}, adj: {}, dpi: layout?.dpi || 120, zoom: layout?.zoom || 0.32 });
   if (!layout || !Array.isArray(layout.order)) layout = fresh();
   layout.order = [...layout.order.filter((n) => all.some((s) => s.name === n)), ...all.map((s) => s.name).filter((n) => !layout.order.includes(n))];
   layout.orient ||= {}; layout.fit ||= {}; layout.skip ||= {}; layout.dpi ||= 120; layout.zoom ||= 0.32;
-  layout.who ||= {};
+  layout.who ||= {}; layout.adj ||= {};
   const per = perStudentSheets(t);
   const on = new Set(layout.on);
   const store = () => { layout.on = layout.order.filter((n) => on.has(n)); saveLayout(tplName, layout); };
@@ -82,7 +82,7 @@ export async function bookView(paper, ctx, room) {
         </div>
       </div>
       <p class="small muted">ติ๊กแผ่นที่จะพิมพ์ · ลูกศรเลื่อนลำดับ · เลือกแนวกระดาษและการย่อรายแผ่นได้ · แผ่นรายคน (เช่น ปพ.6) พิมพ์ทุกคนในห้อง หรือระบุเลขที่ เช่น 1-5, 8 · เลือก/ไม่เลือกรายหน้าได้ในตัวอย่าง · ระบบจำการจัดหน้าไว้ให้ครั้งต่อไป</p>
-      <div class="tbl-wrap" style="max-height:52vh"><table class="tbl tbl-dense" id="b-list"><thead><tr><th class="n">พิมพ์</th><th class="n">ลำดับ</th><th>แผ่นงาน</th><th>แนวกระดาษ</th><th>การย่อ</th><th>นักเรียน <span class="small muted">(แผ่นรายคน)</span></th><th></th></tr></thead><tbody></tbody></table></div>
+      <div class="tbl-wrap" style="max-height:52vh"><table class="tbl tbl-dense" id="b-list"><thead><tr><th class="n">พิมพ์</th><th class="n">ลำดับ</th><th>แผ่นงาน</th><th>แนวกระดาษ</th><th>การย่อ</th><th>ปรับหน้า</th><th>นักเรียน <span class="small muted">(แผ่นรายคน)</span></th><th></th></tr></thead><tbody></tbody></table></div>
       <details style="margin-top:8px"><summary class="small">ขั้นสูง</summary>
         <label class="small">ความกว้างคอลัมน์คิดแบบ <select id="b-dpi">${Object.entries(DPI).map(([v, l]) => `<option value="${v}" ${+v === +layout.dpi ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
         <p class="small muted" style="margin:4px 0 0">Excel คำนวณความกว้างคอลัมน์จากขนาดตัวอักษรบนจอ ไฟล์ ปพ. ต้นฉบับจัดหน้าบนจอ 125% ถ้าพิมพ์จาก Excel ในเครื่องที่ตั้งจอ 100% ตารางจะแคบลงเล็กน้อย</p>
@@ -102,6 +102,7 @@ export async function bookView(paper, ctx, room) {
         <td class="n">${sel ? k : ''}</td><td>${esc(n)}</td>
         <td><select data-o aria-label="แนวกระดาษ ${esc(n)}">${Object.entries(O_LABEL).map(([v, l]) => `<option value="${v}" ${o === v ? 'selected' : ''}>${l}${v === '' ? ` (${origOrient(n)})` : ''}</option>`).join('')}</select></td>
         <td><select data-f aria-label="การย่อ ${esc(n)}">${Object.entries(F_LABEL).map(([v, l]) => `<option value="${v}" ${f === v ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
+        <td style="white-space:nowrap"><button class="btn btn-sm ${adjText(layout.adj[n]) ? 'btn-primary' : ''}" data-adj title="${esc(adjText(layout.adj[n]) || 'ขอบกระดาษ ขนาดตัวอักษร ระยะบรรทัด ขนาดย่อ/ขยาย')}">ปรับ…</button></td>
         <td>${per.has(n) ? `<input data-w size="10" value="${esc(layout.who[n] || '')}" placeholder="ทุกคน" aria-label="เลขที่นักเรียนของ ${esc(n)}" title="เว้นว่าง = ทุกคน · เช่น 1-5, 8">` : ''}</td>
         <td class="n" style="white-space:nowrap"><button class="btn btn-sm btn-ghost" data-up ${i ? '' : 'disabled'} aria-label="เลื่อนขึ้น">↑</button><button class="btn btn-sm btn-ghost" data-down ${i < layout.order.length - 1 ? '' : 'disabled'} aria-label="เลื่อนลง">↓</button></td></tr>`;
     }).join('');
@@ -117,6 +118,7 @@ export async function bookView(paper, ctx, room) {
     changed();
   });
   tbody.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-adj]'); if (a) { openAdjust(a.closest('tr').dataset.n); return; }
     const b = e.target.closest('[data-up],[data-down]'); if (!b) return;
     const n = b.closest('tr').dataset.n; const i = layout.order.indexOf(n); const j = i + (b.matches('[data-up]') ? -1 : 1);
     [layout.order[i], layout.order[j]] = [layout.order[j], layout.order[i]]; changed();
@@ -190,9 +192,9 @@ export async function bookView(paper, ctx, room) {
     if (book.font !== getThaiFont()) { await useThaiFont(); book.font = getThaiFont(); book.R = null; book.pages.clear(); }
     const p = per.get(n);
     const list = p ? parseWho(layout.who[n], book.data.students.length) : null;
-    const k = `${n}|${book.font}|${layout.orient[n] || ''}|${layout.fit[n] || ''}|${layout.dpi}|${list ? list.join(',') : ''}`;
+    const k = `${n}|${book.font}|${layout.orient[n] || ''}|${layout.fit[n] || ''}|${layout.dpi}|${JSON.stringify(layout.adj[n] || null)}|${list ? list.join(',') : ''}`;
     if (book.pages.has(k)) return book.pages.get(k);
-    const opt = { orientation: layout.orient[n] || null, fit: layout.fit[n] || null };
+    const opt = { orientation: layout.orient[n] || null, fit: layout.fit[n] || null, adj: adjOpt(layout.adj[n]) };
     let pages;
     if (!p) pages = renderer().renderSheet(n, opt);
     else {
@@ -209,6 +211,39 @@ export async function bookView(paper, ctx, room) {
     }
     book.pages.set(k, pages);
     return pages;
+  }
+
+  // ---------- ปรับแต่งหน้ากระดาษรายแผ่น (แบบ Word) ----------
+  async function openAdjust(n, pageSrc = null) {
+    const cur = layout.adj[n] || {};
+    const orig = book?.wb.sheet(n)?.page;     // ค่าเดิมของไฟล์ต้นฉบับ (มีเมื่อเปิดตัวอย่างแล้ว)
+    const om = (k) => (orig ? Math.round(orig.margins[k] * 25.4) : '');
+    const num = (name, label, val, ph, extra = '') => `<label class="small" style="display:flex;flex-direction:column;gap:2px">${label}
+      <input type="number" name="${name}" value="${val ?? ''}" placeholder="${ph}" ${extra} inputmode="decimal"></label>`;
+    const html = `
+      <p class="small muted" style="margin:0 0 8px">เว้นว่าง = ตามไฟล์ต้นฉบับ · ใช้กับแผ่น <b>${esc(n)}</b> · มีผลกับการดูตัวอย่าง/พิมพ์/PDF ในแอป</p>
+      <fieldset style="border:1px solid var(--rule-strong);border-radius:8px;padding:8px;margin:0 0 8px"><legend class="small">ขอบกระดาษ (มม.)</legend>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          ${num('mt', 'บน', cur.mt, om('top') || 'เดิม', 'min="0" max="100" step="1"')}${num('mb', 'ล่าง', cur.mb, om('bottom') || 'เดิม', 'min="0" max="100" step="1"')}
+          ${num('ml', 'ซ้าย', cur.ml, om('left') || 'เดิม', 'min="0" max="100" step="1"')}${num('mr', 'ขวา', cur.mr, om('right') || 'เดิม', 'min="0" max="100" step="1"')}
+        </div></fieldset>
+      <fieldset style="border:1px solid var(--rule-strong);border-radius:8px;padding:8px;margin:0 0 8px"><legend class="small">ขนาดและระยะ (%) — 100 = ตามต้นฉบับ</legend>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+          ${num('font', 'ขนาดตัวอักษร', cur.font, '100', 'min="50" max="200" step="5"')}${num('row', 'ระยะบรรทัด (ความสูงแถว)', cur.row, '100', 'min="50" max="200" step="5"')}
+          ${num('col', 'ความกว้างคอลัมน์', cur.col, '100', 'min="50" max="200" step="5"')}${num('scale', 'ย่อ/ขยายทั้งหน้า (ปิดการพอดีหน้าอัตโนมัติ)', cur.scale, 'อัตโนมัติ', 'min="10" max="400" step="1"')}
+        </div></fieldset>
+      <label class="small" style="display:block;margin:0 0 8px">จัดตารางกึ่งกลางหน้าแนวนอน
+        <select name="hc"><option value="">ตามต้นฉบับ</option><option value="1" ${cur.hCenter === true ? 'selected' : ''}>จัดกึ่งกลาง</option><option value="0" ${cur.hCenter === false ? 'selected' : ''}>ชิดซ้ายตามขอบ</option></select></label>
+      <label class="small" style="display:block"><input type="checkbox" name="all" value="1"> ใช้ค่าเดียวกันกับทุกแผ่นที่เลือกพิมพ์</label>
+      <label class="small" style="display:block"><input type="checkbox" name="reset" value="1"> ล้างค่าที่ปรับ กลับเป็นตามต้นฉบับ</label>`;
+    const r = await modal(`ปรับหน้ากระดาษ — ${n}`, html, { okText: 'ใช้ค่านี้', wide: false });
+    if (!r) return;
+    const targets = r.all ? layout.order.filter((x) => on.has(x) || x === n) : [n];
+    const v = (k) => (r[k] === '' || r[k] === undefined ? undefined : Number(r[k]));
+    const a = { mt: v('mt'), mb: v('mb'), ml: v('ml'), mr: v('mr'), font: v('font'), row: v('row'), col: v('col'), scale: v('scale'), hCenter: r.hc === '' ? undefined : r.hc === '1' };
+    for (const k of Object.keys(a)) if (a[k] === undefined || (typeof a[k] === 'number' && !Number.isFinite(a[k]))) delete a[k];
+    for (const t of targets) { if (r.reset || !Object.keys(a).length) delete layout.adj[t]; else layout.adj[t] = { ...a }; delete layout.skip[t]; }
+    changed();
   }
 
   async function showPreview(force = false) {
@@ -245,7 +280,7 @@ export async function bookView(paper, ctx, room) {
       ${legacyOk ? '' : `<p class="small" style="color:var(--amber);margin:4px 0">เครื่องนี้ไม่มีฟอนต์ TH SarabunPSK จึงใช้ฟอนต์ Sarabun แทน รูปร่างตัวอักษรต่างจากที่พิมพ์จาก Excel เล็กน้อย (ตำแหน่งและขนาดตารางเหมือนเดิม) — ติดตั้งฟอนต์ TH SarabunPSK ในเครื่องเพื่อให้เหมือนที่สุด</p>`}
       <div id="pv-body">${groups.map((g) => `
         <section class="pv-sec" data-n="${esc(g.n)}">
-          <h4 style="margin:10px 0 4px">${esc(g.n)} <span class="small muted">· ${g.pages.length} หน้า${g.pages[0] ? ` · ${g.pages[0].orient === 'landscape' ? 'แนวนอน' : 'แนวตั้ง'} · ย่อ ${Math.round(g.pages[0].scale * 100)}%` : ''}</span></h4>
+          <h4 style="margin:10px 0 4px">${esc(g.n)} <button type="button" class="btn btn-sm ${adjText(layout.adj[g.n]) ? 'btn-primary' : ''}" data-adj-n="${esc(g.n)}" title="ขอบกระดาษ ขนาดตัวอักษร ระยะบรรทัด ขนาดย่อ/ขยาย">ปรับหน้า…</button> <span class="small muted">· ${g.pages.length} หน้า${g.pages[0] ? ` · ${g.pages[0].orient === 'landscape' ? 'แนวนอน' : 'แนวตั้ง'} · ย่อ ${Math.round(g.pages[0].scale * 100)}%` : ''}</span></h4>
           ${g.err ? `<p class="small" style="color:var(--red)">วาดหน้านี้ไม่สำเร็จ: ${esc(g.err)}</p>` : ''}
           <div class="pv-grid">${g.pages.map((p, i) => `
             <label class="pv-card ${(layout.skip[g.n] || []).includes(i) ? 'off' : ''}">
@@ -267,6 +302,7 @@ export async function bookView(paper, ctx, room) {
       }
     }, { rootMargin: '600px' });
     $$('.pv-inner', pv).forEach((el) => io.observe(el));
+    pv.onclick = (e) => { const b = e.target.closest('[data-adj-n]'); if (b) { e.preventDefault(); openAdjust(b.dataset.adjN, true); } };
     pv.onchange = (e) => {
       const cb = e.target.closest('input[data-i]'); if (!cb) return;
       const n = cb.closest('.pv-sec').dataset.n; const i = +cb.dataset.i;
@@ -291,6 +327,23 @@ export async function bookView(paper, ctx, room) {
   $('#b-prev', paper).addEventListener('click', () => { pv.hidden = false; showPreview(); pv.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   if (book) { pv.hidden = false; showPreview(); }
   wireUpload(paper, ctx, () => bookView(paper, ctx, room));
+}
+
+// ค่าปรับหน้า (มม.) → ค่าที่ตัวแสดงผลใช้ (นิ้ว)
+function adjOpt(a) {
+  if (!a) return null;
+  const o = { ...a };
+  for (const k of ['mt', 'mb', 'ml', 'mr']) if (Number.isFinite(o[k])) o[k] = o[k] / 25.4; else delete o[k];
+  return o;
+}
+// สรุปค่าที่ปรับไว้ (ว่าง = ตามต้นฉบับ)
+function adjText(a) {
+  if (!a) return '';
+  const p = [];
+  if (['mt', 'mb', 'ml', 'mr'].some((k) => Number.isFinite(a[k]))) p.push(`ขอบ บน${a.mt ?? '-'} ล่าง${a.mb ?? '-'} ซ้าย${a.ml ?? '-'} ขวา${a.mr ?? '-'} มม.`);
+  if (a.font) p.push(`ตัวอักษร ${a.font}%`); if (a.row) p.push(`ระยะบรรทัด ${a.row}%`); if (a.col) p.push(`คอลัมน์ ${a.col}%`); if (a.scale) p.push(`ย่อ/ขยาย ${a.scale}%`);
+  if (typeof a.hCenter === 'boolean') p.push(a.hCenter ? 'กึ่งกลาง' : 'ชิดซ้าย');
+  return p.join(' · ');
 }
 
 // แผ่นที่มีชื่อ "No" ประจำแผ่น (ไฟล์ต้นฉบับใช้แมโครพิมพ์ทีละคน) → Map(ชื่อแผ่น → {r, c})
