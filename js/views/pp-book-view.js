@@ -4,14 +4,15 @@
 //  - ดูตัวอย่างทุกหน้า เลือกพิมพ์รายหน้า → พิมพ์ / บันทึกเป็น PDF ได้ในแอป (ไม่ต้องมี Excel)
 //  - หรือสร้างไฟล์ Excel ที่หน้าตาเหมือนต้นฉบับ
 // =====================================================================
-import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-17';
-import { Template } from '../xlsx-template.js?v=2569.11.1-17';
-import { buildBookData, makeBook, prepareBook, defaultBook, bookChecks } from '../pp-book.js?v=2569.11.1-17';
-import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-17';
-import { Workbook } from '../xl-model.js?v=2569.11.1-17';
-import { Engine } from '../xl-formula.js?v=2569.11.1-17';
-import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-17';
-import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-17';
+import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-18';
+import { Template } from '../xlsx-template.js?v=2569.11.1-18';
+import { buildBookData, makeBook, prepareBook, defaultBook, bookChecks } from '../pp-book.js?v=2569.11.1-18';
+import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-18';
+import { Workbook } from '../xl-model.js?v=2569.11.1-18';
+import { Engine } from '../xl-formula.js?v=2569.11.1-18';
+import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-18';
+import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-18';
+import { adjOpt, adjText, adjustDialog } from '../page-adjust.js?v=2569.11.1-18';
 
 const PATH = 'pp/template';
 let cache = { at: null, bytes: null, t: null };          // ไฟล์ต้นฉบับที่โหลดแล้ว (อยู่ในหน่วยความจำ)
@@ -214,35 +215,11 @@ export async function bookView(paper, ctx, room) {
   }
 
   // ---------- ปรับแต่งหน้ากระดาษรายแผ่น (แบบ Word) ----------
-  async function openAdjust(n, pageSrc = null) {
-    const cur = layout.adj[n] || {};
-    const orig = book?.wb.sheet(n)?.page;     // ค่าเดิมของไฟล์ต้นฉบับ (มีเมื่อเปิดตัวอย่างแล้ว)
-    const om = (k) => (orig ? Math.round(orig.margins[k] * 25.4) : '');
-    const num = (name, label, val, ph, extra = '') => `<label class="small" style="display:flex;flex-direction:column;gap:2px">${label}
-      <input type="number" name="${name}" value="${val ?? ''}" placeholder="${ph}" ${extra} inputmode="decimal"></label>`;
-    const html = `
-      <p class="small muted" style="margin:0 0 8px">เว้นว่าง = ตามไฟล์ต้นฉบับ · ใช้กับแผ่น <b>${esc(n)}</b> · มีผลกับการดูตัวอย่าง/พิมพ์/PDF ในแอป</p>
-      <fieldset style="border:1px solid var(--rule-strong);border-radius:8px;padding:8px;margin:0 0 8px"><legend class="small">ขอบกระดาษ (มม.)</legend>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-          ${num('mt', 'บน', cur.mt, om('top') || 'เดิม', 'min="0" max="100" step="1"')}${num('mb', 'ล่าง', cur.mb, om('bottom') || 'เดิม', 'min="0" max="100" step="1"')}
-          ${num('ml', 'ซ้าย', cur.ml, om('left') || 'เดิม', 'min="0" max="100" step="1"')}${num('mr', 'ขวา', cur.mr, om('right') || 'เดิม', 'min="0" max="100" step="1"')}
-        </div></fieldset>
-      <fieldset style="border:1px solid var(--rule-strong);border-radius:8px;padding:8px;margin:0 0 8px"><legend class="small">ขนาดและระยะ (%) — 100 = ตามต้นฉบับ</legend>
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
-          ${num('font', 'ขนาดตัวอักษร', cur.font, '100', 'min="50" max="200" step="5"')}${num('row', 'ระยะบรรทัด (ความสูงแถว)', cur.row, '100', 'min="50" max="200" step="5"')}
-          ${num('col', 'ความกว้างคอลัมน์', cur.col, '100', 'min="50" max="200" step="5"')}${num('scale', 'ย่อ/ขยายทั้งหน้า (ปิดการพอดีหน้าอัตโนมัติ)', cur.scale, 'อัตโนมัติ', 'min="10" max="400" step="1"')}
-        </div></fieldset>
-      <label class="small" style="display:block;margin:0 0 8px">จัดตารางกึ่งกลางหน้าแนวนอน
-        <select name="hc"><option value="">ตามต้นฉบับ</option><option value="1" ${cur.hCenter === true ? 'selected' : ''}>จัดกึ่งกลาง</option><option value="0" ${cur.hCenter === false ? 'selected' : ''}>ชิดซ้ายตามขอบ</option></select></label>
-      <label class="small" style="display:block"><input type="checkbox" name="all" value="1"> ใช้ค่าเดียวกันกับทุกแผ่นที่เลือกพิมพ์</label>
-      <label class="small" style="display:block"><input type="checkbox" name="reset" value="1"> ล้างค่าที่ปรับ กลับเป็นตามต้นฉบับ</label>`;
-    const r = await modal(`ปรับหน้ากระดาษ — ${n}`, html, { okText: 'ใช้ค่านี้', wide: false });
-    if (!r) return;
-    const targets = r.all ? layout.order.filter((x) => on.has(x) || x === n) : [n];
-    const v = (k) => (r[k] === '' || r[k] === undefined ? undefined : Number(r[k]));
-    const a = { mt: v('mt'), mb: v('mb'), ml: v('ml'), mr: v('mr'), font: v('font'), row: v('row'), col: v('col'), scale: v('scale'), hCenter: r.hc === '' ? undefined : r.hc === '1' };
-    for (const k of Object.keys(a)) if (a[k] === undefined || (typeof a[k] === 'number' && !Number.isFinite(a[k]))) delete a[k];
-    for (const t of targets) { if (r.reset || !Object.keys(a).length) delete layout.adj[t]; else layout.adj[t] = { ...a }; delete layout.skip[t]; }
+  async function openAdjust(n) {
+    const res = await adjustDialog(n, layout.adj[n], { margins: book?.wb.sheet(n)?.page.margins });   // ค่าเดิมของไฟล์ต้นฉบับ (มีเมื่อเปิดตัวอย่างแล้ว)
+    if (!res) return;
+    const targets = res.all ? layout.order.filter((x) => on.has(x) || x === n) : [n];
+    for (const t of targets) { if (res.adj) layout.adj[t] = { ...res.adj }; else delete layout.adj[t]; delete layout.skip[t]; }
     changed();
   }
 
@@ -341,23 +318,6 @@ function warnHtml(issues) {
   if (!issues.length) return '<p class="small" style="margin:4px 0;color:var(--green,#1a7f37)">✓ ตรวจแล้ว: ไม่พบหน้าที่ขาดหรือข้อมูลที่ยังไม่ได้ลง</p>';
   return `<div class="small" style="margin:6px 0;padding:8px 10px;border:1px solid var(--amber,#b7791f);border-radius:8px;background:color-mix(in srgb,var(--amber,#b7791f) 12%,transparent)">
     <b>⚠ ตรวจก่อนพิมพ์ — พบ ${issues.length} ข้อ</b><ul style="margin:4px 0 0;padding-left:20px">${issues.map((x) => `<li style="${x.level === 'err' ? 'color:var(--red,#c0392b)' : ''}">${esc(x.text)}</li>`).join('')}</ul></div>`;
-}
-
-// ค่าปรับหน้า (มม.) → ค่าที่ตัวแสดงผลใช้ (นิ้ว)
-function adjOpt(a) {
-  if (!a) return null;
-  const o = { ...a };
-  for (const k of ['mt', 'mb', 'ml', 'mr']) if (Number.isFinite(o[k])) o[k] = o[k] / 25.4; else delete o[k];
-  return o;
-}
-// สรุปค่าที่ปรับไว้ (ว่าง = ตามต้นฉบับ)
-function adjText(a) {
-  if (!a) return '';
-  const p = [];
-  if (['mt', 'mb', 'ml', 'mr'].some((k) => Number.isFinite(a[k]))) p.push(`ขอบ บน${a.mt ?? '-'} ล่าง${a.mb ?? '-'} ซ้าย${a.ml ?? '-'} ขวา${a.mr ?? '-'} มม.`);
-  if (a.font) p.push(`ตัวอักษร ${a.font}%`); if (a.row) p.push(`ระยะบรรทัด ${a.row}%`); if (a.col) p.push(`คอลัมน์ ${a.col}%`); if (a.scale) p.push(`ย่อ/ขยาย ${a.scale}%`);
-  if (typeof a.hCenter === 'boolean') p.push(a.hCenter ? 'กึ่งกลาง' : 'ชิดซ้าย');
-  return p.join(' · ');
 }
 
 // แผ่นที่มีชื่อ "No" ประจำแผ่น (ไฟล์ต้นฉบับใช้แมโครพิมพ์ทีละคน) → Map(ชื่อแผ่น → {r, c})
