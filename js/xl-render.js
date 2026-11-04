@@ -5,10 +5,10 @@
 //  - ผสานเซลล์ · เส้นขอบ · สีพื้น · ฟอนต์ · การจัดแนว/ตัดบรรทัด/ข้อความล้นเซลล์ · หมุนข้อความ
 //  - รูปแบบตัวเลข · การจัดรูปแบบตามเงื่อนไข · รูปภาพ/รูปร่าง/กล่องข้อความ
 // =====================================================================
-import { MAXCOL, XErr, Mat } from './xl-formula.js?v=2569.11.1-19';
-import { formatValue, isDateFormat } from './xl-numfmt.js?v=2569.11.1-19';
-import { parseDrawing, key } from './xl-model.js?v=2569.11.1-19';
-import { shiftFormula } from './xlsx-template.js?v=2569.11.1-19';
+import { MAXCOL, XErr, Mat } from './xl-formula.js?v=2569.11.1-20';
+import { formatValue, isDateFormat } from './xl-numfmt.js?v=2569.11.1-20';
+import { parseDrawing, key } from './xl-model.js?v=2569.11.1-20';
+import { shiftFormula } from './xlsx-template.js?v=2569.11.1-20';
 
 export const PAPER = { 9: [595.28, 841.89], 1: [612, 792], 5: [612, 1008], 8: [841.89, 1190.55], 11: [419.53, 595.28] };
 const PT_PER_PX = 0.75; const EMU_PER_PT = 12700;
@@ -154,7 +154,8 @@ export class Renderer {
    * @returns { pages: [{ rows:[[a,b]...], cols:[[a,b]...] }], scale, paper:{w,h}, orient, area }
    */
   // adj = ปรับแต่งหน้ากระดาษรายแผ่น (เหมือน Word): { mt, mb, ml, mr (นิ้ว), scale (%), font (%), row (%), col (%), hCenter }
-  paginate(name, { orientation = null, fit = null, adj = null } = {}) {
+  // overlays = ชั้นซ้อนทับตามช่วงเซลล์ [{ r1, c1, r2, c2, kind: 'diag', text }] (เช่น เส้นทแยง "ปิดภาคเรียน" ในแผ่นเวลาเรียน)
+  paginate(name, { orientation = null, fit = null, adj = null, overlays = null } = {}) {
     const sh = this.wb.sheet(name); if (!sh) return null;
     const a = adj || {};
     const pct = (x) => (Number.isFinite(+x) && +x > 0 ? Math.max(0.3, Math.min(3, +x / 100)) : 1);
@@ -234,7 +235,7 @@ export class Renderer {
       }
       scale = p / 100;
     } else pages = run(scale, true);
-    return { pages, scale, paper, orient, availW, availH, top, left: m.left * 72, hasHF, sh, g, hCenter: a.hCenter === undefined || a.hCenter === null ? sh.page.hCenter : !!a.hCenter };
+    return { pages, scale, paper, orient, availW, availH, top, left: m.left * 72, hasHF, sh, g, overlays, hCenter: a.hCenter === undefined || a.hCenter === null ? sh.page.hCenter : !!a.hCenter };
   }
 
   // ---- วาดทุกหน้าของแผ่น ----
@@ -264,10 +265,25 @@ export class Renderer {
     if (sh.page.vCenter) oy = pg.top + Math.max(0, (pg.availH - contentH * scale) / 2);
     const parts = [];
     for (const rb of rowBlocks) for (const cb of colBlocks) parts.push(this.renderBlock(sh, g, rb, cb, p.area));
+    for (const ov of pg.overlays || []) { const h = this.overlayHtml(g, rowBlocks, colBlocks, ov); if (h) parts.push(h); }
     let hf = '';
     if (sh.headerFooter.oddHeader) hf += this.headerFooter(sh.headerFooter.oddHeader, 'top', pg, pageNo, pageCount);
     if (sh.headerFooter.oddFooter) hf += this.headerFooter(sh.headerFooter.oddFooter, 'bottom', pg, pageNo, pageCount);
     return `<div class="xl-page" style="width:${f2(pg.paper.w)}pt;height:${f2(pg.paper.h)}pt"><div class="xl-content" style="left:${f2(ox)}pt;top:${f2(oy)}pt;width:${f2(contentW)}pt;height:${f2(contentH)}pt;transform:scale(${scale})">${parts.join('')}</div>${hf}</div>`;
+  }
+
+  // ชั้นซ้อนทับ: เส้นทแยงจากมุมซ้ายล่างถึงมุมขวาบนของช่วงเซลล์ พร้อมข้อความเฉียงไปตามเส้น
+  overlayHtml(g, rowBlocks, colBlocks, ov) {
+    const rb = rowBlocks.find((b) => b.a <= ov.r1 && ov.r2 <= b.b); const cb = colBlocks.find((b) => b.a <= ov.c1 && ov.c2 <= b.b);
+    if (!rb || !cb || ov.kind !== 'diag') return '';
+    let x = cb.off; for (let c = cb.a; c < ov.c1; c++) x += g.cw(c);
+    let y = rb.off; for (let r = rb.a; r < ov.r1; r++) y += g.rh(r);
+    let w = 0; for (let c = ov.c1; c <= ov.c2; c++) w += g.cw(c);
+    let h = 0; for (let r = ov.r1; r <= ov.r2; r++) h += g.rh(r);
+    if (w <= 0 || h <= 0) return '';
+    const ang = -Math.atan2(h, w) * 180 / Math.PI;
+    const txt = ov.text ? `<text x="${f2(w / 2)}" y="${f2(h / 2)}" text-anchor="middle" dy="-3" transform="rotate(${f2(ang)} ${f2(w / 2)} ${f2(h / 2)})" font-size="${ov.size || 13}" font-family="${fontStack('TH SarabunPSK').replace(/"/g, "'")}" fill="#000">${esc(ov.text)}</text>` : '';
+    return `<svg style="position:absolute;left:${f2(x)}pt;top:${f2(y)}pt;width:${f2(w)}pt;height:${f2(h)}pt;overflow:visible" viewBox="0 0 ${f2(w)} ${f2(h)}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><line x1="0" y1="${f2(h)}" x2="${f2(w)}" y2="0" stroke="#000" stroke-width="0.9"/>${txt}</svg>`;
   }
 
   headerFooter(code, where, pg, pageNo, pageCount) {

@@ -244,3 +244,26 @@ console.log('pp-forms: ผ่านทั้งหมด');
   assert.equal(names.length, 44); assert.equal(total, 86, JSON.stringify(per));
   assert.equal(per['วิชาที่ 8'], 5, 'วิชาที่ 8 ต้องไม่มีหน้าว่างเกิน'); assert.equal(per['วิชาที่ 11'], 1); assert.equal(per['คะแนนรายชั้น'], 2); assert.equal(per['เกรดร้อยละ'], 1);
 }
+
+// ---------- เส้นทแยง "ปิดภาคเรียน" ในแผ่นเวลาเรียนรายเดือน ----------
+{
+  const { monthClosures, pp5Overlays } = await import('../js/pp-forms.js');
+  const { Renderer } = await import('../js/xl-render.js');
+  const t1 = { year: 2569, term: 1, termFrom: '2026-05-18', termTo: '2026-10-31' };
+  assert.deepEqual(monthClosures(t1, 5), [{ from: 1, to: 17, text: 'ปิดภาคเรียน 2/2568' }]);       // ก่อนเปิดภาคเรียน 18 พ.ค.
+  assert.deepEqual(monthClosures(t1, 6), []); assert.deepEqual(monthClosures(t1, 10), []);
+  assert.deepEqual(monthClosures({ ...t1, termTo: '2026-10-29' }, 10), [{ from: 30, to: 31, text: 'ปิดภาคเรียน 1/2569' }]);   // หลังปิดภาคเรียน
+  const t2 = { year: 2569, term: 2, termFrom: '2026-11-02', termTo: '2027-03-31' };
+  assert.deepEqual(monthClosures(t2, 11), [{ from: 1, to: 1, text: 'ปิดภาคเรียน 1/2569' }]);
+  assert.deepEqual(monthClosures(t2, 4), [{ from: 1, to: 30, text: 'ปิดภาคเรียน 2/2569' }]);        // เมษายนทั้งเดือนอยู่หลังปิดภาคเรียน
+  assert.deepEqual(monthClosures({ year: 2569, term: 1 }, 5), []);                                  // ไม่มีช่วงภาคเรียน = ไม่วาด
+  // ชั้นซ้อนทับ: ครอบแถวนักเรียน (แถว 4…) × คอลัมน์วันที่ (วันที่ 1 = คอลัมน์ C = 3)
+  const mm = { d: { ...t1, students: [{}, {}, {}] } };
+  assert.deepEqual(pp5Overlays('พ.ค.', mm), [{ kind: 'diag', r1: 4, r2: 6, c1: 3, c2: 19, text: 'ปิดภาคเรียน 2/2568' }]);
+  assert.equal(pp5Overlays('มิ.ย.', mm), null); assert.equal(pp5Overlays('ปก ปพ.5 รายชั้น', mm), null); assert.equal(pp5Overlays('พ.ค.', { d: { ...t1, students: [] } }), null);
+  // ตัววาดใส่เส้น+ข้อความลงในหน้า
+  const FF = await Forms.open(new Uint8Array(fs.readFileSync(new URL('../pp/forms.xlsx', import.meta.url))));
+  const RR = new Renderer(FF.wb, FF.eng, { dpi: 120 });
+  const html = RR.renderSheet('พ.ค.', { overlays: pp5Overlays('พ.ค.', mm) })[0].html; const plain = RR.renderSheet('พ.ค.')[0].html;
+  assert.ok(html.includes('<svg') && html.includes('ปิดภาคเรียน 2/2568') && html.includes('<line'), 'มีเส้นทแยงและข้อความ'); assert.ok(!plain.includes('<svg'));
+}

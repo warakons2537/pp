@@ -6,13 +6,13 @@
 //  เฟส 3: ผลประเมินตัวชี้วัดและคะแนนรายวิชา (วิชาที่ 1–n)
 //  เฟส 4: คุณลักษณะ · สมรรถนะ · กิจกรรม · คะแนนรายชั้น · เกรดรายชั้น · สรุปเกรดร้อยละ
 // =====================================================================
-import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-19';
-import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-19';
-import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout } from '../pp-forms.js?v=2569.11.1-19';
-import { Renderer } from '../xl-render.js?v=2569.11.1-19';
-import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-19';
-import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-19';
-import { adjOpt, adjText, adjustDialog } from '../page-adjust.js?v=2569.11.1-19';
+import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-20';
+import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-20';
+import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays } from '../pp-forms.js?v=2569.11.1-20';
+import { Renderer } from '../xl-render.js?v=2569.11.1-20';
+import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-20';
+import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-20';
+import { adjOpt, adjText, adjustDialog } from '../page-adjust.js?v=2569.11.1-20';
 
 // ค่าปรับหน้าที่ผู้ใช้ตั้งไว้ (จำในเบราว์เซอร์ ใช้กับทุกห้อง/ภาคเรียน) · ชื่อแผ่น → { mt, mb, ml, mr, font, row, col, scale, hCenter }
 const ADJ_KEY = 'pp5-page-adjust';
@@ -38,7 +38,7 @@ export async function pp5FormsView(paper, ctx, room) {
       const { dpi, opt } = pp5Layout(n);
       if (!renderers.has(dpi)) renderers.set(dpi, new Renderer(F.wb, F.eng, { dpi }));
       const adj = { ...(opt.adj || {}), ...(adjOpt(adjAll[n]) || {}) };
-      return { n, pages: renderers.get(dpi).renderSheet(n, { ...opt, adj: Object.keys(adj).length ? adj : undefined }) };
+      return { n, pages: renderers.get(dpi).renderSheet(n, { ...opt, adj: Object.keys(adj).length ? adj : undefined, overlays: pp5Overlays(n, m) }) };
     } catch (err) { return { n, pages: [], err: err.message }; }
   };
   try {

@@ -5,10 +5,10 @@
 //  - แอปคำนวณทุกช่องเองจากข้อมูลในระบบ (buildBookData) แล้วใส่ลงช่องของแบบพิมพ์
 //    กติกาการคำนวณตรงกับไฟล์โปรแกรม ปพ.5-6 เดิมของโรงเรียน (ตรวจด้วย tests/pp-forms.test.mjs)
 // =====================================================================
-import { Workbook, key } from './xl-model.js?v=2569.11.1-19';
-import { Engine } from './xl-formula.js?v=2569.11.1-19';
-import { levelName, thaiDate } from './util.js?v=2569.11.1-19';
-import { toGrade } from './grading.js?v=2569.11.1-19';
+import { Workbook, key } from './xl-model.js?v=2569.11.1-20';
+import { Engine } from './xl-formula.js?v=2569.11.1-20';
+import { levelName, thaiDate } from './util.js?v=2569.11.1-20';
+import { toGrade } from './grading.js?v=2569.11.1-20';
 
 export const FORMS_URL = new URL('../pp/forms.xlsx', import.meta.url).href;
 let formsBytes = null;
@@ -502,6 +502,29 @@ WRITERS['เกรดร้อยละ'] = {
     put('H35', sch.director_name ? `(${sch.director_name})` : null); put('E36', sch.director_title || 'ผู้อำนวยการโรงเรียน');
   },
 };
+
+// ---------------------------------------------------------------------
+//  เส้นทแยง "ปิดภาคเรียน" ในแผ่นเวลาเรียนรายเดือน: วันของเดือนที่อยู่นอกช่วงภาคเรียน (ก่อนเปิด/หลังปิด)
+//  → ชั้นซ้อนทับสำหรับตัววาด (xl-render overlays) · วาดครอบแถวนักเรียน × คอลัมน์วันที่ของช่วงนั้น
+// ---------------------------------------------------------------------
+export function monthClosures(d, mo) {
+  const { y, days } = monthKey(d, mo); const from = d.termFrom; const to = d.termTo;
+  if (!from || !to) return [];
+  const iso = (day) => `${y}-${String(mo).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  let a = 0; while (a < days && iso(a + 1) < from) a++;                 // วัน 1..a ก่อนเปิดภาคเรียน
+  let b = days + 1; while (b > 1 && iso(b - 1) > to) b--;               // วัน b..days หลังปิดภาคเรียน
+  const out = [];
+  const prev = d.term === 1 ? `2/${d.year - 1}` : `1/${d.year}`;
+  if (a > 0) out.push({ from: 1, to: a, text: `ปิดภาคเรียน ${prev}` });
+  if (b <= days && b > a) out.push({ from: b, to: days, text: `ปิดภาคเรียน ${d.term}/${d.year}` });
+  return out;
+}
+export function pp5Overlays(name, m) {
+  const mi = ATT_MONTHS.findIndex((x) => x[0] === name); if (mi < 0) return null;
+  const n = Math.min(m.d.students.length, 45); if (!n) return null;
+  const list = monthClosures(m.d, ATT_MONTHS[mi][1]).map((c) => ({ kind: 'diag', r1: 4, r2: 3 + n, c1: 2 + c.from, c2: 2 + c.to, text: c.text }));
+  return list.length ? list : null;
+}
 export const FORM_SHEETS = Object.keys(WRITERS);
 // เฟส 1 ของชุด ปพ.5 ในตัว (เรียงตามลำดับที่โรงเรียนพิมพ์)
 // การจัดหน้าของแต่ละแผ่นให้ตรงกับใบตัวอย่างของโรงเรียน (ค่าที่วัดจากไฟล์ PDF ตัวอย่าง)
