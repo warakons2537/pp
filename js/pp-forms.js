@@ -5,10 +5,10 @@
 //  - แอปคำนวณทุกช่องเองจากข้อมูลในระบบ (buildBookData) แล้วใส่ลงช่องของแบบพิมพ์
 //    กติกาการคำนวณตรงกับไฟล์โปรแกรม ปพ.5-6 เดิมของโรงเรียน (ตรวจด้วย tests/pp-forms.test.mjs)
 // =====================================================================
-import { Workbook, key } from './xl-model.js?v=2569.11.1-14';
-import { Engine } from './xl-formula.js?v=2569.11.1-14';
-import { levelName, thaiDate } from './util.js?v=2569.11.1-14';
-import { toGrade } from './grading.js?v=2569.11.1-14';
+import { Workbook, key } from './xl-model.js?v=2569.11.1-15';
+import { Engine } from './xl-formula.js?v=2569.11.1-15';
+import { levelName, thaiDate } from './util.js?v=2569.11.1-15';
+import { toGrade } from './grading.js?v=2569.11.1-15';
 
 export const FORMS_URL = new URL('../pp/forms.xlsx', import.meta.url).href;
 let formsBytes = null;
@@ -246,12 +246,100 @@ for (const t of [1, 2]) {
     },
   };
 }
+
+// ---------------------------------------------------------------------
+//  เฟส 2: น้ำหนัก-ส่วนสูง · ผลประเมินภาวะโภชนาการ · อัตราความชุก · สรุปรายชื่อนักเรียนที่มีปัญหา (4 ครั้ง/ภาคเรียน)
+// ---------------------------------------------------------------------
+const NUT_WA = ['น้ำหนักมากกว่าเกณฑ์', 'น้ำหนักค่อนข้างมาก', 'น้ำหนักตามเกณฑ์', 'น้ำหนักค่อนข้างน้อย', 'น้ำหนักน้อยกว่าเกณฑ์'];
+const NUT_HA = ['สูงกว่าเกณฑ์', 'ค่อนข้างสูง', 'ส่วนสูงตามเกณฑ์', 'ค่อนข้างเตี้ย', 'เตี้ย'];
+const NUT_WH = ['อ้วน', 'เริ่มอ้วน', 'ท้วม', 'สมส่วน', 'ค่อนข้างผอม', 'ผอม'];
+const OUT_TABLE = 'เกินตารางอ้างอิง';   // = OUT_OF_TABLE ของ assess.js · พิมพ์ว่า "เกินฐานข้อมูล"
+const shortDate = (iso) => { if (!iso) return null; const [y, mo, d] = String(iso).slice(0, 10).split('-').map(Number); return `${d}/${mo}/${(y + 543) % 100}`; };
+const avg2 = (xs) => { const v = xs.filter(isNum); return v.length ? round2(sum(v) / v.length) : null; };
+const sheetTitle = (m) => `ชั้น${m.d.level} ปีการศึกษา ${m.d.year}`;
+const nutOf = (st, k) => st.nut?.[k] || null;
+const sexOf = (st) => (st.s.gender === 'ช' ? 'ช' : 'ญ');
+const nutLabel = (v) => (v === OUT_TABLE ? 'เกินฐานข้อมูล' : v);
+const both = (n) => n && isNum(n.weight) && isNum(n.height);
+
+WRITERS['น้ำหนัก-ส่วนสูง'] = {
+  noFill: true,
+  write(put, m) {
+    const d = m.d;
+    put('C2', sheetTitle(m)); put('C3', `ภาคเรียนที่ ${d.term}`);
+    [0, 1, 2, 3].forEach((k) => { const t = shortDate(d.rounds?.[k]); put(`${colLetters(3 + 2 * k)}6`, t); put(`${colLetters(4 + 2 * k)}6`, t); });
+    d.students.slice(0, 45).forEach((st, i) => {
+      const r = 7 + i; put(`B${r}`, st.no);
+      [0, 1, 2, 3].forEach((k) => { const n = nutOf(st, k); put(`${colLetters(3 + 2 * k)}${r}`, n?.weight ?? null); put(`${colLetters(4 + 2 * k)}${r}`, n?.height ?? null); });
+    });
+    for (let c = 0; c < 8; c++) { const k = c >> 1; const f = c % 2 ? 'height' : 'weight'; put(`${colLetters(3 + c)}52`, avg2(d.students.map((st) => nutOf(st, k)?.[f]))); }
+    put('C54', SIGN_LINE);
+  },
+};
+for (let k = 0; k < 4; k++) {
+  const no = k + 1;
+  WRITERS[`โภชนาการ ${no}`] = {
+    noFill: true,
+    write(put, m) {
+      const d = m.d;
+      put('A2', sheetTitle(m)); put('A3', `ภาคเรียนที่ ${d.term}`); put('J3', birthText(d.rounds?.[k]));
+      d.students.slice(0, 46).forEach((st, i) => {
+        const r = 8 + i; const n = nutOf(st, k) || {}; const yrs = isNum(n.months) ? Math.floor(n.months / 12) : null;
+        put(`A${r}`, st.no); put(`B${r}`, nameOf(st)); put(`C${r}`, st.s.gender === 'ช' ? 'ชาย' : st.s.gender === 'ญ' ? 'หญิง' : null);
+        put(`D${r}`, yrs); put(`E${r}`, isNum(n.months) ? (n.months % 12 || '-') : null); put(`F${r}`, n.months ?? null);
+        put(`G${r}`, n.weight ?? null); put(`H${r}`, n.height ?? null);
+        put(`I${r}`, n.wa || null); put(`J${r}`, n.ha || null); put(`K${r}`, nutLabel(n.wh) || null);
+      });
+      put('A54', SIGN_LINE);
+    },
+  };
+  WRITERS[`ความชุก ${no}`] = {
+    noFill: true, black: true,
+    write(put, m) {
+      const d = m.d; const list = d.students.map((st) => ({ sex: sexOf(st), n: nutOf(st, k) }));
+      put('A2', sheetTitle(m)); put('A3', `${m.school} ${m.sch.area_office || ''}`.trim());
+      put('A4', `ภาคเรียนที่ ${d.term}${' '.repeat(18)}ครั้งที่ ${no}`); put('F4', birthText(d.rounds?.[k]));
+      const weighed = list.filter((x) => both(x.n));
+      // บล็อก: [แถวแรกของรายการ, ป้ายผล..., แถวสรุป, ฟิลด์]
+      const block = (row0, labels, field, extraOut) => {
+        const cnt = (lab, sex) => weighed.filter((x) => x.n[field] === lab && (!sex || x.sex === sex)).length;
+        const rows = extraOut ? [...labels, OUT_TABLE] : labels;
+        const W = (sex) => weighed.filter((x) => !sex || x.sex === sex).length;
+        const T = (sex) => list.filter((x) => !sex || x.sex === sex).length;
+        const pct = (a, b) => (b ? round2((a / b) * 100) : null);
+        rows.forEach((lab, j) => { const r = row0 + j; const ch = cnt(lab, 'ช'); const ci = cnt(lab, 'ญ');
+          put(`C${r}`, ch); put(`D${r}`, ci); put(`E${r}`, ch + ci); put(`F${r}`, pct(ch + ci, W())); });
+        const r1 = row0 + rows.length;
+        put(`C${r1}`, W('ช')); put(`D${r1}`, W('ญ')); put(`E${r1}`, W()); put(`G${r1}`, pct(W(), T()));
+        put(`C${r1 + 1}`, T('ช') - W('ช')); put(`D${r1 + 1}`, T('ญ') - W('ญ')); put(`E${r1 + 1}`, T() - W()); put(`G${r1 + 1}`, pct(T() - W(), T()));
+        put(`C${r1 + 2}`, T('ช')); put(`D${r1 + 2}`, T('ญ')); put(`E${r1 + 2}`, T()); put(`G${r1 + 2}`, T() ? 100 : null);
+      };
+      block(7, NUT_WA, 'wa', false); block(17, NUT_HA, 'ha', false); block(27, NUT_WH, 'wh', true);
+      put('A38', SIGN_LINE);
+    },
+  };
+  WRITERS[`สรุปโภชนาการ ${no}`] = {
+    noFill: true,
+    write(put, m) {
+      const d = m.d;
+      put('A2', sheetTitle(m)); put('A3', `${m.school} ${m.sch.area_office || ''}`.trim());
+      put('A4', `ภาคเรียนที่ ${d.term}      ครั้งที่ ${no}`); put('D4', birthText(d.rounds?.[k]));
+      const cols = [['A', 'wa', NUT_WA[4]], ['B', 'ha', NUT_HA[4]], ['C', 'wh', NUT_WH[0]], ['D', 'wh', NUT_WH[1]], ['E', 'wh', NUT_WH[5]]];
+      for (const [c, f, lab] of cols) {
+        d.students.filter((st) => both(nutOf(st, k)) && nutOf(st, k)[f] === lab).slice(0, 46).forEach((st, j) => put(`${c}${8 + j}`, nameOf(st)));
+      }
+      put('A54', SIGN_LINE);
+    },
+  };
+}
 export const FORM_SHEETS = Object.keys(WRITERS);
 // เฟส 1 ของชุด ปพ.5 ในตัว (เรียงตามลำดับที่โรงเรียนพิมพ์)
+export const PP5_NUTRITION = ['น้ำหนัก-ส่วนสูง', ...[1, 2, 3, 4].map((n) => `โภชนาการ ${n}`), ...[1, 2, 3, 4].map((n) => `ความชุก ${n}`), ...[1, 2, 3, 4].map((n) => `สรุปโภชนาการ ${n}`)];
 export const PP5_PHASE1 = ['ปก ปพ.5 รายชั้น', 'ชื่อนักเรียน', 'บิดามารดา', 'ผู้ปกครอง', ...ATT_MONTHS.map((x) => x[0]), 'เวลา รวม 1', 'เวลา รวม 2'];
 // ชุดที่พิมพ์ของภาคเรียนนั้น (ตัดเดือน/เวลารวมของอีกภาคออก)
 export function pp5Set(term) {
-  return PP5_PHASE1.filter((n) => {
+  // ลำดับเดียวกับชุดที่โรงเรียนพิมพ์: ปก · รายชื่อ · บิดามารดา · ผู้ปกครอง · เวลาเรียนรายเดือน · สรุปเวลา · น้ำหนัก-ส่วนสูง · โภชนาการ · ความชุก · สรุปโภชนาการ
+  return [...PP5_PHASE1, ...PP5_NUTRITION].filter((n) => {
     const i = ATT_MONTHS.findIndex((x) => x[0] === n); if (i >= 0) return Math.floor(i / 6) + 1 === term;
     const w = /^เวลา รวม (\d)$/.exec(n); return w ? Number(w[1]) === term : true;
   });
@@ -292,9 +380,19 @@ export class Forms {
     for (const r of sh.rows.values()) if (r.style !== null && r.style !== undefined) r.style = clean(r.style);
     this.stripped.add(sheet);
   }
+  // ตัวอักษรสีดำทั้งแผ่น (แบบพิมพ์ใช้สีแดง/น้ำเงินช่วยตอนกรอก แต่ใบที่พิมพ์ของโรงเรียนเป็นสีดำ)
+  blackText(sheet) {
+    const sh = this.wb.sheet(sheet); if (!sh || (this.blacked ||= new Set()).has(sheet)) return;
+    const st = this.wb.styles; const xfs = st.cellXfs; const fcache = new Map(); const xcache = new Map();
+    const blackFont = (fid) => { if (!fcache.has(fid)) { st.fonts.push({ ...(st.fonts[fid] || {}), color: { hex: '000000' } }); fcache.set(fid, st.fonts.length - 1); } return fcache.get(fid); };
+    const clean = (s) => { const xf = xfs[s]; if (!xf) return s; if (!xcache.has(s)) { xfs.push({ ...xf, fontId: blackFont(xf.fontId ?? 0) }); xcache.set(s, xfs.length - 1); } return xcache.get(s); };
+    for (const c of sh.cells.values()) if (c.s !== undefined && c.s !== null) c.s = clean(c.s);
+    this.blacked.add(sheet);
+  }
   fill(sheet, m, i = 0) {
     const w = WRITERS[sheet]; if (!w) return false;
     if (w.noFill) this.stripFills(sheet);
+    if (w.black) this.blackText(sheet);
     this.reset(sheet);
     w.write((ref, v) => this.put(sheet, ref, v), m, i);
     return true;

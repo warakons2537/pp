@@ -55,7 +55,7 @@ console.log('pp-forms: ผ่านทั้งหมด');
 // ---------- ปพ.5 ในตัว เฟส 1 ----------
 {
   const { pp5Set, PP5_PHASE1, citizenText, birthText } = await import('../js/pp-forms.js');
-  assert.deepEqual(pp5Set(1).filter((n) => /^(พ|มิ|ก|ส|ต|ธ|ม|เม|เวลา)/.test(n)), ['พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'เวลา รวม 1']);
+  assert.deepEqual(pp5Set(1).filter((n) => /^[ก-๙]+\.|^เวลา/.test(n)), ['พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'เวลา รวม 1']);
   assert.ok(pp5Set(2).includes('ธ.ค.') && pp5Set(2).includes('เวลา รวม 2') && !pp5Set(2).includes('พ.ค.'));
   assert.equal(citizenText('1648900175699'), '1 6489 00175 69 9');
   assert.equal(birthText('2013-06-14'), 'วันศุกร์ที่ 14 มิถุนายน 2556');
@@ -94,4 +94,52 @@ console.log('pp-forms: ผ่านทั้งหมด');
   }
   F5.fill('พ.ค.', m5);                                       // กรอกซ้ำต้องล้างค่าเดิม
   assert.equal(val('พ.ค.', 'T4'), 1);
+}
+
+// ---------- ปพ.5 ในตัว เฟส 2: น้ำหนัก-ส่วนสูง / โภชนาการ ----------
+{
+  const { PP5_NUTRITION, pp5Set } = await import('../js/pp-forms.js');
+  const { makeRef, WA, HA, WH } = await import('../js/assess.js');
+  assert.equal(pp5Set(1).at(-1), 'สรุปโภชนาการ 4'); assert.ok(pp5Set(1).indexOf('เวลา รวม 1') < pp5Set(1).indexOf('น้ำหนัก-ส่วนสูง'));
+  const nut = (weight, height, months, wa, ha, wh) => ({ date: '2026-05-18', months, weight, height, wa, ha, wh });
+  const mk = (n, g, first, nuts) => ({ no: n, s: { id: 'n' + n, prefix: g === 'ช' ? 'เด็กชาย' : 'เด็กหญิง', first_name: first, last_name: 'ข', student_code: String(n), gender: g },
+    citizen: null, birth: '2013-06-14', occ: [], fam: {}, trait8: [], rtw: [], values12: [], comp5: [], acts: [], att: {}, nut: nuts });
+  const none = nut(null, null, 155, null, null, null);
+  const sts = [
+    mk(1, 'ช', 'อ้วนจัง', [nut(81, 168, 155, WA[0], HA[0], WH[0]), none, none, none]),
+    mk(2, 'ญ', 'ปกติ', [nut(40, 150, 144, WA[2], HA[2], WH[3]), none, none, none]),
+    mk(3, 'ช', 'ผอมจัง', [nut(30, 144, 150, WA[4], HA[3], WH[5]), none, none, none]),
+    mk(4, 'ญ', 'ไม่มาชั่ง', [none, none, none, none]),
+    mk(5, 'ช', 'สูงเกิน', [nut(98, 184, 155, WA[0], HA[0], 'เกินตารางอ้างอิง'), none, none, none]),
+  ];
+  const d6 = { ...d, subjects: [], room: 1, rounds: ['2026-05-18', null, null, null], students: sts, counts: { start: { 'ช': 3, 'ญ': 2 }, left: { 'ช': 0, 'ญ': 0 }, joined: { 'ช': 0, 'ญ': 0 }, end: { 'ช': 3, 'ญ': 2 } } };
+  const m6 = classModel(d6);
+  const F6 = await Forms.open(new Uint8Array(fs.readFileSync(new URL('../pp/forms.xlsx', import.meta.url))));
+  const v6 = (sh, ref) => { const mm = /^([A-Z]+)(\d+)$/.exec(ref); const c = [...mm[1]].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0); return F6.eng.value(sh, +mm[2], c); };
+  for (const n of PP5_NUTRITION) { assert.ok(F6.wb.sheetNames.includes(n), `แบบพิมพ์ไม่มีแผ่น ${n}`); assert.ok(F6.fill(n, m6), n); }
+  // น้ำหนัก-ส่วนสูง
+  assert.equal(v6('น้ำหนัก-ส่วนสูง', 'C6'), '18/5/69'); assert.equal(v6('น้ำหนัก-ส่วนสูง', 'D6'), '18/5/69'); assert.equal(v6('น้ำหนัก-ส่วนสูง', 'E6'), null);
+  assert.equal(v6('น้ำหนัก-ส่วนสูง', 'C7'), 81); assert.equal(v6('น้ำหนัก-ส่วนสูง', 'D7'), 168);
+  assert.equal(v6('น้ำหนัก-ส่วนสูง', 'C52'), 62.25); assert.equal(v6('น้ำหนัก-ส่วนสูง', 'D52'), 161.5);   // เฉลี่ยเฉพาะคนที่มีค่า
+  assert.equal(v6('น้ำหนัก-ส่วนสูง', 'E52'), null);
+  // โภชนาการ 1
+  assert.equal(v6('โภชนาการ 1', 'C8'), 'ชาย'); assert.equal(v6('โภชนาการ 1', 'D8'), 12); assert.equal(v6('โภชนาการ 1', 'E8'), 11); assert.equal(v6('โภชนาการ 1', 'I8'), WA[0]);
+  assert.equal(v6('โภชนาการ 1', 'E9'), '-');              // 144 เดือน = 12 ปีเต็ม → เดือนแสดง -
+  assert.equal(v6('โภชนาการ 1', 'K12'), 'เกินฐานข้อมูล'); assert.equal(v6('โภชนาการ 1', 'I11'), null);
+  assert.equal(v6('โภชนาการ 1', 'J3'), 'วันจันทร์ที่ 18 พฤษภาคม 2569');
+  // ความชุก 1: ชั่งแล้ว 4 คน (ช 3 ญ 1) ไม่ครบ 1 คน (ญ)
+  assert.equal(v6('ความชุก 1', 'C7'), 2); assert.equal(v6('ความชุก 1', 'E7'), 2); assert.equal(v6('ความชุก 1', 'F7'), 50);
+  assert.equal(v6('ความชุก 1', 'E11'), 1);                 // น้ำหนักน้อยกว่าเกณฑ์
+  assert.equal(v6('ความชุก 1', 'C12'), 3); assert.equal(v6('ความชุก 1', 'D12'), 1); assert.equal(v6('ความชุก 1', 'E12'), 4); assert.equal(v6('ความชุก 1', 'G12'), 80);
+  assert.equal(v6('ความชุก 1', 'E13'), 1); assert.equal(v6('ความชุก 1', 'G13'), 20); assert.equal(v6('ความชุก 1', 'E14'), 5); assert.equal(v6('ความชุก 1', 'G14'), 100);
+  assert.equal(v6('ความชุก 1', 'E27'), 1); assert.equal(v6('ความชุก 1', 'E30'), 1); assert.equal(v6('ความชุก 1', 'E32'), 1);   // อ้วน · สมส่วน · ผอม
+  assert.equal(v6('ความชุก 1', 'E33'), 1);                 // ส่วนสูงเกินฐานข้อมูล
+  assert.equal(v6('ความชุก 1', 'E34'), 4);
+  { const sh = F6.wb.sheet('ความชุก 1'); const st = F6.wb.styles;
+    assert.ok([...sh.cells.values()].every((c) => !c.s || (st.fonts[st.cellXfs[c.s].fontId]?.color?.hex || '000000') === '000000'), 'ความชุก: ตัวอักษรต้องเป็นสีดำ'); }
+  assert.equal(v6('ความชุก 2', 'E12'), 0);                 // ครั้งที่ 2 ไม่มีข้อมูลเลย
+  // สรุปรายชื่อนักเรียนที่มีปัญหา
+  assert.equal(v6('สรุปโภชนาการ 1', 'A8'), 'เด็กชายผอมจัง ข'); assert.equal(v6('สรุปโภชนาการ 1', 'C8'), 'เด็กชายอ้วนจัง ข'); assert.equal(v6('สรุปโภชนาการ 1', 'E8'), 'เด็กชายผอมจัง ข');
+  assert.equal(v6('สรุปโภชนาการ 1', 'B8'), null);          // ค่อนข้างเตี้ย ไม่ใช่ "เตี้ย"
+  assert.equal(v6('สรุปโภชนาการ 2', 'A8'), null);
 }
