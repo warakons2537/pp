@@ -344,7 +344,7 @@ const fmtNum = (x) => (isNum(x) ? round2(x) : null);
 for (let n = 1; n <= 20; n++) {
   const compact = n >= SUBJECT_COMPACT_FROM;
   WRITERS[`วิชาที่ ${n}`] = {
-    noFill: true, black: true,
+    noFill: true, black: true, area: '$A$1:$CO$56',
     write(put, m) {
       const d = m.d; const sub = d.subjects[n - 1]; const cm = m.subjects[n - 1]; if (!sub) return;
       const mid = Number(sub.mid ?? 70); const fin = Number(sub.fin ?? 30);
@@ -562,6 +562,11 @@ export class Forms {
     for (const r of sh.rows.values()) if (r.style !== null && r.style !== undefined) r.style = clean(r.style);
     this.stripped.add(sheet);
   }
+  // กำหนดพื้นที่พิมพ์ให้แผ่นที่ไฟล์แบบพิมพ์ไม่ได้กำหนดไว้ (เช่น วิชาที่ 8 ทำให้ได้หน้าว่างเกิน)
+  ensurePrintArea(sheet, ref) {
+    const idx = this.wb.sheetNames.indexOf(sheet); if (idx < 0 || this.wb.printInfo(sheet).areas.length) return;
+    this.wb.names.push({ name: '_xlnm.Print_Area', sheet: idx, ref: `'${sheet}'!${ref}` });
+  }
   // ซ่อนคอลัมน์ [c1..c2] (เลขคอลัมน์) — ใช้กับส่วนที่ใบที่โรงเรียนพิมพ์ไม่แสดง (เช่น ค่านิยม 12 ประการในแผ่นสมรรถนะ)
   hideCols(sheet, c1, c2) {
     const sh = this.wb.sheet(sheet); if (!sh || (this.hidden ||= new Set()).has(`${sheet}|${c1}|${c2}`)) return;
@@ -587,6 +592,7 @@ export class Forms {
     const w = WRITERS[sheet]; if (!w) return false;
     if (w.noFill) this.stripFills(sheet);
     if (w.hide) for (const [a, b] of w.hide) this.hideCols(sheet, a, b);
+    if (w.area) this.ensurePrintArea(sheet, w.area);
     if (w.black) this.blackText(sheet);
     this.reset(sheet);
     w.write((ref, v) => this.put(sheet, ref, v), m, i);

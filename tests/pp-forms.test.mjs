@@ -229,3 +229,18 @@ console.log('pp-forms: ผ่านทั้งหมด');
   assert.equal(v8(P, 'W8'), 1); assert.equal(v8(P, 'X8'), 33.33); assert.equal(v8(P, 'O8'), 1); assert.equal(v8(P, 'I8'), 1); assert.equal(v8(P, 'J8'), 33.33); assert.equal(v8(P, 'E8'), 0);
   assert.equal(v8(P, 'H35'), '(ผอ. ทดสอบ)'); assert.equal(v8(P, 'P31'), '(วิชาการ ทดสอบ)');
 }
+
+// ---------- ชุด ปพ.5 ครบทั้งหมด: 44 แผ่น 86 หน้า (เท่ากับใบตัวอย่างของโรงเรียนที่มี 14 วิชา) ----------
+{
+  const { pp5Set, pp5Layout } = await import('../js/pp-forms.js');
+  const { Renderer } = await import('../js/xl-render.js');
+  const N = 14;
+  const st = (i) => ({ no: i + 1, s: { id: 'x' + i, prefix: 'เด็กชาย', first_name: 'ก' + i, last_name: 'ข', student_code: String(i), gender: 'ช' }, citizen: null, birth: '2013-01-01', occ: [], fam: {}, att: {}, nut: [0, 1, 2, 3].map(() => ({})), trait8: [3], rtw: [1], values12: [], comp5: [2], acts: [true, true, true, true] });
+  const subj = (k) => ({ code: 'ว' + k, name: 'วิชา' + k, credits: 1, mid: 70, fin: 30, indicators: ['ก'], items: [{ title: 'ก', max: 10 }], rows: Array.from({ length: N }, () => ({ ind: ['ผ'], scores: [5], final: 10, special: null, calc: { mid: 35, final: 10, total: 45, grade: 0, indPass: 1, indFail: 0, indicator: 'ผ' } })) });
+  const dd = { level: 'มัธยมศึกษาปีที่ 1', term: 1, year: 2569, room: 1, approveDate: null, homeroom: [], rounds: ['2026-05-18', '2026-06-16', '2026-07-16', '2026-08-16'], school: {}, counts: {}, students: Array.from({ length: N }, (_, i) => st(i)), subjects: Array.from({ length: 14 }, (_, k) => subj(k)) };
+  const mm = classModel(dd); const FF = await Forms.open(new Uint8Array(fs.readFileSync(new URL('../pp/forms.xlsx', import.meta.url))));
+  const rs = new Map(); let total = 0; const names = pp5Set(1, 14); const per = {};
+  for (const n of names) { assert.ok(FF.fill(n, mm), n); const { dpi, opt } = pp5Layout(n); if (!rs.has(dpi)) rs.set(dpi, new Renderer(FF.wb, FF.eng, { dpi })); per[n] = rs.get(dpi).renderSheet(n, opt).length; total += per[n]; }
+  assert.equal(names.length, 44); assert.equal(total, 86, JSON.stringify(per));
+  assert.equal(per['วิชาที่ 8'], 5, 'วิชาที่ 8 ต้องไม่มีหน้าว่างเกิน'); assert.equal(per['วิชาที่ 11'], 1); assert.equal(per['คะแนนรายชั้น'], 2); assert.equal(per['เกรดร้อยละ'], 1);
+}
