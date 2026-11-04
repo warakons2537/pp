@@ -1,6 +1,7 @@
 // ทดสอบชุดมาตรฐานและการตรวจก่อนพิมพ์ของเล่ม ปพ.: node tests/pp-book.test.mjs
 import assert from 'node:assert/strict';
-import { defaultBook, bookChecks, MONTHS } from '../js/pp-book.js';
+import { defaultBook, bookChecks, fillBook, MONTHS } from '../js/pp-book.js';
+import { scoreColIndex } from '../js/score-columns.js';
 
 const names = ['ข้อมูลพื้นฐาน', 'ปก ปพ.5 รายชั้น', 'ปก ปพ.5 รายวิชา', 'ชื่อนักเรียน', ...MONTHS.map((m) => m[0]), 'เวลา รวม 1', 'เวลา รวม 2', 'น้ำหนัก-ส่วนสูง',
   'โภชนาการ 1', 'โภชนาการ 2', 'วิชาที่ 1', 'วิชาที่ 2', 'วิชาที่ 3', 'คุณลักษณะอันพึงประสงค์', 'สมรรถนะ', 'กิจกรรมพัฒนาผู้เรียน', 'เกรดร้อยละ', 'ปพ.6'];
@@ -40,5 +41,19 @@ assert.equal(bookChecks(d, ['ปก ปพ.5 รายชั้น'], ['ปก �
   assert.match(r1, /ชื่อบิดา\/มารดา: 1 คน/); assert.match(r1, /ผู้ปกครอง: 1 คน/); assert.match(r1, /ที่อยู่ปัจจุบัน: 1 คน/); assert.match(r1, /เมนู "นักเรียน" → แก้ไข/);
   const r2 = w({ ...dd, school: { school_name: 'ร.ร.' }, homeroom: [], approveDate: null }, ['ปก ปพ.5 รายชั้น']);
   assert.match(r2, /ชื่อผู้อำนวยการ/); assert.match(r2, /ครูประจำชั้น/); assert.match(r2, /วันที่อนุมัติผลการเรียน/);
+}
+// เล่ม ปพ.: ช่องคะแนนเริ่มที่ BZ (คอลัมน์ 78) เหมือนใบที่โรงเรียนพิมพ์ · ชิ้นที่ 13+ ต่อไปที่ AP
+{
+  assert.equal(scoreColIndex(0), 78); assert.equal(scoreColIndex(11), 89); assert.equal(scoreColIndex(12), 42); assert.equal(scoreColIndex(13), 43);
+  const writes = new Map();
+  const t = { sheet: () => true, readText: () => null, existing: () => [], write: (name, edits) => { writes.set(name, edits); return { written: edits.size, skipped: [] }; } };
+  const items = Array.from({ length: 14 }, (_, k) => ({ title: `งาน ${k + 1}`, max: 10 }));
+  const dd = { level: 'ม.1', levelShort: 'ม.1', room: 1, term: 1, year: 2569, school: {}, students: [{ no: 1, s: { first_name: 'ก' }, raw: {}, occ: [], trait8: [], rtw: [], values12: [], comp5: [], acts: [], health: [], att: {} }], warnings: [], rounds: [],
+    subjects: [{ code: 'ท', name: 'ไทย', credits: 1, mid: 70, fin: 30, group: '', teachers: [], indicators: [], items, rows: [{ ind: [], scores: items.map((_, k) => k + 1), final: null, special: null }] }] };
+  fillBook(t, dd);
+  const e = writes.get('วิชาที่ 1');
+  const val = (ref) => e.get(ref)?.v;
+  assert.equal(val('BZ5'), 'งาน 1'); assert.equal(val('BZ6'), 10); assert.equal(val('BZ7'), 1); assert.equal(val('CK7'), 12);   // ชิ้นที่ 1–12 = BZ–CK
+  assert.equal(val('AP7'), 13); assert.equal(val('AQ7'), 14);                                                                      // ชิ้นที่ 13–14 = AP–AQ
 }
 console.log('pp-book: ผ่านทั้งหมด');

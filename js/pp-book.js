@@ -4,13 +4,14 @@
 //  → หน้าตา สูตร และการแบ่งหน้าเหมือนต้นฉบับทุกหน้า
 //  ไม่แตะเซลล์ที่ไฟล์ต้นฉบับล็อกไว้ (เช่น ชื่อโรงเรียนที่ผู้พัฒนาโปรแกรมล็อก)
 // =====================================================================
-import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-20';
-import { levelName } from './util.js?v=2569.11.1-20';
-import { getRoster, loadGrowthRef, termRange } from './data.js?v=2569.11.1-20';
-import { ageMonths, classify } from './assess.js?v=2569.11.1-20';
-import { occupationOf, personName, addressShort } from './student-family.js?v=2569.11.1-20';
-import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-20';
-import { enrollmentCounts } from './yeardata.js?v=2569.11.1-20';
+import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-21';
+import { levelName } from './util.js?v=2569.11.1-21';
+import { getRoster, loadGrowthRef, termRange } from './data.js?v=2569.11.1-21';
+import { ageMonths, classify } from './assess.js?v=2569.11.1-21';
+import { scoreColIndex } from './score-columns.js?v=2569.11.1-21';
+import { occupationOf, personName, addressShort } from './student-family.js?v=2569.11.1-21';
+import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-21';
+import { enrollmentCounts } from './yeardata.js?v=2569.11.1-21';
 
 export const MONTHS = [['พ.ค.', 5], ['มิ.ย.', 6], ['ก.ค.', 7], ['ส.ค.', 8], ['ก.ย.', 9], ['ต.ค.', 10], ['พ.ย.', 11], ['ธ.ค.', 12], ['ม.ค.', 1], ['ก.พ.', 2], ['มี.ค.', 3], ['เม.ย.', 4]];
 export const SUBJECT_ROWS = [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];   // แถวในแผ่น "รายวิชา" ของวิชาที่ 1–20
@@ -136,6 +137,7 @@ export async function buildBookData(ctx, room) {
     const fin = data.items.filter((i) => i.kind === 'final');
     if (inds.length > 36) warnings.push(`${k.subject?.name}: ตัวชี้วัดเกิน 36 ช่อง ใส่ได้เฉพาะ 36 ช่องแรก`);
     if (sc.length > 48) warnings.push(`${k.subject?.name}: ช่องคะแนนเกิน 48 ช่อง ใส่ได้เฉพาะ 48 ช่องแรก`);
+    else if (sc.length > 12 && subjects.length >= 10) warnings.push(`${k.subject?.name}: วิชาลำดับที่ 11 ขึ้นไปในใบ ปพ.5 แสดงช่องคะแนนได้ 12 ช่อง (มี ${sc.length} ช่อง) ช่องที่เกินจะไม่ขึ้นในใบ`);
     subjects.push({
       code: k.subject?.code ?? '', name: k.subject?.name ?? '', credits: k.subject?.credits ?? (k.subject?.hours_per_year ? k.subject.hours_per_year / 40 : null),
       group: k.subject?.subject_group ?? '', teachers: k.teachers.map((t) => t.full_name).filter(Boolean),
@@ -318,11 +320,11 @@ export function fillBook(t, d) {
     if (s) {
       m.set('CI3', v(s.mid)); m.set('CK3', v(s.fin));
       s.indicators.forEach((code, k) => m.set(`${colName(3 + k)}5`, v(code)));
-      s.items.forEach((it, k) => { m.set(`${colName(colNum('AP') + k)}5`, v(it.title)); m.set(`${colName(colNum('AP') + k)}6`, v(it.max)); });
+      s.items.forEach((it, k) => { m.set(`${colName(scoreColIndex(k))}5`, v(it.title)); m.set(`${colName(scoreColIndex(k))}6`, v(it.max)); });
       s.rows.forEach((row, i) => {
         const r = 7 + i;
         row.ind.forEach((x, k) => { if (x) m.set(`${colName(3 + k)}${r}`, v(x)); });
-        row.scores.forEach((x, k) => { if (x !== null) m.set(`${colName(colNum('AP') + k)}${r}`, v(x)); });
+        row.scores.forEach((x, k) => { if (x !== null) m.set(`${colName(scoreColIndex(k))}${r}`, v(x)); });
         if (row.final !== null && row.final !== undefined) m.set(`CM${r}`, v(row.final));
         if (row.special) m.set(`CO${r}`, v(row.special));
       });

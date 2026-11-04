@@ -5,10 +5,11 @@
 //  - แอปคำนวณทุกช่องเองจากข้อมูลในระบบ (buildBookData) แล้วใส่ลงช่องของแบบพิมพ์
 //    กติกาการคำนวณตรงกับไฟล์โปรแกรม ปพ.5-6 เดิมของโรงเรียน (ตรวจด้วย tests/pp-forms.test.mjs)
 // =====================================================================
-import { Workbook, key } from './xl-model.js?v=2569.11.1-20';
-import { Engine } from './xl-formula.js?v=2569.11.1-20';
-import { levelName, thaiDate } from './util.js?v=2569.11.1-20';
-import { toGrade } from './grading.js?v=2569.11.1-20';
+import { Workbook, key } from './xl-model.js?v=2569.11.1-21';
+import { Engine } from './xl-formula.js?v=2569.11.1-21';
+import { levelName, thaiDate } from './util.js?v=2569.11.1-21';
+import { toGrade } from './grading.js?v=2569.11.1-21';
+import { scoreColIndex } from './score-columns.js?v=2569.11.1-21';
 
 export const FORMS_URL = new URL('../pp/forms.xlsx', import.meta.url).href;
 let formsBytes = null;
@@ -351,7 +352,7 @@ for (let n = 1; n <= 20; n++) {
       const t1 = `ผลการประเมินมาตรฐาน/ตัวชี้วัด ${sheetTitle(m)}`; const t1s = `ผลสัมฤทธิ์ทางการเรียน ${m.levelLine}`;
       const t2 = `รายวิชา ${sub.code || ''} ${sub.name || ''}`.trim(); const ratio = 'อัตราส่วนคะแนน ระหว่างภาค : ปลายภาค  = ';
       // ช่องคะแนนเริ่มที่ BZ (คอลัมน์ 78) ทั้งแผ่นเต็มและแบบย่อ — ตามชุดตัวอย่างของโรงเรียน (หน้า 3–4 ของแผ่นเต็มว่าง) · ชิ้นที่ 13+ ต่อไปที่ AP…
-      const scoreCol = (k) => colLetters(k < 12 ? 78 + k : 42 + (k - 12));
+      const scoreCol = (k) => colLetters(scoreColIndex(k));
       const maxItems = compact ? 12 : 48; const maxInd = compact ? 0 : 36;
       // หัวกระดาษของแต่ละหน้า (แผ่นเต็มมี 5 หน้า: ตัวชี้วัด 2 · คะแนน 3)
       if (!compact) {
