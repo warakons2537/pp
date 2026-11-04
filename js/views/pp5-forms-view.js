@@ -2,16 +2,17 @@
 //  พิมพ์ ปพ.5 ด้วยแบบพิมพ์ในตัว (ไม่ต้องอัปโหลดไฟล์ต้นฉบับ)
 //  หน้าตาเหมือนชุด ปพ.5 ที่โรงเรียนพิมพ์ · แอปใส่ข้อมูลลงแบบพิมพ์ pp/forms.xlsx เอง
 //  เฟส 1: ปก ปพ.5 รายชั้น · รายชื่อ · บิดามารดา · ผู้ปกครอง · เวลาเรียนรายเดือน · สรุปเวลาเรียน
+//  เฟส 2: น้ำหนัก-ส่วนสูง · ผลประเมินภาวะโภชนาการ · อัตราความชุก · สรุปรายชื่อนักเรียนที่มีปัญหา
 // =====================================================================
-import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-14';
-import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-14';
-import { Forms, classModel, loadFormsBytes, pp5Set } from '../pp-forms.js?v=2569.11.1-14';
-import { Renderer } from '../xl-render.js?v=2569.11.1-14';
-import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-14';
-import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-14';
+import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-15';
+import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-15';
+import { Forms, classModel, loadFormsBytes, pp5Set } from '../pp-forms.js?v=2569.11.1-15';
+import { Renderer } from '../xl-render.js?v=2569.11.1-15';
+import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-15';
+import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-15';
 
 const ZOOM = { 0.32: 'เล็ก', 0.5: 'กลาง', 0.8: 'ใหญ่' };
-const pref = { zoom: 0.32, off: new Set() };      // off = แผ่นที่ติ๊กออก (จำไว้ระหว่างเปลี่ยนห้อง/ภาค)
+const pref = { zoom: 0.32, off: new Set(), init: null };      // off = แผ่นที่ติ๊กออก (จำไว้ระหว่างเปลี่ยนห้อง/ภาค)
 const fileName = (room, term) => `ปพ.5 ${roomName(room)} ภาค${term.term}-${term.academic_year}`.replace(/[^0-9A-Za-zก-๙ ._()-]+/g, '-');
 
 export async function pp5FormsView(paper, ctx, room) {
@@ -31,9 +32,14 @@ export async function pp5FormsView(paper, ctx, room) {
     }
   } catch (err) { console.error(err); paper.innerHTML = `<div class="empty">เตรียมแบบพิมพ์ไม่สำเร็จ: ${esc(err.message)}</div>`; toast(err.message, 'err'); return; }
 
+  // เปิดห้อง/ภาคนี้ครั้งแรก: ติ๊กออกแผ่นโภชนาการของครั้งที่ยังไม่ได้ชั่งน้ำหนัก-วัดส่วนสูง (ติ๊กกลับเองได้)
+  const emptyRound = new Set();
+  [0, 1, 2, 3].forEach((k) => { if (!data.rounds?.[k]) for (const n of [`โภชนาการ ${k + 1}`, `ความชุก ${k + 1}`, `สรุปโภชนาการ ${k + 1}`]) emptyRound.add(n); });
+  const initKey = `${room.id}|${ctx.term.id}`;
+  if (pref.init !== initKey) { pref.init = initKey; pref.off = new Set(emptyRound); }
   ensureCss();
   const on = () => groups.filter((g) => !pref.off.has(g.n));
-  const issuesNow = () => bookChecks(data, on().map((g) => g.n), sheets, term);
+  const issuesNow = () => bookChecks(data, on().map((g) => g.n), sheets.filter((n) => !emptyRound.has(n)), term);
   const warnHtml = (issues) => (issues.length
     ? `<div class="small" style="margin:6px 0;padding:8px 10px;border:1px solid var(--amber,#b7791f);border-radius:8px"><b>⚠ ตรวจก่อนพิมพ์ — พบ ${issues.length} ข้อ</b><ul style="margin:4px 0 0;padding-left:20px">${issues.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul></div>`
     : '<p class="small" style="margin:4px 0">✓ ตรวจแล้ว: ไม่พบหน้าที่ขาดหรือข้อมูลที่ยังไม่ได้ลง</p>');
@@ -48,7 +54,7 @@ export async function pp5FormsView(paper, ctx, room) {
           <label class="field">ขนาด<select id="p5-zoom">${Object.entries(ZOOM).map(([v, l]) => `<option value="${v}" ${+v === z ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
           <button class="btn btn-primary" id="p5-print" ${total ? '' : 'disabled'}>พิมพ์ / บันทึกเป็น PDF (${total} หน้า)</button></div>
       </div>
-      <div class="no-print"><p class="small muted" style="margin:0">เฟส 1 · หน้าตาตามชุด ปพ.5 ที่โรงเรียนพิมพ์ · ติ๊กออกเพื่อไม่พิมพ์แผ่นนั้น · กระดาษ A4</p>
+      <div class="no-print"><p class="small muted" style="margin:0">หน้าตาตามชุด ปพ.5 ที่โรงเรียนพิมพ์ (เฟส 1–2: ปก ทะเบียน เวลาเรียน น้ำหนัก-ส่วนสูง โภชนาการ) · ติ๊กออกเพื่อไม่พิมพ์แผ่นนั้น · กระดาษ A4</p>
         <div class="row" style="flex-wrap:wrap;gap:4px 14px;margin:4px 0">${groups.map((g) => `<label class="small" style="display:flex;gap:4px;align-items:center"><input type="checkbox" data-n="${esc(g.n)}" ${pref.off.has(g.n) ? '' : 'checked'}>${esc(g.n)}</label>`).join('')}</div>
         <div>${warnHtml(issuesNow())}</div></div>
       <div class="pv-grid" style="justify-content:flex-start">${list.map((g) => g.pages.map((p, i) => `

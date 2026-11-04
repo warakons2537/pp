@@ -4,11 +4,12 @@
 //  → หน้าตา สูตร และการแบ่งหน้าเหมือนต้นฉบับทุกหน้า
 //  ไม่แตะเซลล์ที่ไฟล์ต้นฉบับล็อกไว้ (เช่น ชื่อโรงเรียนที่ผู้พัฒนาโปรแกรมล็อก)
 // =====================================================================
-import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-14';
-import { levelName } from './util.js?v=2569.11.1-14';
-import { getRoster } from './data.js?v=2569.11.1-14';
-import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-14';
-import { enrollmentCounts } from './yeardata.js?v=2569.11.1-14';
+import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-15';
+import { levelName } from './util.js?v=2569.11.1-15';
+import { getRoster, loadGrowthRef } from './data.js?v=2569.11.1-15';
+import { ageMonths, classify } from './assess.js?v=2569.11.1-15';
+import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-15';
+import { enrollmentCounts } from './yeardata.js?v=2569.11.1-15';
 
 export const MONTHS = [['พ.ค.', 5], ['มิ.ย.', 6], ['ก.ค.', 7], ['ส.ค.', 8], ['ก.ย.', 9], ['ต.ค.', 10], ['พ.ย.', 11], ['ธ.ค.', 12], ['ม.ค.', 1], ['ก.พ.', 2], ['มี.ค.', 3], ['เม.ย.', 4]];
 export const SUBJECT_ROWS = [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];   // แถวในแผ่น "รายวิชา" ของวิชาที่ 1–20
@@ -150,6 +151,11 @@ export async function buildBookData(ctx, room) {
     return { date, by: Object.fromEntries(rows.map((h) => [h.student_id, h])) };
   });
 
+  // ตารางอ้างอิงโภชนาการ (กรมอนามัย) สำหรับแปลผลในแบบพิมพ์ ปพ.5 ในตัว
+  let growthRef = null;
+  try { growthRef = await loadGrowthRef(db, ctx.settings.growth_ref_set || 'excel'); } catch { /* ไม่มีสิทธิ์/ยังไม่ได้โหลด */ }
+  if ((!growthRef || !growthRef.size) && hm.length) warnings.push('ยังไม่ได้โหลดตารางโภชนาการ (ตั้งค่าระบบ → ตารางโภชนาการ) หน้าภาวะโภชนาการ/ความชุกจะไม่มีผลแปล');
+
   const tv = (sid, kind, n) => traits.find((t) => t.student_id === sid && t.kind === kind && t.item_no === n)?.score ?? null;
   const act = (sid, a) => acts.find((x) => x.student_id === sid && x.activity === a);
   const students = roster.map((s, i) => {
@@ -172,6 +178,12 @@ export async function buildBookData(ctx, room) {
       acts: ['guidance', 'scout', 'club', 'social'].map((a) => act(s.id, a)?.passed ?? null),
       club: act(s.id, 'club')?.club_name || null,
       health: rounds.map((r) => r.by[s.id] || null),
+      // อายุ + ผลแปลภาวะโภชนาการแต่ละครั้ง (วันที่ชั่งของครั้งนั้น)
+      nut: rounds.map((r) => {
+        const h = r.by[s.id]; const weight = h?.weight_kg == null ? null : Number(h.weight_kg); const height = h?.height_cm == null ? null : Number(h.height_cm);
+        const months = ageMonths(p.birth_date, r.date);
+        return { date: r.date, months, weight, height, ...classify(growthRef, { sex: s.gender, months, weight, height }) };
+      }),
       att: Object.fromEntries(att.filter((a) => a.student_id === s.id).map((a) => [a.date, ATT[a.status] ?? null])),
     };
   });
