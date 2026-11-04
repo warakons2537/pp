@@ -3,8 +3,8 @@
 //  เซลล์ สูตร (รวมสูตรร่วม/อาร์เรย์) รูปแบบ ความกว้างคอลัมน์ ความสูงแถว ผสานเซลล์
 //  พื้นที่พิมพ์ หัวตารางซ้ำ ตัวแบ่งหน้า การตั้งค่าหน้ากระดาษ รูปภาพ/รูปร่าง การจัดรูปแบบตามเงื่อนไข
 // =====================================================================
-import { readZip, shiftFormula } from './xlsx-template.js?v=2569.11.1-13';
-import { XErr, ERR, MAXCOL, colNum, textToNumber } from './xl-formula.js?v=2569.11.1-13';
+import { readZip, shiftFormula } from './xlsx-template.js?v=2569.11.1-14';
+import { XErr, ERR, MAXCOL, colNum, textToNumber } from './xl-formula.js?v=2569.11.1-14';
 
 const td = new TextDecoder();
 const unesc = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
@@ -309,7 +309,9 @@ function parseSheet(wb, meta) {
   while ((rm = rowRe.exec(data))) {
     const ra = `<row ${rm[1]}>`;
     rowNo = num(attr(ra, 'r'), rowNo + 1);
-    const ht = num(attr(ra, 'ht'), null); const hidden = bool(attr(ra, 'hidden'));
+    let ht = num(attr(ra, 'ht'), null); const hidden = bool(attr(ra, 'hidden'));
+    // zeroHeight = แถวซ่อนโดยปริยาย แต่แถวที่เขียนไว้ในไฟล์และไม่ได้สั่งซ่อนจะแสดงที่ความสูงปริยาย (ECMA-376 §18.3.1.81)
+    if (sh.zeroHeight && ht === null && !hidden) ht = sh.defaultRowHeight;
     const s = attr(ra, 's'); const cf = bool(attr(ra, 'customFormat'));
     if (ht !== null || hidden || (cf && s !== null)) sh.rows.set(rowNo, { ht, hidden, style: cf && s !== null ? +s : null, custom: bool(attr(ra, 'customHeight')) });
     const body = rm[3] || '';
