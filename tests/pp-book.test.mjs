@@ -27,7 +27,7 @@ assert.match(r, /เวลาเรียนเดือน มิ\.ย\./); ass
 assert.match(r, /ครั้งที่ 2/); assert.doesNotMatch(r, /ครั้งที่ 1,/);
 assert.match(r, /วิชา คณิต ยังไม่ได้ลงคะแนน\/ตัวชี้วัดเลย/); assert.doesNotMatch(r, /วิชา ไทย/);
 assert.match(r, /วิชาที่ 3/, 'วิชาที่ไม่มีในห้อง');
-assert.match(r, /คุณลักษณะ.*ยังไม่ได้ลงเลย/); assert.doesNotMatch(r, /ค่านิยม\/สมรรถนะ/, 'สมรรถนะมีข้อมูลแล้ว');
+assert.match(r, /ยังไม่ได้ลงคุณลักษณะ.*เลย/); assert.doesNotMatch(r, /ค่านิยม\/สมรรถนะ/, 'สมรรถนะมีข้อมูลแล้ว');
 assert.equal(bookChecks({ ...d, students: [] }, sel, t1, 1)[0].level, 'err');
 assert.equal(bookChecks(d, ['ปก ปพ.5 รายชั้น'], ['ปก ปพ.5 รายชั้น'], 1).length, 0, 'ครบและไม่มีอะไรผิดปกติ');
 console.log('pp-book: ผ่านทั้งหมด');
