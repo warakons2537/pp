@@ -5,10 +5,10 @@
 //  - แอปคำนวณทุกช่องเองจากข้อมูลในระบบ (buildBookData) แล้วใส่ลงช่องของแบบพิมพ์
 //    กติกาการคำนวณตรงกับไฟล์โปรแกรม ปพ.5-6 เดิมของโรงเรียน (ตรวจด้วย tests/pp-forms.test.mjs)
 // =====================================================================
-import { Workbook, key } from './xl-model.js?v=2569.11.1-15';
-import { Engine } from './xl-formula.js?v=2569.11.1-15';
-import { levelName, thaiDate } from './util.js?v=2569.11.1-15';
-import { toGrade } from './grading.js?v=2569.11.1-15';
+import { Workbook, key } from './xl-model.js?v=2569.11.1-16';
+import { Engine } from './xl-formula.js?v=2569.11.1-16';
+import { levelName, thaiDate } from './util.js?v=2569.11.1-16';
+import { toGrade } from './grading.js?v=2569.11.1-16';
 
 export const FORMS_URL = new URL('../pp/forms.xlsx', import.meta.url).href;
 let formsBytes = null;
@@ -332,14 +332,81 @@ for (let k = 0; k < 4; k++) {
     },
   };
 }
+
+// ---------------------------------------------------------------------
+//  เฟส 3: แผ่นรายวิชา "วิชาที่ n" — ผลประเมินตัวชี้วัด + คะแนนระหว่างเรียน/สอบปลายภาค/เกรด
+//  วิชาที่ 1–10: เต็มแผ่น (ตัวชี้วัด C–AL · คะแนน AP–CK) พิมพ์ตามตัวแบ่งหน้าเดิม 5 หน้า
+//  วิชาที่ 11–20: แบบย่อ (ซ่อนช่องตัวชี้วัด) ช่องคะแนนอยู่ที่ BZ–CK (12 ช่อง) พิมพ์หน้าเดียว
+// ---------------------------------------------------------------------
+export const SUBJECT_COMPACT_FROM = 11;
+const colNumOf = (name) => [...name].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0);
+const fmtNum = (x) => (isNum(x) ? round2(x) : null);
+for (let n = 1; n <= 20; n++) {
+  const compact = n >= SUBJECT_COMPACT_FROM;
+  WRITERS[`วิชาที่ ${n}`] = {
+    noFill: true, black: true,
+    write(put, m) {
+      const d = m.d; const sub = d.subjects[n - 1]; const cm = m.subjects[n - 1]; if (!sub) return;
+      const mid = Number(sub.mid ?? 70); const fin = Number(sub.fin ?? 30);
+      const t1 = `ผลการประเมินมาตรฐาน/ตัวชี้วัด ${sheetTitle(m)}`; const t1s = `ผลสัมฤทธิ์ทางการเรียน ${m.levelLine}`;
+      const t2 = `รายวิชา ${sub.code || ''} ${sub.name || ''}`.trim(); const ratio = 'อัตราส่วนคะแนน ระหว่างภาค : ปลายภาค  = ';
+      // ช่องคะแนนเริ่มที่ BZ (คอลัมน์ 78) ทั้งแผ่นเต็มและแบบย่อ — ตามชุดตัวอย่างของโรงเรียน (หน้า 3–4 ของแผ่นเต็มว่าง) · ชิ้นที่ 13+ ต่อไปที่ AP…
+      const scoreCol = (k) => colLetters(k < 12 ? 78 + k : 42 + (k - 12));
+      const maxItems = compact ? 12 : 48; const maxInd = compact ? 0 : 36;
+      // หัวกระดาษของแต่ละหน้า (แผ่นเต็มมี 5 หน้า: ตัวชี้วัด 2 · คะแนน 3)
+      if (!compact) {
+        put('C1', t1); put('C2', t2); put('C3', 'กรอก ผ = ผ่าน        มผ = ไม่ผ่าน'); put('C4', 'การประเมินมาตรฐาน/ตัวชี้วัด');
+        put('W1', t1); put('W2', t2);
+        put('AP1', t1s); put('AP2', t2); put('AP3', ratio); put('AZ3', mid); put('BB3', fin); put('AP4', 'คะแนนระหว่างเรียน');
+        put('BH1', t1s); put('BH2', t2); put('BH3', ratio); put('BR3', mid); put('BT3', fin); put('BH4', 'คะแนนระหว่างเรียน');
+        put('C56', SIGN_LINE); put('W56', SIGN_LINE); put('AP56', SIGN_LINE); put('BH56', SIGN_LINE);
+      }
+      put('BZ1', t1s); put('BZ2', t2); put('CI3', mid); put('CK3', fin); put('BZ56', SIGN_LINE);
+      put('A52', 'รวม/ผ่านตัวชี้วัด'); put('A53', 'เฉลี่ย/ไม่ผ่านตัวชี้วัด'); put('A54', 'ร้อยละ/ร้อยละผ่านตัวชี้วัด');
+      // หัวคอลัมน์
+      sub.indicators.slice(0, maxInd).forEach((code, k) => put(`${colLetters(3 + k)}5`, code));
+      sub.items.slice(0, maxItems).forEach((it, k) => { put(`${scoreCol(k)}5`, it.title); put(`${scoreCol(k)}6`, it.max); });
+      put('CL6', mid); put('CM6', fin); put('CN6', 100);
+      // รายคน
+      const nInd = Math.min(sub.indicators.length, maxInd); const nItem = Math.min(sub.items.length, maxItems);
+      const rows = sub.rows.slice(0, 45);
+      rows.forEach((row, i) => {
+        const r = 7 + i; const st = d.students[i]; const c = row.calc || {}; const g = cm.rows[i];
+        put(`A${r}`, st.no); put(`B${r}`, nameOf(st));
+        if (nInd) {
+          row.ind.slice(0, nInd).forEach((x, k) => put(`${colLetters(3 + k)}${r}`, x || null));
+          put(`AM${r}`, c.indPass ?? 0); put(`AN${r}`, c.indFail ?? 0); put(`AO${r}`, c.indicator || null);
+        }
+        row.scores.slice(0, nItem).forEach((x, k) => put(`${scoreCol(k)}${r}`, x));
+        put(`CL${r}`, c.mid ?? null); put(`CM${r}`, row.final ?? null); put(`CN${r}`, g.total); put(`CO${r}`, g.grade);
+      });
+      // สรุปท้ายตาราง: รวม · เฉลี่ย · ร้อยละ
+      const col = (k) => rows.map((row) => row.scores[k]).filter(isNum);
+      for (let k = 0; k < nItem; k++) {
+        const v = col(k); const cl = scoreCol(k); const mx = Number(sub.items[k].max);
+        if (!v.length) continue;
+        const a = sum(v) / v.length; put(`${cl}52`, round2(sum(v))); put(`${cl}53`, round2(a)); put(`${cl}54`, mx ? round2((a / mx) * 100) : null);
+      }
+      for (let k = 0; k < nInd; k++) {
+        const v = rows.map((row) => row.ind[k]).filter(Boolean); const cl = colLetters(3 + k);
+        const ok = v.filter((x) => x === 'ผ').length; put(`${cl}52`, ok); put(`${cl}53`, v.length - ok); put(`${cl}54`, v.length ? round2((ok / v.length) * 100) : null);
+      }
+      if (nInd) { const v = rows.map((row) => row.calc?.indicator).filter(Boolean); const ok = v.filter((x) => x === 'ผ').length; put('AO52', ok); put('AO53', v.length - ok); put('AO54', v.length ? round2((ok / v.length) * 100) : null); }
+      const tot = (key, get, ratio100) => { const v = rows.map((row, i) => get(row, i)).filter(isNum); if (!v.length) return; const a = sum(v) / v.length;
+        put(`${key}52`, round2(sum(v))); put(`${key}53`, round2(a)); put(`${key}54`, ratio100 ? round2((a / ratio100) * 100) : null); };
+      tot('CL', (row) => row.calc?.mid, mid); tot('CM', (row) => row.final, fin); tot('CN', (row, i) => cm.rows[i].total, 100);
+    },
+  };
+}
 export const FORM_SHEETS = Object.keys(WRITERS);
 // เฟส 1 ของชุด ปพ.5 ในตัว (เรียงตามลำดับที่โรงเรียนพิมพ์)
 export const PP5_NUTRITION = ['น้ำหนัก-ส่วนสูง', ...[1, 2, 3, 4].map((n) => `โภชนาการ ${n}`), ...[1, 2, 3, 4].map((n) => `ความชุก ${n}`), ...[1, 2, 3, 4].map((n) => `สรุปโภชนาการ ${n}`)];
 export const PP5_PHASE1 = ['ปก ปพ.5 รายชั้น', 'ชื่อนักเรียน', 'บิดามารดา', 'ผู้ปกครอง', ...ATT_MONTHS.map((x) => x[0]), 'เวลา รวม 1', 'เวลา รวม 2'];
 // ชุดที่พิมพ์ของภาคเรียนนั้น (ตัดเดือน/เวลารวมของอีกภาคออก)
-export function pp5Set(term) {
-  // ลำดับเดียวกับชุดที่โรงเรียนพิมพ์: ปก · รายชื่อ · บิดามารดา · ผู้ปกครอง · เวลาเรียนรายเดือน · สรุปเวลา · น้ำหนัก-ส่วนสูง · โภชนาการ · ความชุก · สรุปโภชนาการ
-  return [...PP5_PHASE1, ...PP5_NUTRITION].filter((n) => {
+export function pp5Set(term, subjectCount = 0) {
+  // ลำดับเดียวกับชุดที่โรงเรียนพิมพ์: ปก · รายชื่อ · บิดามารดา · ผู้ปกครอง · เวลาเรียนรายเดือน · สรุปเวลา · น้ำหนัก-ส่วนสูง · โภชนาการ · ความชุก · สรุปโภชนาการ · วิชาที่ 1…n
+  const subjects = Array.from({ length: Math.min(subjectCount, 20) }, (_, k) => `วิชาที่ ${k + 1}`);
+  return [...PP5_PHASE1, ...PP5_NUTRITION, ...subjects].filter((n) => {
     const i = ATT_MONTHS.findIndex((x) => x[0] === n); if (i >= 0) return Math.floor(i / 6) + 1 === term;
     const w = /^เวลา รวม (\d)$/.exec(n); return w ? Number(w[1]) === term : true;
   });

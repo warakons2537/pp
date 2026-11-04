@@ -4,12 +4,12 @@
 //  → หน้าตา สูตร และการแบ่งหน้าเหมือนต้นฉบับทุกหน้า
 //  ไม่แตะเซลล์ที่ไฟล์ต้นฉบับล็อกไว้ (เช่น ชื่อโรงเรียนที่ผู้พัฒนาโปรแกรมล็อก)
 // =====================================================================
-import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-15';
-import { levelName } from './util.js?v=2569.11.1-15';
-import { getRoster, loadGrowthRef } from './data.js?v=2569.11.1-15';
-import { ageMonths, classify } from './assess.js?v=2569.11.1-15';
-import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-15';
-import { enrollmentCounts } from './yeardata.js?v=2569.11.1-15';
+import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-16';
+import { levelName } from './util.js?v=2569.11.1-16';
+import { getRoster, loadGrowthRef } from './data.js?v=2569.11.1-16';
+import { ageMonths, classify } from './assess.js?v=2569.11.1-16';
+import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-16';
+import { enrollmentCounts } from './yeardata.js?v=2569.11.1-16';
 
 export const MONTHS = [['พ.ค.', 5], ['มิ.ย.', 6], ['ก.ค.', 7], ['ส.ค.', 8], ['ก.ย.', 9], ['ต.ค.', 10], ['พ.ย.', 11], ['ธ.ค.', 12], ['ม.ค.', 1], ['ก.พ.', 2], ['มี.ค.', 3], ['เม.ย.', 4]];
 export const SUBJECT_ROWS = [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];   // แถวในแผ่น "รายวิชา" ของวิชาที่ 1–20
@@ -137,7 +137,7 @@ export async function buildBookData(ctx, room) {
           scores: sc.slice(0, 48).map((i) => { const v = data.scoreMap.get(`${i.id}|${s.id}`)?.score; return v === null || v === undefined ? null : Number(v); }),
           final: fin.some((i) => data.scoreMap.get(`${i.id}|${s.id}`)?.score != null) ? x.final : null,
           special: res.special || (x.grade === 'มส' ? 'มส' : null),
-          calc: { mid: x.mid ?? null, final: x.final ?? null, total: x.total ?? null, grade: x.grade ?? null },   // ผลที่แอปคำนวณ (แบบฟอร์มในตัว)
+          calc: { mid: x.mid ?? null, final: x.final ?? null, total: x.total ?? null, grade: x.grade ?? null, indPass: x.indPass ?? 0, indFail: x.indFail ?? 0, indicator: x.indicator ?? null },   // ผลที่แอปคำนวณ (แบบฟอร์มในตัว)
         };
       }),
     });

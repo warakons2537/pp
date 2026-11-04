@@ -143,3 +143,42 @@ console.log('pp-forms: ผ่านทั้งหมด');
   assert.equal(v6('สรุปโภชนาการ 1', 'B8'), null);          // ค่อนข้างเตี้ย ไม่ใช่ "เตี้ย"
   assert.equal(v6('สรุปโภชนาการ 2', 'A8'), null);
 }
+
+// ---------- ปพ.5 ในตัว เฟส 3: แผ่นรายวิชา ----------
+{
+  const { pp5Set, SUBJECT_COMPACT_FROM } = await import('../js/pp-forms.js');
+  assert.deepEqual(pp5Set(1, 3).slice(-3), ['วิชาที่ 1', 'วิชาที่ 2', 'วิชาที่ 3']); assert.ok(!pp5Set(1, 0).includes('วิชาที่ 1'));
+  assert.equal(SUBJECT_COMPACT_FROM, 11);
+  const stu3 = (n) => ({ no: n, s: { id: 's' + n, prefix: 'เด็กชาย', first_name: 'ก' + n, last_name: 'ข', student_code: String(n), gender: 'ช' }, citizen: null, birth: null, occ: [], fam: {}, trait8: [], rtw: [], values12: [], comp5: [], acts: [], att: {}, nut: [] });
+  const row = (ind, scores, final, mid, tot, grade, special = null) => ({ ind, scores, final, special, calc: { mid, final: final ?? 0, total: tot, grade, indPass: ind.filter((x) => x === 'ผ').length, indFail: ind.filter((x) => x === 'มผ').length, indicator: ind.includes('มผ') ? 'มผ' : ind.length ? 'ผ' : null } });
+  const subj = { code: 'ท21101', name: 'ภาษาไทย', credits: 1.5, mid: 70, fin: 30, indicators: ['ท 1.1 ม.1/1', 'ท 1.1 ม.1/2'], items: [{ title: 'ชิ้นที่ 1', max: 10 }, { title: 'ชิ้นที่ 2', max: 20 }],
+    rows: [row(['ผ', 'ผ'], [8, 10], 20, 42, 62, 2), row(['ผ', 'มผ'], [6, null], null, 21, 21, 0), row([], [null, null], null, 0, 0, 0)] };
+  const compact = { ...subj, code: 'ส21231', name: 'การป้องกันการทุจริต', indicators: [] };
+  const d7 = { ...d, subjects: [subj, ...Array.from({ length: 9 }, () => subj), compact], room: 1, students: [stu3(1), stu3(2), stu3(3)], counts: {} };
+  const m7 = classModel(d7);
+  const F7 = await Forms.open(new Uint8Array(fs.readFileSync(new URL('../pp/forms.xlsx', import.meta.url))));
+  const v7 = (sh, ref) => { const mm = /^([A-Z]+)(\d+)$/.exec(ref); const c = [...mm[1]].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0); return F7.eng.value(sh, +mm[2], c); };
+  assert.ok(F7.fill('วิชาที่ 1', m7)); assert.ok(F7.fill('วิชาที่ 11', m7));
+  const S1 = 'วิชาที่ 1';
+  assert.equal(v7(S1, 'C2'), 'รายวิชา ท21101 ภาษาไทย'); assert.equal(v7(S1, 'C1'), 'ผลการประเมินมาตรฐาน/ตัวชี้วัด ชั้นมัธยมศึกษาปีที่ 1 ปีการศึกษา 2569');
+  assert.equal(v7(S1, 'BZ1'), 'ผลสัมฤทธิ์ทางการเรียน ชั้นมัธยมศึกษาปีที่ 1 ภาคเรียนที่ 1 ปีการศึกษา 2569');
+  assert.equal(v7(S1, 'CI3'), 70); assert.equal(v7(S1, 'CK3'), 30); assert.equal(v7(S1, 'AZ3'), 70); assert.equal(v7(S1, 'BT3'), 30);
+  assert.equal(v7(S1, 'C5'), 'ท 1.1 ม.1/1'); assert.equal(v7(S1, 'D7'), 'ผ'); assert.equal(v7(S1, 'D8'), 'มผ');
+  assert.equal(v7(S1, 'AM7'), 2); assert.equal(v7(S1, 'AN8'), 1); assert.equal(v7(S1, 'AO8'), 'มผ');
+  assert.equal(v7(S1, 'BZ5'), 'ชิ้นที่ 1'); assert.equal(v7(S1, 'CA6'), 20); assert.equal(v7(S1, 'BZ7'), 8); assert.equal(v7(S1, 'AP7'), null);   // คะแนนอยู่ที่ BZ
+  assert.equal(v7(S1, 'CL7'), 42); assert.equal(v7(S1, 'CM7'), 20); assert.equal(v7(S1, 'CN7'), 62); assert.equal(v7(S1, 'CO7'), 2);
+  assert.equal(v7(S1, 'CM8'), null);                         // ไม่มีคะแนนสอบปลายภาค → ว่าง
+  assert.equal(v7(S1, 'CL6'), 70); assert.equal(v7(S1, 'CM6'), 30); assert.equal(v7(S1, 'CN6'), 100);
+  assert.equal(v7(S1, 'BZ52'), 14); assert.equal(v7(S1, 'BZ53'), 7); assert.equal(v7(S1, 'BZ54'), 70);   // รวม · เฉลี่ย · ร้อยละ ของคะแนนเต็ม 10
+  assert.equal(v7(S1, 'CL52'), 63); assert.equal(v7(S1, 'CL53'), 21); assert.equal(v7(S1, 'CL54'), 30);  // เฉลี่ยรวมทุกคน (0 นับด้วย)
+  assert.equal(v7(S1, 'CM53'), 20); assert.equal(v7(S1, 'CC52'), null);
+  assert.equal(v7(S1, 'C52'), 2); assert.equal(v7(S1, 'D52'), 1); assert.equal(v7(S1, 'D53'), 1); assert.equal(v7(S1, 'D54'), 50);
+  assert.equal(v7(S1, 'A52'), 'รวม/ผ่านตัวชี้วัด');
+  const C11 = 'วิชาที่ 11';
+  assert.equal(v7(C11, 'BZ2'), 'รายวิชา ส21231 การป้องกันการทุจริต'); assert.equal(v7(C11, 'BZ7'), 8); assert.equal(v7(C11, 'C5'), null); assert.equal(v7(C11, 'AM7'), null);
+  // แบบเต็มพิมพ์ 5 หน้าตามตัวแบ่งหน้าเดิม · แบบย่อ 1 หน้า
+  const { Renderer } = await import('../js/xl-render.js');
+  const RR = new Renderer(F7.wb, F7.eng, { dpi: 100 });
+  assert.equal(RR.paginate('วิชาที่ 1', { adj: { scale: 104 } }).pages.length, 5);
+  assert.equal(RR.paginate('วิชาที่ 11').pages.length, 1);
+}
