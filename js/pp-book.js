@@ -17,14 +17,70 @@ const MAX_STUDENTS = 45;
 const ATT = { present: 1, late: 1, sick: 'ป', leave: 'ล', absent: 'ข' };
 const NUMERIC_HEADERS = new Set(['ห้อง', 'รหัสนักเรียน', 'อายุ(ปี)', 'จำนวนพี่ชาย', 'จำนวนน้องชาย', 'จำนวนพี่สาว', 'จำนวนน้องสาว', 'เป็นบุตรคนที่', 'รหัสไปรษณีย์ (ทะเบียนบ้าน)']);
 
-// แผ่นงานเริ่มต้นของ "1 เล่ม": ตั้งแต่ปก ปพ.5 รายชั้น ถึงเกรดร้อยละ ตามลำดับแท็บ (ไม่รวมแผ่นที่ซ่อนและวิชาที่ไม่ได้ใช้)
-export function defaultBook(sheets, subjectCount = 20) {
+// แผ่นงานเริ่มต้นของ "1 เล่ม" = ชุดที่โรงเรียนพิมพ์เป็นหลัก: ตั้งแต่ปก ปพ.5 รายชั้น ถึงเกรดร้อยละ ตามลำดับแท็บ
+// (ไม่รวมแผ่นที่ซ่อน วิชาที่ไม่ได้ใช้ ปก ปพ.5 รายวิชา เวลาเรียนเดือน/เวลารวมของอีกภาคเรียน) · term = 1 | 2 (ไม่ระบุ = ทุกภาค)
+export function defaultBook(sheets, subjectCount = 20, { term = null } = {}) {
   const names = sheets.map((s) => s.name);
   const a = names.indexOf(BOOK_FIRST); const b = names.indexOf(BOOK_LAST);
   const slice = a >= 0 && b >= a ? sheets.slice(a, b + 1) : sheets;
+  const monthTerm = new Map(MONTHS.map(([n], i) => [n, i < 6 ? 1 : 2]));
   return slice.filter((s) => s.state === 'visible').filter((s) => {
-    const m = /^วิชาที่ (\d+)$/.exec(s.name); return !m || Number(m[1]) <= subjectCount;
+    const m = /^วิชาที่ (\d+)$/.exec(s.name); if (m) return Number(m[1]) <= subjectCount;
+    if (s.name === 'ปก ปพ.5 รายวิชา') return false;
+    if (term && monthTerm.has(s.name)) return monthTerm.get(s.name) === term;
+    const w = /^เวลา รวม (\d)$/.exec(s.name); if (term && w) return Number(w[1]) === term;
+    return true;
   }).map((s) => s.name);
+}
+
+// ---------------------------------------------------------------------
+//  ตรวจก่อนพิมพ์: หน้าที่หายจากชุดมาตรฐาน และหน้าที่ยังไม่ได้ลงข้อมูล
+//  d = ผลของ buildBookData · selected = แผ่นที่จะพิมพ์ · expected = ชุดมาตรฐานของห้อง/ภาคนี้
+//  → [{ level: 'err' | 'warn', text }]
+// ---------------------------------------------------------------------
+export function bookChecks(d, selected, expected = [], term = null) {
+  const out = []; const sel = new Set(selected);
+  const add = (level, text) => out.push({ level, text });
+  const list = (a, n = 6) => (a.length > n ? `${a.slice(0, n).join(', ')} และอีก ${a.length - n} รายการ` : a.join(', '));
+  if (!d.students.length) add('err', 'ห้องนี้ยังไม่มีนักเรียน หน้าที่พิมพ์จะว่างทั้งหมด');
+  const missing = expected.filter((n) => !sel.has(n));
+  if (missing.length) add('warn', `หน้าที่อยู่ในชุดมาตรฐานแต่ยังไม่ได้เลือกพิมพ์ (${missing.length} แผ่น): ${list(missing)}`);
+  const gy = d.year - 543;
+  const monthsEmpty = []; const roundsEmpty = new Set(); const extraSubj = [];
+  for (const n of selected) {
+    const mi = MONTHS.findIndex(([m]) => m === n);
+    if (mi >= 0 && (!term || (mi < 6 ? 1 : 2) === term)) {
+      const mo = MONTHS[mi][1]; const y = mo >= 5 ? gy : gy + 1; const pre = `${y}-${String(mo).padStart(2, '0')}-`;
+      if (!d.students.some((st) => Object.keys(st.att).some((k) => k.startsWith(pre)))) monthsEmpty.push(n);
+    }
+    const r = /^(?:โภชนาการ|ความชุก|สรุปโภชนาการ) (\d)$/.exec(n);
+    if (r && !d.rounds[Number(r[1]) - 1]) roundsEmpty.add(Number(r[1]));
+    const sm = /^วิชาที่ (\d+)$/.exec(n);
+    if (sm && Number(sm[1]) > d.subjects.length) extraSubj.push(n);
+  }
+  if (monthsEmpty.length) add('warn', `ยังไม่ได้ลงเวลาเรียนเดือน ${list(monthsEmpty)} (หน้าจะว่าง)`);
+  if (selected.includes('น้ำหนัก-ส่วนสูง') && !d.rounds.some(Boolean)) add('warn', 'ยังไม่ได้ลงน้ำหนัก-ส่วนสูงเลย (หน้าจะว่าง)');
+  if (roundsEmpty.size) add('warn', `ยังไม่ได้ชั่งน้ำหนัก-วัดส่วนสูงครั้งที่ ${[...roundsEmpty].sort().join(', ')} (หน้าโภชนาการ/ความชุกของครั้งนั้นจะว่าง)`);
+  if (extraSubj.length) add('warn', `เลือกแผ่นที่ห้องนี้ไม่มีรายวิชา (${list(extraSubj)}) หน้าจะว่าง · ห้องนี้มี ${d.subjects.length} วิชา`);
+  d.subjects.forEach((sub, i) => {
+    if (!sel.has(`วิชาที่ ${i + 1}`)) return;
+    const none = sub.rows.filter((r) => r.scores.every((x) => x === null) && r.ind.every((x) => !x) && (r.final === null || r.final === undefined)).length;
+    if (!sub.rows.length) return;
+    if (none === sub.rows.length) add('warn', `วิชา ${sub.name || i + 1} ยังไม่ได้ลงคะแนน/ตัวชี้วัดเลย`);
+    else if (none) add('warn', `วิชา ${sub.name || i + 1}: ${none} คนยังไม่ได้ลงคะแนน/ตัวชี้วัด`);
+  });
+  const lack = (name, field, label) => {
+    if (!sel.has(name) || !d.students.length) return;
+    const n = d.students.filter((st) => field(st).every((x) => x === null || x === undefined)).length;
+    if (n === d.students.length) add('warn', `ยังไม่ได้ลง${label}เลย (หน้าจะว่าง)`);
+    else if (n) add('warn', `${label}: ${n} คนยังไม่ได้ลง`);
+  };
+  lack('คุณลักษณะอันพึงประสงค์', (st) => [...st.trait8, ...st.rtw], 'คุณลักษณะอันพึงประสงค์/การอ่านคิดวิเคราะห์');
+  lack('สมรรถนะ', (st) => [...st.values12, ...st.comp5], 'ค่านิยม/สมรรถนะ');
+  lack('กิจกรรมพัฒนาผู้เรียน', (st) => st.acts, 'กิจกรรมพัฒนาผู้เรียน');
+  if (sel.has(BOOK_FIRST) && !d.school?.school_name) add('warn', 'ยังไม่ได้ตั้งชื่อโรงเรียนในตั้งค่าระบบ');
+  for (const w of d.warnings || []) add('warn', w);
+  return out;
 }
 
 // ---------------------------------------------------------------------
