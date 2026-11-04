@@ -5,10 +5,10 @@
 //  - แอปคำนวณทุกช่องเองจากข้อมูลในระบบ (buildBookData) แล้วใส่ลงช่องของแบบพิมพ์
 //    กติกาการคำนวณตรงกับไฟล์โปรแกรม ปพ.5-6 เดิมของโรงเรียน (ตรวจด้วย tests/pp-forms.test.mjs)
 // =====================================================================
-import { Workbook, key } from './xl-model.js?v=2569.11.1-16';
-import { Engine } from './xl-formula.js?v=2569.11.1-16';
-import { levelName, thaiDate } from './util.js?v=2569.11.1-16';
-import { toGrade } from './grading.js?v=2569.11.1-16';
+import { Workbook, key } from './xl-model.js?v=2569.11.1-17';
+import { Engine } from './xl-formula.js?v=2569.11.1-17';
+import { levelName, thaiDate } from './util.js?v=2569.11.1-17';
+import { toGrade } from './grading.js?v=2569.11.1-17';
 
 export const FORMS_URL = new URL('../pp/forms.xlsx', import.meta.url).href;
 let formsBytes = null;
@@ -344,7 +344,7 @@ const fmtNum = (x) => (isNum(x) ? round2(x) : null);
 for (let n = 1; n <= 20; n++) {
   const compact = n >= SUBJECT_COMPACT_FROM;
   WRITERS[`วิชาที่ ${n}`] = {
-    noFill: true, black: true,
+    noFill: true, black: true, area: '$A$1:$CO$56',
     write(put, m) {
       const d = m.d; const sub = d.subjects[n - 1]; const cm = m.subjects[n - 1]; if (!sub) return;
       const mid = Number(sub.mid ?? 70); const fin = Number(sub.fin ?? 30);
@@ -398,15 +398,130 @@ for (let n = 1; n <= 20; n++) {
     },
   };
 }
+
+// ---------------------------------------------------------------------
+//  เฟส 4: คุณลักษณะ · สมรรถนะ · กิจกรรม · คะแนนรายชั้น · เกรดรายชั้น · สรุปเกรดร้อยละ
+// ---------------------------------------------------------------------
+const slash = (v) => (v ? '/' : null);
+const LV4 = (put, row, firstCol, level) => { if (level === null || level === undefined) return; put(`${colLetters(firstCol + level)}${row}`, '/'); };
+const tally = (xs, lv) => xs.filter((x) => x === lv).length;
+// ตารางสรุป "คะแนนรายข้อ + ผลประเมิน (ทำเครื่องหมาย /)": ใช้กับคุณลักษณะ (2 ชุด) และสมรรถนะ
+const scoreBlock = (put, m, key, sumKey, c1, nCols, levelCol1) => {
+  const col = (k) => m.d.students.map((st) => st[key]?.[k]).filter(isNum);
+  m.d.students.slice(0, 45).forEach((st, i) => {
+    const r = 5 + i; (st[key] || []).slice(0, nCols).forEach((x, k) => { if (isNum(x)) put(`${colLetters(c1 + k)}${r}`, x); });
+    LV4(put, r, levelCol1, m.students[i][sumKey]);
+  });
+  for (let k = 0; k < nCols; k++) { const lv = summaryLevel(col(k)); if (lv !== null) put(`${colLetters(c1 + k)}51`, lv); }
+  for (let lv = 0; lv < 4; lv++) put(`${colLetters(levelCol1 + lv)}51`, tally(m.students.map((x) => x[sumKey]), lv));
+};
+WRITERS['คุณลักษณะอันพึงประสงค์'] = {
+  noFill: true, black: true,
+  write(put, m) {
+    put('B1', `สรุปการประเมินคุณลักษณะอันพึงประสงค์ - การอ่าน คิดวิเคราะห์ และเขียนสื่อความ ภาคเรียนที่ ${m.d.term} ปีการศึกษา ${m.d.year}`);
+    m.d.students.slice(0, 45).forEach((st, i) => put(`B${5 + i}`, st.no));
+    scoreBlock(put, m, 'trait8', 'trait', 3, 8, 13); scoreBlock(put, m, 'rtw', 'rtw', 17, 5, 22);
+    put('B56', SIGN_LINE);
+  },
+};
+WRITERS['สมรรถนะ'] = {
+  noFill: true, black: true, hide: [[3, 18]],      // ไม่พิมพ์ค่านิยม 12 ประการ (C–R)
+  write(put, m) {
+    put('B1', `สรุปการประเมินสมรรถนะสำคัญของผู้เรียน ${m.levelLine}`);
+    m.d.students.slice(0, 45).forEach((st, i) => put(`B${5 + i}`, st.no));
+    scoreBlock(put, m, 'comp5', 'comp', 19, 5, 24);
+    put('B56', SIGN_LINE);
+  },
+};
+WRITERS['กิจกรรมพัฒนาผู้เรียน'] = {
+  noFill: true, black: true,
+  write(put, m) {
+    put('B1', `สรุปการประเมินกิจกรรมพัฒนาผู้เรียน ${m.levelLine}`);
+    const cols = [['C', 'D'], ['E', 'F'], ['H', 'I'], ['J', 'K']];   // [ไม่ผ่าน, ผ่าน] ของ แนะแนว ลูกเสือ ชุมนุม สังคม
+    const st = m.d.students.slice(0, 45);
+    st.forEach((s, i) => { const r = 5 + i; put(`B${r}`, s.no);
+      cols.forEach(([f, p], k) => { const v = s.acts?.[k]; if (v === true) put(`${p}${r}`, '/'); else if (v === false) put(`${f}${r}`, '/'); });
+      if (s.club) put(`G${r}`, s.club); });
+    cols.forEach(([f, p], k) => {
+      const pass = st.filter((s) => s.acts?.[k] === true).length; const fail = st.filter((s) => s.acts?.[k] === false).length; const all = pass + fail;
+      put(`${f}50`, fail); put(`${p}50`, pass); put(`${f}51`, all ? round2((fail / all) * 100) : null); put(`${p}51`, all ? round2((pass / all) * 100) : null);
+    });
+    put('B56', SIGN_LINE);
+  },
+};
+// คะแนนรายชั้น / เกรดรายชั้น: 1 วิชา = 1 คอลัมน์ (C…V = วิชา 1–20)
+const classTitle = (put, m) => { const t1 = `ผลการพัฒนาคุณภาพผู้เรียน ระดับ${m.levelLine}`; const t2 = m.school; for (const c of ['C', 'P']) { put(`${c}1`, t1); put(`${c}2`, t2); } };
+WRITERS['คะแนนรายชั้น'] = {
+  noFill: true, black: true,
+  write(put, m) {
+    classTitle(put, m);
+    const subs = m.subjects.slice(0, 20); const credit = subs.filter((x) => x.hasCredit).length;
+    subs.forEach((x, k) => { const c = colLetters(3 + k); put(`${c}4`, x.name || null); if (x.hasCredit) put(`${c}5`, 100); });
+    put('W5', credit * 100 || null);
+    m.students.slice(0, 45).forEach((st, i) => { const r = 6 + i;
+      put(`A${r}`, st.no); put(`B${r}`, st.name);
+      subs.forEach((x, k) => put(`${colLetters(3 + k)}${r}`, x.rows[i]?.total ?? null));
+      const pct = st.sumTotal !== null && credit ? round2((st.sumTotal / (credit * 100)) * 100) : null;
+      put(`W${r}`, st.sumTotal); put(`X${r}`, pct); put(`Y${r}`, st.rankTotal); st.pct = pct;
+    });
+    const sums = (key, get, max) => { const v = m.students.map(get).filter(isNum); if (!v.length) return; const a = sum(v) / v.length;
+      put(`${key}51`, round2(sum(v))); put(`${key}52`, round2(a)); put(`${key}53`, max ? round2((a / max) * 100) : null); };
+    subs.forEach((x, k) => sums(colLetters(3 + k), (st) => x.rows[st.i]?.total, x.hasCredit ? 100 : 0));
+    sums('W', (st) => st.sumTotal, credit * 100); sums('X', (st) => st.pct, 100);
+    put('A56', SIGN_LINE);
+  },
+};
+WRITERS['เกรดรายชั้น'] = {
+  noFill: true, black: true,
+  write(put, m) {
+    classTitle(put, m);
+    const subs = m.subjects.slice(0, 20);
+    subs.forEach((x, k) => put(`${colLetters(3 + k)}4`, x.name || null));
+    m.students.slice(0, 45).forEach((st, i) => { const r = 6 + i;
+      put(`A${r}`, st.no); put(`B${r}`, st.name);
+      subs.forEach((x, k) => put(`${colLetters(3 + k)}${r}`, x.rows[i]?.grade ?? null));
+      put(`W${r}`, st.gpa); put(`X${r}`, st.rankGpa);
+    });
+    put('A56', SIGN_LINE);
+  },
+};
+// เกรดร้อยละ: จำนวนนักเรียนที่เข้าสอบและการกระจายระดับผลการเรียนรายวิชา
+const GRADE_ORDER = ['มส', 'ร', 0, 1, 1.5, 2, 2.5, 3, 3.5, 4];
+WRITERS['เกรดร้อยละ'] = {
+  noFill: true, black: true,
+  write(put, m) {
+    const d = m.d; const sch = m.sch;
+    put('A2', m.levelLine); put('A3', `${m.school} ${sch.area_office || ''}`.trim());
+    m.subjects.slice(0, 20).forEach((x, k) => {
+      const r = 8 + k; const graded = x.rows.map((row, i) => ({ g: row.grade, sex: sexOf(d.students[i]) })).filter((y) => y.g !== null && y.g !== undefined);
+      const ch = graded.filter((y) => y.sex === 'ช').length; const ci = graded.length - ch;
+      put(`A${r}`, `${x.code || ''} ${x.name || ''}`.trim()); put(`B${r}`, ch); put(`C${r}`, ci); put(`D${r}`, graded.length);
+      GRADE_ORDER.forEach((g, j) => { const n = graded.filter((y) => y.g === g).length; put(`${colLetters(5 + 2 * j)}${r}`, n); put(`${colLetters(6 + 2 * j)}${r}`, graded.length ? round2((n / graded.length) * 100) : 0); });
+    });
+    put('A31', m.homeroom ? `(${m.homeroom})` : null); put('P31', sch.academic_head_name ? `(${sch.academic_head_name})` : null);
+    put('H35', sch.director_name ? `(${sch.director_name})` : null); put('E36', sch.director_title || 'ผู้อำนวยการโรงเรียน');
+  },
+};
 export const FORM_SHEETS = Object.keys(WRITERS);
 // เฟส 1 ของชุด ปพ.5 ในตัว (เรียงตามลำดับที่โรงเรียนพิมพ์)
+// การจัดหน้าของแต่ละแผ่นให้ตรงกับใบตัวอย่างของโรงเรียน (ค่าที่วัดจากไฟล์ PDF ตัวอย่าง)
+//   dpi = ฐานคิดความกว้างคอลัมน์ · opt = ตัวเลือกจัดหน้า (orientation / adj.scale %)
+export function pp5Layout(name) {
+  const sn = /^วิชาที่ (\d+)$/.exec(name);
+  if (sn) return { dpi: 100, opt: Number(sn[1]) < SUBJECT_COMPACT_FROM ? { adj: { scale: 104 } } : {} };   // 1–10: 5 หน้าตามตัวแบ่งเดิม · 11+: แบบย่อ 1 หน้า
+  if (name === 'คะแนนรายชั้น') return { dpi: 100, opt: { orientation: 'portrait', adj: { scale: 100 } } };
+  if (name === 'เกรดรายชั้น') return { dpi: 100, opt: { orientation: 'portrait', adj: { scale: 108 } } };
+  if (name === 'เกรดร้อยละ') return { dpi: 120, opt: { adj: { scale: 84 } } };
+  return { dpi: 120, opt: {} };
+}
+export const PP5_TAIL = ['คุณลักษณะอันพึงประสงค์', 'สมรรถนะ', 'กิจกรรมพัฒนาผู้เรียน', 'คะแนนรายชั้น', 'เกรดรายชั้น', 'เกรดร้อยละ'];
 export const PP5_NUTRITION = ['น้ำหนัก-ส่วนสูง', ...[1, 2, 3, 4].map((n) => `โภชนาการ ${n}`), ...[1, 2, 3, 4].map((n) => `ความชุก ${n}`), ...[1, 2, 3, 4].map((n) => `สรุปโภชนาการ ${n}`)];
 export const PP5_PHASE1 = ['ปก ปพ.5 รายชั้น', 'ชื่อนักเรียน', 'บิดามารดา', 'ผู้ปกครอง', ...ATT_MONTHS.map((x) => x[0]), 'เวลา รวม 1', 'เวลา รวม 2'];
 // ชุดที่พิมพ์ของภาคเรียนนั้น (ตัดเดือน/เวลารวมของอีกภาคออก)
 export function pp5Set(term, subjectCount = 0) {
   // ลำดับเดียวกับชุดที่โรงเรียนพิมพ์: ปก · รายชื่อ · บิดามารดา · ผู้ปกครอง · เวลาเรียนรายเดือน · สรุปเวลา · น้ำหนัก-ส่วนสูง · โภชนาการ · ความชุก · สรุปโภชนาการ · วิชาที่ 1…n
   const subjects = Array.from({ length: Math.min(subjectCount, 20) }, (_, k) => `วิชาที่ ${k + 1}`);
-  return [...PP5_PHASE1, ...PP5_NUTRITION, ...subjects].filter((n) => {
+  return [...PP5_PHASE1, ...PP5_NUTRITION, ...subjects, ...PP5_TAIL].filter((n) => {
     const i = ATT_MONTHS.findIndex((x) => x[0] === n); if (i >= 0) return Math.floor(i / 6) + 1 === term;
     const w = /^เวลา รวม (\d)$/.exec(n); return w ? Number(w[1]) === term : true;
   });
@@ -447,6 +562,23 @@ export class Forms {
     for (const r of sh.rows.values()) if (r.style !== null && r.style !== undefined) r.style = clean(r.style);
     this.stripped.add(sheet);
   }
+  // กำหนดพื้นที่พิมพ์ให้แผ่นที่ไฟล์แบบพิมพ์ไม่ได้กำหนดไว้ (เช่น วิชาที่ 8 ทำให้ได้หน้าว่างเกิน)
+  ensurePrintArea(sheet, ref) {
+    const idx = this.wb.sheetNames.indexOf(sheet); if (idx < 0 || this.wb.printInfo(sheet).areas.length) return;
+    this.wb.names.push({ name: '_xlnm.Print_Area', sheet: idx, ref: `'${sheet}'!${ref}` });
+  }
+  // ซ่อนคอลัมน์ [c1..c2] (เลขคอลัมน์) — ใช้กับส่วนที่ใบที่โรงเรียนพิมพ์ไม่แสดง (เช่น ค่านิยม 12 ประการในแผ่นสมรรถนะ)
+  hideCols(sheet, c1, c2) {
+    const sh = this.wb.sheet(sheet); if (!sh || (this.hidden ||= new Set()).has(`${sheet}|${c1}|${c2}`)) return;
+    const out = [];
+    for (const c of sh.cols) {
+      if (c.max < c1 || c.min > c2) { out.push(c); continue; }
+      if (c.min < c1) out.push({ ...c, max: c1 - 1 });
+      out.push({ ...c, min: Math.max(c.min, c1), max: Math.min(c.max, c2), hidden: true });
+      if (c.max > c2) out.push({ ...c, min: c2 + 1 });
+    }
+    sh.cols = out.sort((a, b) => a.min - b.min); sh.geo = null; this.hidden.add(`${sheet}|${c1}|${c2}`);
+  }
   // ตัวอักษรสีดำทั้งแผ่น (แบบพิมพ์ใช้สีแดง/น้ำเงินช่วยตอนกรอก แต่ใบที่พิมพ์ของโรงเรียนเป็นสีดำ)
   blackText(sheet) {
     const sh = this.wb.sheet(sheet); if (!sh || (this.blacked ||= new Set()).has(sheet)) return;
@@ -459,6 +591,8 @@ export class Forms {
   fill(sheet, m, i = 0) {
     const w = WRITERS[sheet]; if (!w) return false;
     if (w.noFill) this.stripFills(sheet);
+    if (w.hide) for (const [a, b] of w.hide) this.hideCols(sheet, a, b);
+    if (w.area) this.ensurePrintArea(sheet, w.area);
     if (w.black) this.blackText(sheet);
     this.reset(sheet);
     w.write((ref, v) => this.put(sheet, ref, v), m, i);

@@ -100,7 +100,7 @@ console.log('pp-forms: ผ่านทั้งหมด');
 {
   const { PP5_NUTRITION, pp5Set } = await import('../js/pp-forms.js');
   const { makeRef, WA, HA, WH } = await import('../js/assess.js');
-  assert.equal(pp5Set(1).at(-1), 'สรุปโภชนาการ 4'); assert.ok(pp5Set(1).indexOf('เวลา รวม 1') < pp5Set(1).indexOf('น้ำหนัก-ส่วนสูง'));
+  assert.equal(pp5Set(1).at(-1), 'เกรดร้อยละ'); assert.equal(pp5Set(1).at(-7), 'สรุปโภชนาการ 4'); assert.ok(pp5Set(1).indexOf('เวลา รวม 1') < pp5Set(1).indexOf('น้ำหนัก-ส่วนสูง'));
   const nut = (weight, height, months, wa, ha, wh) => ({ date: '2026-05-18', months, weight, height, wa, ha, wh });
   const mk = (n, g, first, nuts) => ({ no: n, s: { id: 'n' + n, prefix: g === 'ช' ? 'เด็กชาย' : 'เด็กหญิง', first_name: first, last_name: 'ข', student_code: String(n), gender: g },
     citizen: null, birth: '2013-06-14', occ: [], fam: {}, trait8: [], rtw: [], values12: [], comp5: [], acts: [], att: {}, nut: nuts });
@@ -147,7 +147,7 @@ console.log('pp-forms: ผ่านทั้งหมด');
 // ---------- ปพ.5 ในตัว เฟส 3: แผ่นรายวิชา ----------
 {
   const { pp5Set, SUBJECT_COMPACT_FROM } = await import('../js/pp-forms.js');
-  assert.deepEqual(pp5Set(1, 3).slice(-3), ['วิชาที่ 1', 'วิชาที่ 2', 'วิชาที่ 3']); assert.ok(!pp5Set(1, 0).includes('วิชาที่ 1'));
+  assert.deepEqual(pp5Set(1, 3).slice(-9, -6), ['วิชาที่ 1', 'วิชาที่ 2', 'วิชาที่ 3']); assert.deepEqual(pp5Set(1, 3).slice(-6), ['คุณลักษณะอันพึงประสงค์', 'สมรรถนะ', 'กิจกรรมพัฒนาผู้เรียน', 'คะแนนรายชั้น', 'เกรดรายชั้น', 'เกรดร้อยละ']); assert.ok(!pp5Set(1, 0).includes('วิชาที่ 1'));
   assert.equal(SUBJECT_COMPACT_FROM, 11);
   const stu3 = (n) => ({ no: n, s: { id: 's' + n, prefix: 'เด็กชาย', first_name: 'ก' + n, last_name: 'ข', student_code: String(n), gender: 'ช' }, citizen: null, birth: null, occ: [], fam: {}, trait8: [], rtw: [], values12: [], comp5: [], acts: [], att: {}, nut: [] });
   const row = (ind, scores, final, mid, tot, grade, special = null) => ({ ind, scores, final, special, calc: { mid, final: final ?? 0, total: tot, grade, indPass: ind.filter((x) => x === 'ผ').length, indFail: ind.filter((x) => x === 'มผ').length, indicator: ind.includes('มผ') ? 'มผ' : ind.length ? 'ผ' : null } });
@@ -181,4 +181,66 @@ console.log('pp-forms: ผ่านทั้งหมด');
   const RR = new Renderer(F7.wb, F7.eng, { dpi: 100 });
   assert.equal(RR.paginate('วิชาที่ 1', { adj: { scale: 104 } }).pages.length, 5);
   assert.equal(RR.paginate('วิชาที่ 11').pages.length, 1);
+}
+
+// ---------- ปพ.5 ในตัว เฟส 4: คุณลักษณะ · สมรรถนะ · กิจกรรม · สรุปคะแนน/เกรด ----------
+{
+  const { PP5_TAIL, pp5Layout } = await import('../js/pp-forms.js');
+  const stu4 = (n, g, extra) => ({ no: n, s: { id: 'q' + n, prefix: g === 'ช' ? 'เด็กชาย' : 'เด็กหญิง', first_name: 'ก' + n, last_name: 'ข', student_code: String(n), gender: g }, citizen: null, birth: null, occ: [], fam: {}, att: {}, nut: [], values12: [], ...extra });
+  const sts4 = [
+    stu4(1, 'ช', { trait8: [3, 3, 2, 3, 3, 3, 3, 3], rtw: [1, 1, 1, 1, 1], comp5: [2, 2, 2, 2, 3], acts: [true, true, true, false], club: 'นาฏศิลป์' }),
+    stu4(2, 'ญ', { trait8: [1, 1, 1, 1, 1, 1, 1, 1], rtw: [0, 0, 0, 0, 0], comp5: [3, 3, 3, 3, 3], acts: [true, true, true, true], club: 'ดนตรี' }),
+    stu4(3, 'ญ', { trait8: [null, null, null, null, null, null, null, null], rtw: [null, null, null, null, null], comp5: [null, null, null, null, null], acts: [null, null, null, null], club: null }),
+  ];
+  const sub4 = (code, name, totals, grades) => ({ code, name, credits: 1, mid: 70, fin: 30, indicators: [], items: [], rows: totals.map((t, i) => ({ ind: [], scores: [], final: null, special: null, calc: { mid: t, final: 0, total: t, grade: grades[i] } })) });
+  const d8 = { ...d, subjects: [sub4('ท', 'ภาษาไทย', [80, 60, 0], [4, 2, 0]), sub4('ค', 'คณิต', [70, 50, 40], [3, 1, 0])], students: sts4, room: 1, counts: {}, rounds: [], approveDate: null };
+  const m8 = classModel(d8);
+  const F8 = await Forms.open(new Uint8Array(fs.readFileSync(new URL('../pp/forms.xlsx', import.meta.url))));
+  const v8 = (sh, ref) => { const mm = /^([A-Z]+)(\d+)$/.exec(ref); const c = [...mm[1]].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0); return F8.eng.value(sh, +mm[2], c); };
+  for (const n of PP5_TAIL) { assert.ok(F8.wb.sheetNames.includes(n), n); assert.ok(F8.fill(n, m8), n); }
+  assert.equal(pp5Layout('คะแนนรายชั้น').opt.orientation, 'portrait'); assert.equal(pp5Layout('วิชาที่ 1').dpi, 100); assert.deepEqual(pp5Layout('วิชาที่ 12').opt, {});
+  // คุณลักษณะ: คะแนนรายข้อ + ทำเครื่องหมาย / ที่ผลประเมิน (ไม่ผ่าน ผ่าน ดี ดีเยี่ยม = M N O P) · ฐานนิยมท้ายตาราง
+  const T = 'คุณลักษณะอันพึงประสงค์';
+  assert.equal(v8(T, 'C5'), 3); assert.equal(v8(T, 'E5'), 2); assert.equal(v8(T, 'P5'), '/'); assert.equal(v8(T, 'N6'), '/');       // นักเรียน 1 ดีเยี่ยม · 2 ผ่าน
+  assert.equal(v8(T, 'C7'), null); assert.equal(v8(T, 'M7'), null);                                                                 // ยังไม่ได้ลง
+  assert.equal(v8(T, 'Q5'), 1); assert.equal(v8(T, 'W5'), '/'); assert.equal(v8(T, 'V6'), '/');                                     // อ่านคิดวิเคราะห์ 1 = ผ่าน · 0 = ไม่ผ่าน
+  assert.equal(v8(T, 'M51'), 0); assert.equal(v8(T, 'N51'), 1); assert.equal(v8(T, 'P51'), 1); assert.equal(v8(T, 'V51'), 1); assert.equal(v8(T, 'W51'), 1);
+  assert.match(v8(T, 'B1'), /ภาคเรียนที่ 1 ปีการศึกษา 2569$/);
+  // สมรรถนะ: ซ่อนค่านิยม (C–R) · คะแนน S–W · ผล X–AA
+  const C = 'สมรรถนะ';
+  assert.equal(v8(C, 'S5'), 2); assert.equal(v8(C, 'W5'), 3); assert.equal(v8(C, 'Z5'), '/'); assert.equal(v8(C, 'AA6'), '/'); assert.equal(v8(C, 'Z51'), 1); assert.equal(v8(C, 'AA51'), 1);
+  for (let c = 3; c <= 18; c++) assert.ok(F8.wb.sheet(C).cols.some((x) => x.hidden && x.min <= c && x.max >= c), `ซ่อนคอลัมน์ ${c}`);
+  assert.ok(!F8.wb.sheet(C).cols.some((x) => x.hidden && x.min <= 19 && x.max >= 19), 'S ต้องไม่ถูกซ่อน');
+  // กิจกรรม
+  const A = 'กิจกรรมพัฒนาผู้เรียน';
+  assert.equal(v8(A, 'D5'), '/'); assert.equal(v8(A, 'I5'), '/'); assert.equal(v8(A, 'J5'), '/'); assert.equal(v8(A, 'K5'), null); assert.equal(v8(A, 'G5'), 'นาฏศิลป์'); assert.equal(v8(A, 'D7'), null);
+  assert.equal(v8(A, 'D50'), 2); assert.equal(v8(A, 'C50'), 0); assert.equal(v8(A, 'D51'), 100); assert.equal(v8(A, 'J50'), 1); assert.equal(v8(A, 'J51'), 50);
+  // คะแนนรายชั้น: รวม 2 วิชา · ร้อยละ · อันดับ · แถวรวม/เฉลี่ย/เฉลี่ย%
+  const K = 'คะแนนรายชั้น';
+  assert.equal(v8(K, 'C4'), 'ภาษาไทย'); assert.equal(v8(K, 'C5'), 100); assert.equal(v8(K, 'W5'), 200); assert.equal(v8(K, 'C6'), 80); assert.equal(v8(K, 'D6'), 70);
+  assert.equal(v8(K, 'W6'), 150); assert.equal(v8(K, 'X6'), 75); assert.equal(v8(K, 'Y6'), 1); assert.equal(v8(K, 'Y8'), 3);
+  assert.equal(v8(K, 'C51'), 140); assert.equal(v8(K, 'C52'), 46.67); assert.equal(v8(K, 'C53'), 46.67); assert.equal(v8(K, 'W51'), 300); assert.equal(v8(K, 'W53'), 50);
+  // เกรดรายชั้น
+  const G = 'เกรดรายชั้น';
+  assert.equal(v8(G, 'C6'), 4); assert.equal(v8(G, 'D7'), 1); assert.equal(v8(G, 'W6'), 3.5); assert.equal(v8(G, 'X6'), 1);
+  // เกรดร้อยละ: จำนวนเข้าสอบและการกระจายเกรด
+  const P = 'เกรดร้อยละ';
+  assert.equal(v8(P, 'A8'), 'ท ภาษาไทย'); assert.equal(v8(P, 'B8'), 1); assert.equal(v8(P, 'C8'), 2); assert.equal(v8(P, 'D8'), 3);
+  assert.equal(v8(P, 'W8'), 1); assert.equal(v8(P, 'X8'), 33.33); assert.equal(v8(P, 'O8'), 1); assert.equal(v8(P, 'I8'), 1); assert.equal(v8(P, 'J8'), 33.33); assert.equal(v8(P, 'E8'), 0);
+  assert.equal(v8(P, 'H35'), '(ผอ. ทดสอบ)'); assert.equal(v8(P, 'P31'), '(วิชาการ ทดสอบ)');
+}
+
+// ---------- ชุด ปพ.5 ครบทั้งหมด: 44 แผ่น 86 หน้า (เท่ากับใบตัวอย่างของโรงเรียนที่มี 14 วิชา) ----------
+{
+  const { pp5Set, pp5Layout } = await import('../js/pp-forms.js');
+  const { Renderer } = await import('../js/xl-render.js');
+  const N = 14;
+  const st = (i) => ({ no: i + 1, s: { id: 'x' + i, prefix: 'เด็กชาย', first_name: 'ก' + i, last_name: 'ข', student_code: String(i), gender: 'ช' }, citizen: null, birth: '2013-01-01', occ: [], fam: {}, att: {}, nut: [0, 1, 2, 3].map(() => ({})), trait8: [3], rtw: [1], values12: [], comp5: [2], acts: [true, true, true, true] });
+  const subj = (k) => ({ code: 'ว' + k, name: 'วิชา' + k, credits: 1, mid: 70, fin: 30, indicators: ['ก'], items: [{ title: 'ก', max: 10 }], rows: Array.from({ length: N }, () => ({ ind: ['ผ'], scores: [5], final: 10, special: null, calc: { mid: 35, final: 10, total: 45, grade: 0, indPass: 1, indFail: 0, indicator: 'ผ' } })) });
+  const dd = { level: 'มัธยมศึกษาปีที่ 1', term: 1, year: 2569, room: 1, approveDate: null, homeroom: [], rounds: ['2026-05-18', '2026-06-16', '2026-07-16', '2026-08-16'], school: {}, counts: {}, students: Array.from({ length: N }, (_, i) => st(i)), subjects: Array.from({ length: 14 }, (_, k) => subj(k)) };
+  const mm = classModel(dd); const FF = await Forms.open(new Uint8Array(fs.readFileSync(new URL('../pp/forms.xlsx', import.meta.url))));
+  const rs = new Map(); let total = 0; const names = pp5Set(1, 14); const per = {};
+  for (const n of names) { assert.ok(FF.fill(n, mm), n); const { dpi, opt } = pp5Layout(n); if (!rs.has(dpi)) rs.set(dpi, new Renderer(FF.wb, FF.eng, { dpi })); per[n] = rs.get(dpi).renderSheet(n, opt).length; total += per[n]; }
+  assert.equal(names.length, 44); assert.equal(total, 86, JSON.stringify(per));
+  assert.equal(per['วิชาที่ 8'], 5, 'วิชาที่ 8 ต้องไม่มีหน้าว่างเกิน'); assert.equal(per['วิชาที่ 11'], 1); assert.equal(per['คะแนนรายชั้น'], 2); assert.equal(per['เกรดร้อยละ'], 1);
 }

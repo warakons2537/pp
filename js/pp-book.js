@@ -4,12 +4,12 @@
 //  → หน้าตา สูตร และการแบ่งหน้าเหมือนต้นฉบับทุกหน้า
 //  ไม่แตะเซลล์ที่ไฟล์ต้นฉบับล็อกไว้ (เช่น ชื่อโรงเรียนที่ผู้พัฒนาโปรแกรมล็อก)
 // =====================================================================
-import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-16';
-import { levelName } from './util.js?v=2569.11.1-16';
-import { getRoster, loadGrowthRef } from './data.js?v=2569.11.1-16';
-import { ageMonths, classify } from './assess.js?v=2569.11.1-16';
-import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-16';
-import { enrollmentCounts } from './yeardata.js?v=2569.11.1-16';
+import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-17';
+import { levelName } from './util.js?v=2569.11.1-17';
+import { getRoster, loadGrowthRef } from './data.js?v=2569.11.1-17';
+import { ageMonths, classify } from './assess.js?v=2569.11.1-17';
+import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-17';
+import { enrollmentCounts } from './yeardata.js?v=2569.11.1-17';
 
 export const MONTHS = [['พ.ค.', 5], ['มิ.ย.', 6], ['ก.ค.', 7], ['ส.ค.', 8], ['ก.ย.', 9], ['ต.ค.', 10], ['พ.ย.', 11], ['ธ.ค.', 12], ['ม.ค.', 1], ['ก.พ.', 2], ['มี.ค.', 3], ['เม.ย.', 4]];
 export const SUBJECT_ROWS = [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];   // แถวในแผ่น "รายวิชา" ของวิชาที่ 1–20
@@ -80,6 +80,7 @@ export function bookChecks(d, selected, expected = [], term = null) {
   lack('คุณลักษณะอันพึงประสงค์', (st) => [...st.trait8, ...st.rtw], 'คุณลักษณะอันพึงประสงค์/การอ่านคิดวิเคราะห์');
   lack('สมรรถนะ', (st) => [...st.values12, ...st.comp5], 'ค่านิยม/สมรรถนะ');
   lack('กิจกรรมพัฒนาผู้เรียน', (st) => st.acts, 'กิจกรรมพัฒนาผู้เรียน');
+  if (!d.subjects.length && ['คะแนนรายชั้น', 'เกรดรายชั้น', 'เกรดร้อยละ'].some((n) => sel.has(n))) add('warn', 'ห้องนี้ยังไม่มีรายวิชาในภาคเรียนนี้ หน้าสรุปคะแนน/เกรดจะว่าง');
   if (sel.has(BOOK_FIRST) && !d.school?.school_name) add('warn', 'ยังไม่ได้ตั้งชื่อโรงเรียนในตั้งค่าระบบ');
   for (const w of d.warnings || []) add('warn', w);
   return out;
