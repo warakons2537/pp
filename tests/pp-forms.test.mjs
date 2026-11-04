@@ -51,3 +51,47 @@ assert.equal(v('H10'), 'ร'); assert.equal(v('C5'), 'เด็กชายส�
 // แบบพิมพ์ต้องไม่มีสูตรเหลืออยู่
 for (const n of F.wb.sheetNames) for (const c of F.wb.sheet(n).cells.values()) assert.ok(!c.f, `${n} ยังมีสูตร`);
 console.log('pp-forms: ผ่านทั้งหมด');
+
+// ---------- ปพ.5 ในตัว เฟส 1 ----------
+{
+  const { pp5Set, PP5_PHASE1, citizenText, birthText } = await import('../js/pp-forms.js');
+  assert.deepEqual(pp5Set(1).filter((n) => /^(พ|มิ|ก|ส|ต|ธ|ม|เม|เวลา)/.test(n)), ['พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'เวลา รวม 1']);
+  assert.ok(pp5Set(2).includes('ธ.ค.') && pp5Set(2).includes('เวลา รวม 2') && !pp5Set(2).includes('พ.ค.'));
+  assert.equal(citizenText('1648900175699'), '1 6489 00175 69 9');
+  assert.equal(birthText('2013-06-14'), 'วันศุกร์ที่ 14 มิถุนายน 2556');
+  const st5 = (n, att) => ({ no: n, s: { id: 'x' + n, prefix: 'เด็กชาย', first_name: 'ก' + n, last_name: 'ข', student_code: String(5700 + n), gender: 'ช' }, citizen: '1648900175699', birth: '2013-06-14',
+    occ: ['รับจ้าง', 'ค้าขาย', 'ว่างงาน'], fam: { father: 'นายพ่อ ข', mother: 'นางแม่ ข', guardian: 'นางยาย ข', relation: 'ยาย' }, addrShort: '1 หมู่ 2 ต.ก',
+    trait8: [3, 3, 3], rtw: [1, 1], values12: [], comp5: [2, 2], acts: [], att });
+  const d5 = { ...d, room: 1, students: [st5(1, { '2026-05-18': 1, '2026-05-19': 'ข', '2026-05-20': 'ล', '2026-06-01': 1 }), st5(2, {})],
+    counts: { start: { 'ช': 2, 'ญ': 0 }, left: { 'ช': 0, 'ญ': 0 }, joined: { 'ช': 0, 'ญ': 0 }, end: { 'ช': 2, 'ญ': 0 } } };
+  d5.students.forEach((x) => { x.acts = [true]; });
+  const m5 = classModel(d5);
+  const F5 = await Forms.open(new Uint8Array(fs.readFileSync(new URL('../pp/forms.xlsx', import.meta.url))));
+  const val = (sh, ref) => { const mm = /^([A-Z]+)(\d+)$/.exec(ref); const c = [...mm[1]].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0); return F5.eng.value(sh, +mm[2], c); };
+  for (const n of PP5_PHASE1) { assert.ok(F5.wb.sheetNames.includes(n), `แบบพิมพ์ไม่มีแผ่น ${n}`); assert.ok(F5.fill(n, m5), n); }
+  assert.equal(val('ปก ปพ.5 รายชั้น', 'AH10'), 2); assert.equal(val('ปก ปพ.5 รายชั้น', 'BY13'), 2);
+  assert.equal(val('ปก ปพ.5 รายชั้น', 'M18'), 'ภาษาไทย'); assert.equal(val('ปก ปพ.5 รายชั้น', 'BK18'), 1);   // ภาษาไทย เกรด 2 = 1 คน
+  assert.equal(val('ปก ปพ.5 รายชั้น', 'AX41'), 2); assert.equal(val('ปก ปพ.5 รายชั้น', 'AB41'), 0);   // คุณลักษณะ 3 = ดีเยี่ยม
+  assert.equal(val('ปก ปพ.5 รายชั้น', 'BN41'), 2); assert.equal(val('ปก ปพ.5 รายชั้น', 'CB41'), 0);   // อ่านคิดวิเคราะห์ 1 = ผ่าน
+  assert.equal(val('ปก ปพ.5 รายชั้น', 'AQ45'), 2);                                                 // สมรรถนะ 2 = ดี
+  assert.equal(val('ชื่อนักเรียน', 'C3'), 'เด็กชายก1 ข'); assert.equal(val('ชื่อนักเรียน', 'D3'), '1 6489 00175 69 9');
+  assert.equal(val('บิดามารดา', 'C3'), 'นายพ่อ ข'); assert.equal(val('บิดามารดา', 'F3'), 'ค้าขาย');
+  assert.equal(val('ผู้ปกครอง', 'D3'), 'ยาย'); assert.equal(val('ผู้ปกครอง', 'F3'), '1 หมู่ 2 ต.ก');
+  assert.equal(val('พ.ค.', 'T4'), 1);                        // 18 พ.ค. = คอลัมน์ T
+  assert.equal(val('พ.ค.', 'U4'), 'ข'); assert.equal(val('พ.ค.', 'AH4'), 1); assert.equal(val('พ.ค.', 'AI4'), '-'); assert.equal(val('พ.ค.', 'AJ4'), 1); assert.equal(val('พ.ค.', 'AK4'), 1);
+  assert.equal(val('พ.ค.', 'M2'), 'พฤษภาคม'); assert.equal(val('พ.ค.', 'Y2'), 2569);
+  assert.equal(val('เวลา รวม 1', 'C4'), 1); assert.equal(val('เวลา รวม 1', 'D4'), 1); assert.equal(val('เวลา รวม 1', 'E4'), '-');
+  assert.equal(val('เวลา รวม 1', 'I4'), 4); assert.equal(val('เวลา รวม 1', 'J4'), 2); assert.equal(val('เวลา รวม 1', 'K4'), 50);
+  assert.equal(val('เวลา รวม 1', 'K5'), null);               // ไม่มีบันทึกเวลาเรียนเลย
+  { // แถวที่เขียนไว้ในไฟล์แต่ไม่มี ht (แผ่นที่ตั้ง zeroHeight) ต้องไม่ถูกซ่อน เช่น แถวหัวตารางสรุปผลสัมฤทธิ์ของปก
+    const { Renderer } = await import('../js/xl-render.js');
+    const pg = new Renderer(F5.wb, F5.eng, { dpi: 120 }).paginate('ปก ปพ.5 รายชั้น');
+    assert.ok(pg.g.rh(17) > 0 && pg.g.rh(18) > 0, 'แถวหัวตาราง (17) ต้องมีความสูง');
+    assert.equal(pg.g.rh(100), 0, 'แถวที่ไม่ได้เขียนไว้ยังซ่อนตามเดิม');
+    // แบบพิมพ์ ปพ.5: ไม่มีสีพื้น (สีชมพูในไฟล์ = ช่องกรอก ไม่ใช่สีที่พิมพ์)
+    F5.fill('พ.ค.', m5); const sh = F5.wb.sheet('พ.ค.'); const xfs = F5.wb.styles.cellXfs;
+    assert.ok([...sh.cells.values()].every((c) => !c.s || !xfs[c.s]?.fillId), 'พ.ค. ต้องไม่มีสีพื้น');
+  }
+  F5.fill('พ.ค.', m5);                                       // กรอกซ้ำต้องล้างค่าเดิม
+  assert.equal(val('พ.ค.', 'T4'), 1);
+}

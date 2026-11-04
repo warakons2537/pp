@@ -4,10 +4,11 @@
 //  → หน้าตา สูตร และการแบ่งหน้าเหมือนต้นฉบับทุกหน้า
 //  ไม่แตะเซลล์ที่ไฟล์ต้นฉบับล็อกไว้ (เช่น ชื่อโรงเรียนที่ผู้พัฒนาโปรแกรมล็อก)
 // =====================================================================
-import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-13';
-import { levelName } from './util.js?v=2569.11.1-13';
-import { getRoster } from './data.js?v=2569.11.1-13';
-import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-13';
+import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-14';
+import { levelName } from './util.js?v=2569.11.1-14';
+import { getRoster } from './data.js?v=2569.11.1-14';
+import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-14';
+import { enrollmentCounts } from './yeardata.js?v=2569.11.1-14';
 
 export const MONTHS = [['พ.ค.', 5], ['มิ.ย.', 6], ['ก.ค.', 7], ['ส.ค.', 8], ['ก.ย.', 9], ['ต.ค.', 10], ['พ.ย.', 11], ['ธ.ค.', 12], ['ม.ค.', 1], ['ก.พ.', 2], ['มี.ค.', 3], ['เม.ย.', 4]];
 export const SUBJECT_ROWS = [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];   // แถวในแผ่น "รายวิชา" ของวิชาที่ 1–20
@@ -83,15 +84,19 @@ export function bookChecks(d, selected, expected = [], term = null) {
   return out;
 }
 
+const personText = (x) => (x ? `${x.prefix ?? ''}${x.first_name ?? ''} ${x.last_name ?? ''}`.trim() || null : null);
+
 // ---------------------------------------------------------------------
 //  รวบรวมข้อมูลห้อง 1 ห้อง 1 ภาคเรียน
 // ---------------------------------------------------------------------
 export async function buildBookData(ctx, room) {
   const { db } = ctx; const term = ctx.term;
-  const roster = (await getRoster(db, room.id)).slice(0, MAX_STUDENTS);
+  const everyone = await getRoster(db, room.id, { includeLeft: true });     // รวมคนที่ย้ายออก (ใช้นับจำนวนในปก ปพ.5)
+  const live = everyone.filter((s) => s.enroll_status !== 'left');
+  const roster = live.slice(0, MAX_STUDENTS);
   const ids = roster.map((s) => s.id);
   const warnings = [];
-  if ((await getRoster(db, room.id)).length > MAX_STUDENTS) warnings.push(`ไฟล์ต้นฉบับรองรับ ${MAX_STUDENTS} คน นักเรียนเกินจากนี้จะไม่อยู่ในเล่ม`);
+  if (live.length > MAX_STUDENTS) warnings.push(`ไฟล์ต้นฉบับรองรับ ${MAX_STUDENTS} คน นักเรียนเกินจากนี้จะไม่อยู่ในเล่ม`);
   let priv = {};
   try { priv = Object.fromEntries((ids.length ? await db.select('student_private', { in: { student_id: ids } }) : []).map((p) => [p.student_id, p])); } catch { warnings.push('ไม่มีสิทธิ์อ่านข้อมูลส่วนบุคคลของนักเรียน (ข้อมูล DMC จะว่าง)'); }
 
@@ -155,6 +160,9 @@ export async function buildBookData(ctx, room) {
     return {
       no: s.number ?? i + 1, s, raw: p.dmc_raw || {}, birth: p.birth_date || null, citizen: p.citizen_id || null,
       occ: [p.father?.occupation, p.mother?.occupation, p.guardian?.occupation].map((x) => x || null),
+      // ข้อมูลครอบครัวสำหรับแบบพิมพ์ ปพ.5 ในตัว (บิดามารดา / ผู้ปกครอง)
+      fam: { father: personText(p.father), mother: personText(p.mother), guardian: personText(p.guardian), relation: p.guardian?.relation || null },
+      addrShort: [ad.house_no, ad.moo && `หมู่ ${ad.moo}`, ad.subdistrict && `ต.${ad.subdistrict}`, ad.district && `อ.${ad.district}`, ad.province && `จ.${ad.province}`, ad.postcode].filter(Boolean).join(' ') || null,
       address: addr || null,
       comment: comments.find((c) => c.student_id === s.id)?.comment || null,
       trait8: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => tv(s.id, 'trait8', n)),
@@ -170,6 +178,7 @@ export async function buildBookData(ctx, room) {
 
   return {
     level: levelName(room.level), levelShort: room.level, room: room.room, term: term.term, year: term.academic_year,
+    counts: enrollmentCounts(everyone, term),
     school: ctx.settings, students, subjects, rounds: rounds.map((r) => r.date), warnings, approveDate: term.approve_date || null,
     homeroom: (ctx.homeroomTeachers?.(room.id) || []).map((x) => x.full_name).filter(Boolean),
   };

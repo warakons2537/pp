@@ -1,15 +1,16 @@
 // พิมพ์เอกสาร ปพ.: ปพ.6 รายบุคคล · ปก ปพ.5 รายชั้น · ปก ปพ.5 รายวิชา · ใบรับรองผลการศึกษา
-import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js?v=2569.11.1-13';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-13';
-import { loadRoomYear, personName } from '../yeardata.js?v=2569.11.1-13';
-import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.11.1-13';
-import { icon } from '../icons.js?v=2569.11.1-13';
-import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js?v=2569.11.1-13';
-import { bookView } from './pp-book-view.js?v=2569.11.1-13';
-import { listView, studentView, missingOf, termsOf } from './pp6-hub.js?v=2569.11.1-13';
-import { pp6FormsView } from './pp6-forms-view.js?v=2569.11.1-13';
+import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js?v=2569.11.1-14';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-14';
+import { loadRoomYear, personName } from '../yeardata.js?v=2569.11.1-14';
+import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.11.1-14';
+import { icon } from '../icons.js?v=2569.11.1-14';
+import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js?v=2569.11.1-14';
+import { bookView } from './pp-book-view.js?v=2569.11.1-14';
+import { listView, studentView, missingOf, termsOf } from './pp6-hub.js?v=2569.11.1-14';
+import { pp6FormsView } from './pp6-forms-view.js?v=2569.11.1-14';
+import { pp5FormsView } from './pp5-forms-view.js?v=2569.11.1-14';
 
-const DOCS = { book: 'เล่ม ปพ. (เหมือนไฟล์ต้นฉบับ)', pp6: 'ปพ.6 รายบุคคล', coverClass: 'ปก ปพ.5 รายชั้น', coverCourse: 'ปก ปพ.5 รายวิชา', cert: 'ใบรับรองผลการศึกษา' };
+const DOCS = { pp5: 'ปพ.5 ครบชุด (แบบพิมพ์ในระบบ)', book: 'เล่ม ปพ. (เหมือนไฟล์ต้นฉบับ)', pp6: 'ปพ.6 รายบุคคล', coverClass: 'ปก ปพ.5 รายชั้น', coverCourse: 'ปก ปพ.5 รายวิชา', cert: 'ใบรับรองผลการศึกษา' };
 const pref = { doc: 'book', room: null, only: null, from: 1, to: 99, scope: 'term', page2: true, course: null, pp6View: 'list', stu: null,
   certDate: null, certNo: '', certText: '', certGpa: true };
 let cache = { key: null, data: null };
@@ -43,7 +44,7 @@ export async function render(el, ctx) {
         <option value="year" ${pref.scope === 'year' ? 'selected' : ''}>ทั้งปีการศึกษา ${room.academic_year}</option></select></label>
         <label class="field" style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="page2" ${pref.page2 ? 'checked' : ''}> พิมพ์หน้า 2 (สุขภาพ ความเห็น เกณฑ์)</label>` : ''}
       ${pref.doc === 'coverCourse' ? '<label class="field">วิชา<select id="course"></select></label>' : ''}
-      ${pref.doc === 'book' || nativePp6 ? '' : '<button class="btn btn-primary" id="print">พิมพ์ / บันทึก PDF</button>'}
+      ${pref.doc === 'book' || pref.doc === 'pp5' || nativePp6 ? '' : '<button class="btn btn-primary" id="print">พิมพ์ / บันทึก PDF</button>'}
       ${inFrame && pref.doc !== 'book' ? '<span class="print-note muted">หน้าทดลองนี้เปิดหน้าต่างพิมพ์ไม่ได้ เมื่อติดตั้งแอปจริงจะพิมพ์ได้ทันที</span>' : ''}
     </div></div>
     ${tabsHtml(ctx)}
@@ -70,6 +71,7 @@ export async function render(el, ctx) {
   $('#print', el)?.addEventListener('click', () => window.print());
 
   const paper = $('#paper', el);
+  if (pref.doc === 'pp5') { paper.closest('.card').classList.remove('print-area'); paper.classList.remove('a4-scroll'); paper.closest('.card').style.background = ''; return pp5FormsView(paper, ctx, room); }
   if (pref.doc === 'book') { paper.closest('.card').classList.remove('print-area'); paper.classList.remove('a4-scroll'); paper.closest('.card').style.background = ''; return bookView(paper, ctx, room); }
   try {
     const d = await getData(ctx, room);
@@ -104,7 +106,7 @@ export async function render(el, ctx) {
 // ---------------------------------------------------------------------
 //  ปพ.6: ตารางรายชื่อ / หน้าเกรดรายคน (ดู js/views/pp6-hub.js)
 // ---------------------------------------------------------------------
-const tabsHtml = (ctx) => tabGroups([['เล่ม ปพ.', 'book', ['book']], ['เอกสารรายบุคคล', 'students', ctx.isAdmin ? ['pp6', 'cert'] : ['pp6']], ['ปก ปพ.5', 'reports', ['coverClass', 'coverCourse']]]
+const tabsHtml = (ctx) => tabGroups([['ชุด ปพ.5', 'book', ['pp5', 'book']], ['เอกสารรายบุคคล', 'students', ctx.isAdmin ? ['pp6', 'cert'] : ['pp6']], ['ปก ปพ.5', 'reports', ['coverClass', 'coverCourse']]]
   .map(([label, ic, keys]) => ({ label, icon: ic, tabs: keys.map((k) => ({ key: k, label: esc(DOCS[k]) })) })), pref.doc, 'doc', 'no-print');
 const wireTabs = (el, again) => { el.querySelectorAll('[data-doc]').forEach((b) => b.addEventListener('click', () => {
   if (b.dataset.doc === 'pp6' && pref.doc !== 'pp6') pref.pp6View = 'list';
