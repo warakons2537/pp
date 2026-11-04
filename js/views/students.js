@@ -1,9 +1,10 @@
-import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.11.1-18';
-import { getRoster } from '../data.js?v=2569.11.1-18';
-import { readDmcFile } from '../dmc.js?v=2569.11.1-18';
-import { icon } from '../icons.js?v=2569.11.1-18';
-import { sortableRows } from '../reorder.js?v=2569.11.1-18';
-import { reorderPlan } from '../reorder-core.js?v=2569.11.1-18';
+import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.11.1-19';
+import { getRoster } from '../data.js?v=2569.11.1-19';
+import { readDmcFile } from '../dmc.js?v=2569.11.1-19';
+import { icon } from '../icons.js?v=2569.11.1-19';
+import { sortableRows } from '../reorder.js?v=2569.11.1-19';
+import { reorderPlan } from '../reorder-core.js?v=2569.11.1-19';
+import { familyHtml, familyPatch } from '../student-family.js?v=2569.11.1-19';
 
 let selected = null;   // ห้องที่เลือกค้างไว้ระหว่างเปลี่ยนหน้า
 let chipFilter = 'all';   // ตัวกรองสถานะ: all | active | left
@@ -159,7 +160,9 @@ async function editStudent(ctx, room, s, nextNo, done) {
       <label>เลขประจำตัวประชาชน<input type="text" id="f-cid" name="citizen_id" inputmode="numeric" maxlength="17" value="${esc(priv.citizen_id ?? '')}"></label>
       <label>วันเกิด<input type="date" id="f-birth" name="birth_date" value="${esc(priv.birth_date ?? '')}"></label>
     </div>
-    <div class="row"><label>วันที่เข้าเรียน (กรอกเฉพาะคนที่เข้าระหว่างภาคเรียน)<input type="date" id="f-entered" name="entered_on" value="${esc(s?.entered_on ?? '')}"></label></div>`);
+    <div class="row"><label>วันที่เข้าเรียน (กรอกเฉพาะคนที่เข้าระหว่างภาคเรียน)<input type="date" id="f-entered" name="entered_on" value="${esc(s?.entered_on ?? '')}"></label>
+      ${s?.enroll_status === 'left' ? `<label>วันที่ย้ายออก (แก้วันที่ได้ · ลบวันที่ = กลับมาเรียนต่อ)<input type="date" id="f-left" name="left_on" value="${esc(s?.left_on ?? '')}"></label>` : ''}</div>
+    ${familyHtml(priv)}`);
   if (!r) return;
   const gender = /ชาย|นาย/.test(r.prefix) ? 'ช' : 'ญ';
   const row = { student_code: r.student_code.trim() || null, prefix: r.prefix, first_name: r.first_name.trim(), last_name: r.last_name.trim(), gender };
@@ -167,8 +170,9 @@ async function editStudent(ctx, room, s, nextNo, done) {
     let id = s?.id;
     if (s) await ctx.db.update('students', { id }, row);
     else id = (await ctx.db.insert('students', [row]))[0].id;
-    await ctx.db.upsert('enrollments', [{ student_id: id, classroom_id: room.id, number: Number(r.number) || null, status: s?.enroll_status ?? 'active', entered_on: r.entered_on || null }], 'student_id,classroom_id');
-    await ctx.db.upsert('student_private', [{ student_id: id, citizen_id: r.citizen_id.replace(/\D/g, '') || null, birth_date: r.birth_date || null }], 'student_id');
+    const left = s?.enroll_status === 'left' ? { status: r.left_on ? 'left' : 'active', left_on: r.left_on || null } : {};
+    await ctx.db.upsert('enrollments', [{ student_id: id, classroom_id: room.id, number: Number(r.number) || null, status: s?.enroll_status ?? 'active', entered_on: r.entered_on || null, ...left }], 'student_id,classroom_id');
+    await ctx.db.upsert('student_private', [{ student_id: id, citizen_id: r.citizen_id.replace(/\D/g, '') || null, birth_date: r.birth_date || null, ...familyPatch(priv, r) }], 'student_id');
     toast('บันทึกแล้ว'); done();
   } catch (err) { toast(err.message, 'err'); }
 }

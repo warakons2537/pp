@@ -4,12 +4,13 @@
 //  → หน้าตา สูตร และการแบ่งหน้าเหมือนต้นฉบับทุกหน้า
 //  ไม่แตะเซลล์ที่ไฟล์ต้นฉบับล็อกไว้ (เช่น ชื่อโรงเรียนที่ผู้พัฒนาโปรแกรมล็อก)
 // =====================================================================
-import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-18';
-import { levelName } from './util.js?v=2569.11.1-18';
-import { getRoster, loadGrowthRef } from './data.js?v=2569.11.1-18';
-import { ageMonths, classify } from './assess.js?v=2569.11.1-18';
-import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-18';
-import { enrollmentCounts } from './yeardata.js?v=2569.11.1-18';
+import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-19';
+import { levelName } from './util.js?v=2569.11.1-19';
+import { getRoster, loadGrowthRef } from './data.js?v=2569.11.1-19';
+import { ageMonths, classify } from './assess.js?v=2569.11.1-19';
+import { occupationOf, personName, addressShort } from './student-family.js?v=2569.11.1-19';
+import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-19';
+import { enrollmentCounts } from './yeardata.js?v=2569.11.1-19';
 
 export const MONTHS = [['พ.ค.', 5], ['มิ.ย.', 6], ['ก.ค.', 7], ['ส.ค.', 8], ['ก.ย.', 9], ['ต.ค.', 10], ['พ.ย.', 11], ['ธ.ค.', 12], ['ม.ค.', 1], ['ก.พ.', 2], ['มี.ค.', 3], ['เม.ย.', 4]];
 export const SUBJECT_ROWS = [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];   // แถวในแผ่น "รายวิชา" ของวิชาที่ 1–20
@@ -81,12 +82,22 @@ export function bookChecks(d, selected, expected = [], term = null) {
   lack('สมรรถนะ', (st) => [...st.values12, ...st.comp5], 'ค่านิยม/สมรรถนะ');
   lack('กิจกรรมพัฒนาผู้เรียน', (st) => st.acts, 'กิจกรรมพัฒนาผู้เรียน');
   if (!d.subjects.length && ['คะแนนรายชั้น', 'เกรดรายชั้น', 'เกรดร้อยละ'].some((n) => sel.has(n))) add('warn', 'ห้องนี้ยังไม่มีรายวิชาในภาคเรียนนี้ หน้าสรุปคะแนน/เกรดจะว่าง');
+  // ข้อมูลที่ต้องกรอกเพิ่ม (บอกด้วยว่าไปแก้ที่ไหน)
+  const some = (a, f) => a.filter(f).length;
+  const nameless = (label, n) => n && add('warn', `${label}: ${n} คนยังไม่ได้กรอก (เมนู "นักเรียน" → แก้ไข)`);
+  if (sel.has('ชื่อนักเรียน')) { nameless('เลขประจำตัวประชาชน', some(d.students, (st) => !st.citizen)); nameless('วันเกิด', some(d.students, (st) => !st.birth)); nameless('เลขประจำตัวนักเรียน', some(d.students, (st) => !st.s.student_code)); }
+  if (sel.has('บิดามารดา')) nameless('ชื่อบิดา/มารดา', some(d.students, (st) => !st.fam?.father && !st.fam?.mother));
+  if (sel.has('ผู้ปกครอง')) { nameless('ผู้ปกครอง', some(d.students, (st) => !st.fam?.guardian)); nameless('ที่อยู่ปัจจุบัน', some(d.students, (st) => !st.addrShort)); }
+  if (sel.has(BOOK_FIRST)) {
+    const miss = [['director_name', 'ชื่อผู้อำนวยการ'], ['academic_head_name', 'หัวหน้างานวิชาการ'], ['area_office', 'เขตพื้นที่การศึกษา']].filter(([k]) => !d.school?.[k]).map(([, l]) => l);
+    if (miss.length) add('warn', `ปก ปพ.5: ยังไม่ได้กรอก ${miss.join(' · ')} (ตั้งค่าระบบ → โรงเรียน)`);
+    if (!d.homeroom?.length) add('warn', 'ปก ปพ.5: ห้องนี้ยังไม่มีครูประจำชั้น (ตั้งค่าระบบ → ห้องเรียน)');
+    if (!d.approveDate) add('warn', 'ปก ปพ.5: ยังไม่ได้กำหนดวันที่อนุมัติผลการเรียน (ตั้งค่าระบบ → ภาคเรียน)');
+  }
   if (sel.has(BOOK_FIRST) && !d.school?.school_name) add('warn', 'ยังไม่ได้ตั้งชื่อโรงเรียนในตั้งค่าระบบ');
   for (const w of d.warnings || []) add('warn', w);
   return out;
 }
-
-const personText = (x) => (x ? `${x.prefix ?? ''}${x.first_name ?? ''} ${x.last_name ?? ''}`.trim() || null : null);
 
 // ---------------------------------------------------------------------
 //  รวบรวมข้อมูลห้อง 1 ห้อง 1 ภาคเรียน
@@ -166,10 +177,10 @@ export async function buildBookData(ctx, room) {
       ad.district && `อำเภอ${ad.district}`, ad.province && `จังหวัด${ad.province}`, ad.postcode].filter(Boolean).join(' ');
     return {
       no: s.number ?? i + 1, s, raw: p.dmc_raw || {}, birth: p.birth_date || null, citizen: p.citizen_id || null,
-      occ: [p.father?.occupation, p.mother?.occupation, p.guardian?.occupation].map((x) => x || null),
+      occ: ['father', 'mother', 'guardian'].map((who) => occupationOf(p, who)),      // อาชีพ: ที่กรอกในระบบ หรือจากข้อมูลดิบ DMC
       // ข้อมูลครอบครัวสำหรับแบบพิมพ์ ปพ.5 ในตัว (บิดามารดา / ผู้ปกครอง)
-      fam: { father: personText(p.father), mother: personText(p.mother), guardian: personText(p.guardian), relation: p.guardian?.relation || null },
-      addrShort: [ad.house_no, ad.moo && `หมู่ ${ad.moo}`, ad.subdistrict && `ต.${ad.subdistrict}`, ad.district && `อ.${ad.district}`, ad.province && `จ.${ad.province}`, ad.postcode].filter(Boolean).join(' ') || null,
+      fam: { father: personName(p.father), mother: personName(p.mother), guardian: personName(p.guardian), relation: p.guardian?.relation || null },
+      addrShort: addressShort(ad),
       address: addr || null,
       comment: comments.find((c) => c.student_id === s.id)?.comment || null,
       trait8: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => tv(s.id, 'trait8', n)),
