@@ -4,14 +4,14 @@
 //  - ดูตัวอย่างทุกหน้า เลือกพิมพ์รายหน้า → พิมพ์ / บันทึกเป็น PDF ได้ในแอป (ไม่ต้องมี Excel)
 //  - หรือสร้างไฟล์ Excel ที่หน้าตาเหมือนต้นฉบับ
 // =====================================================================
-import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-11';
-import { Template } from '../xlsx-template.js?v=2569.11.1-11';
-import { buildBookData, makeBook, prepareBook, defaultBook } from '../pp-book.js?v=2569.11.1-11';
-import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-11';
-import { Workbook } from '../xl-model.js?v=2569.11.1-11';
-import { Engine } from '../xl-formula.js?v=2569.11.1-11';
-import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-11';
-import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-11';
+import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-12';
+import { Template } from '../xlsx-template.js?v=2569.11.1-12';
+import { buildBookData, makeBook, prepareBook, defaultBook } from '../pp-book.js?v=2569.11.1-12';
+import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-12';
+import { Workbook } from '../xl-model.js?v=2569.11.1-12';
+import { Engine } from '../xl-formula.js?v=2569.11.1-12';
+import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-12';
+import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-12';
 
 const PATH = 'pp/template';
 let cache = { at: null, bytes: null, t: null };          // ไฟล์ต้นฉบับที่โหลดแล้ว (อยู่ในหน่วยความจำ)
@@ -136,11 +136,11 @@ export async function bookView(paper, ctx, room) {
     try {
       const data = await buildBookData(ctx, room);
       const pick = (obj) => Object.fromEntries(sheets.filter((n) => obj[n]).map((n) => [n, obj[n]]));
-      const { bytes, report, macro } = await makeBook(cache.bytes, data, { sheets, orientation: pick(layout.orient), fit: pick(layout.fit) });
+      const { bytes, report, macro } = await makeBook(cache.bytes, data, { sheets, orientation: pick(layout.orient), fit: pick(layout.fit), adj: Object.fromEntries(Object.entries(pick(layout.adj)).map(([n, v]) => [n, adjOpt(v)])) });
       const name = `${fileBase(ctx, room)}.${macro ? 'xlsm' : 'xlsx'}`;
       downloadBytes(bytes, name, macro ? 'application/vnd.ms-excel.sheet.macroEnabled.12' : undefined);
       out.innerHTML = `ดาวน์โหลดแล้ว: <b>${esc(name)}</b> · ${sheets.length} แผ่น · ${reportHtml(data, report)}
-        <br><span class="muted">การเลือก/ไม่เลือกรายหน้าในตัวอย่างใช้กับการพิมพ์/PDF ในแอปเท่านั้น ไฟล์ Excel พิมพ์ทั้งแผ่นที่เลือก</span>`;
+        <br><span class="muted">การเลือก/ไม่เลือกรายหน้าในตัวอย่างใช้กับการพิมพ์/PDF ในแอปเท่านั้น ไฟล์ Excel พิมพ์ทั้งแผ่นที่เลือก · ไฟล์ Excel ใช้ค่าขอบและย่อ/ขยายที่ปรับไว้ (ขนาดตัวอักษร ระยะบรรทัด คอลัมน์ ใช้เฉพาะตัวอย่างในแอป)</span>`;
     } catch (err) { toast(err.message, 'err'); out.textContent = `สร้างไม่สำเร็จ: ${err.message}`; }
     finally { btn.disabled = false; btn.textContent = 'สร้างไฟล์ Excel'; }
   });

@@ -19,6 +19,8 @@ assert.equal(t.readText('ปก', 'B1'), 'เด็กชาย ก & <ข>');
 
 t.setOrientation('เกรด', 'landscape');
 assert.equal(t.orientation('เกรด'), 'landscape');
+t.setMargins('เกรด', { top: 1, left: 0.5 });
+t.setScale('เกรด', 85);
 t.arrange(['เกรด', 'รายชื่อ']); // ปก ถูกซ่อนและไปอยู่ท้าย
 
 const t2 = await Template.open(await t.save());
@@ -26,6 +28,7 @@ assert.deepEqual(t2.sheets.map((s) => [s.name, s.state]), [['เกรด', 'vis
 assert.equal(t2.readText('ปก', 'B1'), 'เด็กชาย ก & <ข>');
 assert.match(t2.sheetXml('ปก'), /<c r="C2"[^>]*><v>7<\/v>/);
 assert.equal(t2.orientation('เกรด'), 'landscape');
+{ const x = t2.sheetXml('เกรด'); assert.match(x, /<pageMargins\b[^>]*\stop="1\.0000"/); assert.match(x, /<pageMargins\b[^>]*\sleft="0\.5000"/); assert.match(x, /<pageSetup\b[^>]*\sscale="85"/); assert.match(x, /orientation="landscape"/); }
 // หัวตารางซ้ำของ "รายชื่อ" ต้องย้ายไปลำดับใหม่ (1)
 assert.match(t2.wb, /localSheetId="1">'รายชื่อ'!\$1:\$2/);
 assert.match(t2.wb, /fullCalcOnLoad="1"/);
