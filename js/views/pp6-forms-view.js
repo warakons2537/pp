@@ -1,12 +1,12 @@
 // =====================================================================
 //  พิมพ์ ปพ.6 รายบุคคล ด้วยแบบพิมพ์ในตัว (หน้าตาเหมือนไฟล์ ปพ.5-6 เดิมของโรงเรียน)
 // =====================================================================
-import { esc, $, toast, roomName } from '../util.js?v=2569.11.1-31';
-import { buildBookData } from '../pp-book.js?v=2569.11.1-31';
-import { Forms, classModel, loadFormsBytes } from '../pp-forms.js?v=2569.11.1-31';
-import { Renderer } from '../xl-render.js?v=2569.11.1-31';
-import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-31';
-import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-31';
+import { esc, $, toast, roomName } from '../util.js?v=2569.11.1-32';
+import { buildBookData } from '../pp-book.js?v=2569.11.1-32';
+import { Forms, classModel, loadFormsBytes } from '../pp-forms.js?v=2569.11.1-32';
+import { Renderer } from '../xl-render.js?v=2569.11.1-32';
+import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-32';
+import { ensureCss, printWithStatus } from './pp-book-view.js?v=2569.11.1-32';
 
 const ZOOM = { 0.5: 'เล็ก', 0.75: 'กลาง', 1: 'เต็ม' };
 let zoom = 0.75;
@@ -62,10 +62,8 @@ export async function pp6FormsView(paper, ctx, room, ids, { onBack } = {}) {
     $('#f6-font', paper).addEventListener('change', (e) => { setThaiFont(e.target.value); pp6FormsView(paper, ctx, room, ids, { onBack }); });
     $('#f6-back', paper)?.addEventListener('click', onBack);
     $('#f6-print', paper)?.addEventListener('click', async (e) => {
-      const btn = e.currentTarget; btn.disabled = true;
-      const tab = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? window.open('', '_blank') : null;
-      try { await printPages(pages, `ปพ.6 ${roomName(room)} ภาค${ctx.term.term}-${ctx.term.academic_year}`.replace(/[\\/:*?"<>|]+/g, '-'), tab); }
-      catch (err) { toast(`พิมพ์ไม่สำเร็จ: ${err.message}`, 'err'); } finally { btn.disabled = false; }
+      const btn = e.currentTarget;
+      await printWithStatus(btn, pages, `ปพ.6 ${roomName(room)} ภาค${ctx.term.term}-${ctx.term.academic_year}`.replace(/[\\/:*?"<>|]+/g, '-'));
     });
   };
   draw();

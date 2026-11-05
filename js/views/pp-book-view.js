@@ -4,15 +4,15 @@
 //  - ดูตัวอย่างทุกหน้า เลือกพิมพ์รายหน้า → พิมพ์ / บันทึกเป็น PDF ได้ในแอป (ไม่ต้องมี Excel)
 //  - หรือสร้างไฟล์ Excel ที่หน้าตาเหมือนต้นฉบับ
 // =====================================================================
-import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-31';
-import { Template } from '../xlsx-template.js?v=2569.11.1-31';
-import { buildBookData, makeBook, prepareBook, defaultBook, bookChecks } from '../pp-book.js?v=2569.11.1-31';
-import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-31';
-import { Workbook } from '../xl-model.js?v=2569.11.1-31';
-import { Engine } from '../xl-formula.js?v=2569.11.1-31';
-import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-31';
-import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-31';
-import { adjOpt, adjText, adjustDialog, pickSheetsDialog } from '../page-adjust.js?v=2569.11.1-31';
+import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-32';
+import { Template } from '../xlsx-template.js?v=2569.11.1-32';
+import { buildBookData, makeBook, prepareBook, defaultBook, bookChecks } from '../pp-book.js?v=2569.11.1-32';
+import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-32';
+import { Workbook } from '../xl-model.js?v=2569.11.1-32';
+import { Engine } from '../xl-formula.js?v=2569.11.1-32';
+import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-32';
+import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-32';
+import { adjOpt, adjText, adjustDialog, pickSheetsDialog } from '../page-adjust.js?v=2569.11.1-32';
 
 const PATH = 'pp/template';
 let cache = { at: null, bytes: null, t: null };          // ไฟล์ต้นฉบับที่โหลดแล้ว (อยู่ในหน่วยความจำ)
@@ -311,14 +311,12 @@ export async function bookView(paper, ctx, room) {
     $('#pv-all', pv).addEventListener('click', () => { for (const g of groups) delete layout.skip[g.n]; store(); showPreview(); });
     $('#pv-reload', pv).addEventListener('click', () => showPreview(true));
     $('#pv-print', pv).addEventListener('click', async (e) => {
+      const btn = e.currentTarget;   // จับปุ่มไว้ก่อน await (หลังรอหน้าต่างยืนยัน e.currentTarget จะเป็นค่าว่าง)
       const list = []; for (const g of groups) g.pages.forEach((p, i) => { if (!(layout.skip[g.n] || []).includes(i)) list.push(p); });
       if (!list.length) { toast('ไม่ได้เลือกหน้าใดเลย', 'err'); return; }
       issues = issuesNow();
       if (issues.length && (await modal('ตรวจก่อนพิมพ์', `<p style="margin:0">พบ ${issues.length} ข้อที่ควรตรวจก่อนพิมพ์:</p><ul class="small" style="margin:6px 0 0;padding-left:20px;max-height:50vh;overflow:auto">${issues.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul>`, { okText: 'พิมพ์ต่อ', cancelText: 'กลับไปตรวจ' })) === null) return;
-      const btn = e.currentTarget; btn.disabled = true;
-      // มือถือ/แท็บเล็ต: เปิดแท็บใหม่ทันที (ต้องเปิดในจังหวะที่กดปุ่ม ไม่งั้นถูกบล็อก)
-      const tab = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? window.open('', '_blank') : null;
-      try { await printPages(list, fileBase(ctx, room), tab); } catch (err) { toast(`พิมพ์ไม่สำเร็จ: ${err.message}`, 'err'); } finally { btn.disabled = false; }
+      await printWithStatus(btn, list, fileBase(ctx, room));
     });
   }
   $('#b-adj-multi', paper).addEventListener('click', openAdjustMany);
@@ -420,6 +418,26 @@ html,body{margin:0;padding:0;background:#fff}
   win.addEventListener('afterprint', cleanup, { once: true });
   win.focus(); win.print();
   setTimeout(() => { if (document.body.contains(ifr)) ifr.remove(); }, 120000);
+}
+
+// กดพิมพ์แล้วมีความคืบหน้าให้เห็น (เตรียมหลายสิบหน้าใช้เวลาสักครู่) + ปุ่มสำรองเปิดในแท็บใหม่ เผื่อเบราว์เซอร์ไม่เปิดหน้าต่างพิมพ์จาก iframe
+export async function printWithStatus(btn, list, title) {
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = `กำลังเตรียม ${list.length} หน้า…`;
+  btn.parentElement?.querySelector('.print-fallback')?.remove();
+  toast(`กำลังเตรียม ${list.length} หน้าเพื่อพิมพ์ อาจใช้เวลาสักครู่…`);
+  const tab = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? window.open('', '_blank') : null;   // มือถือ: เปิดแท็บใหม่ในจังหวะกดปุ่ม
+  try {
+    await printPages(list, title, tab);
+    toast(`เปิดหน้าต่างพิมพ์แล้ว (${list.length} หน้า) · ถ้าไม่ขึ้น ใช้ปุ่ม "เปิดในแท็บใหม่" ข้างปุ่มพิมพ์`);
+    const fb = document.createElement('button'); fb.type = 'button'; fb.className = 'btn btn-sm print-fallback';
+    fb.textContent = 'ไม่มีหน้าต่างพิมพ์ขึ้น? เปิดในแท็บใหม่'; fb.title = 'เปิดเอกสารในแท็บใหม่แล้วสั่งพิมพ์จากที่นั่น (ต้องอนุญาตป๊อปอัปของเว็บนี้)';
+    fb.addEventListener('click', async () => {
+      const t = window.open('', '_blank'); if (!t) { toast('เบราว์เซอร์บล็อกแท็บใหม่ — กรุณาอนุญาตป๊อปอัปของเว็บนี้แล้วกดอีกครั้ง', 'err'); return; }
+      try { await printPages(list, title, t); } catch (err) { toast(`พิมพ์ไม่สำเร็จ: ${err.message}`, 'err'); }
+    });
+    btn.insertAdjacentElement('afterend', fb);
+  } catch (err) { toast(`พิมพ์ไม่สำเร็จ: ${err.message}`, 'err'); } finally { btn.disabled = false; btn.textContent = label; }
 }
 
 function wireUpload(paper, ctx, again) {

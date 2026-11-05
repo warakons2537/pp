@@ -6,13 +6,13 @@
 //  เฟส 3: ผลประเมินตัวชี้วัดและคะแนนรายวิชา (วิชาที่ 1–n)
 //  เฟส 4: คุณลักษณะ · สมรรถนะ · กิจกรรม · คะแนนรายชั้น · เกรดรายชั้น · สรุปเกรดร้อยละ
 // =====================================================================
-import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-31';
-import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-31';
-import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays, ATT_MONTHS } from '../pp-forms.js?v=2569.11.1-31';
-import { Renderer } from '../xl-render.js?v=2569.11.1-31';
-import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-31';
-import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-31';
-import { adjOpt, adjText, adjustDialog, pickSheetsDialog } from '../page-adjust.js?v=2569.11.1-31';
+import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-32';
+import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-32';
+import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays, ATT_MONTHS } from '../pp-forms.js?v=2569.11.1-32';
+import { Renderer } from '../xl-render.js?v=2569.11.1-32';
+import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-32';
+import { ensureCss, printWithStatus } from './pp-book-view.js?v=2569.11.1-32';
+import { adjOpt, adjText, adjustDialog, pickSheetsDialog } from '../page-adjust.js?v=2569.11.1-32';
 
 // ค่าปรับหน้าที่ผู้ใช้ตั้งไว้ (จำในเบราว์เซอร์ ใช้กับทุกห้อง/ภาคเรียน) · ชื่อแผ่น → { mt, mb, ml, mr, font, row, col, scale, hCenter }
 const ADJ_KEY = 'pp5-page-adjust';
@@ -142,12 +142,10 @@ export async function pp5FormsView(host, ctx, room0) {
     $('#p5-zoom', paper).addEventListener('change', (e) => { pref.zoom = +e.target.value; draw(); });
     $('#p5-font', paper).addEventListener('change', (e) => { setThaiFont(e.target.value); toast('เปลี่ยนฟอนต์แล้ว กำลังจัดหน้าใหม่'); pp5FormsView(host, ctx, room0); });
     $('#p5-print', paper).addEventListener('click', async (e) => {
+      const btn = e.currentTarget;   // จับปุ่มไว้ก่อน await (หลังรอหน้าต่างยืนยัน e.currentTarget จะเป็นค่าว่าง)
       const issues = issuesNow();
       if (issues.length && (await modal('ตรวจก่อนพิมพ์', `<p style="margin:0">พบ ${issues.length} ข้อที่ควรตรวจก่อนพิมพ์:</p><ul class="small" style="margin:6px 0 0;padding-left:20px;max-height:50vh;overflow:auto">${issues.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul>`, { okText: 'พิมพ์ต่อ', cancelText: 'กลับไปตรวจ' })) === null) return;
-      const btn = e.currentTarget; btn.disabled = true;
-      const tab = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? window.open('', '_blank') : null;   // มือถือ: เปิดแท็บใหม่ในจังหวะกดปุ่ม
-      try { await printPages(on().flatMap((g) => g.pages), fileName(room, termObj), tab); }
-      catch (err) { toast(`พิมพ์ไม่สำเร็จ: ${err.message}`, 'err'); } finally { btn.disabled = false; }
+      await printWithStatus(btn, on().flatMap((g) => g.pages), fileName(room, termObj));
     });
   };
   draw();
