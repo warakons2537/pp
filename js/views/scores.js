@@ -1,10 +1,10 @@
-import { attachSheet } from '../sheet.js?v=2569.11.1-27';
-import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.11.1-27';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-27';
-import { getRoster } from '../data.js?v=2569.11.1-27';
-import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.11.1-27';
-import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.11.1-27';
-import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.11.1-27';
+import { attachSheet } from '../sheet.js?v=2569.11.1-28';
+import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.11.1-28';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-28';
+import { courseRoster } from '../data.js?v=2569.11.1-28';
+import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.11.1-28';
+import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.11.1-28';
+import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.11.1-28';
 
 const pref = { course: null, tab: 'scores', termId: null };
 const KIND = { score: 'คะแนนเก็บระหว่างภาค', final: 'สอบปลายภาค', indicator: 'ตัวชี้วัด (ผ/มผ)' };
@@ -59,7 +59,7 @@ export async function render(el, real) {
   const course = ctx.courseById[pref.course];
   const canEdit = ctx.isAdmin || course.teachers.some((t) => t.id === ctx.me.id);
   const rounding = ctx.settings.score_rounding || 'floor';
-  let [roster, data] = await Promise.all([getRoster(ctx.db, course.classroom_id), loadCourse(ctx.db, course)]);
+  let [roster, data] = await Promise.all([courseRoster(ctx, course), loadCourse(ctx.db, course)]);
   // ตัวชี้วัดกลางของรายวิชา: ใส่ตัวที่ห้องนี้ยังไม่มี (ยังไม่ได้รัน schema ใหม่ = ข้ามไป)
   const master = await ctx.db.select('subject_indicators', { eq: { subject_id: course.subject_id } }).catch(() => []);
   if (canEdit && await syncCourse(ctx.db, course.id, master, data.items).catch(() => 0)) data = await loadCourse(ctx.db, course);
@@ -484,7 +484,7 @@ async function exportDialog(ctx, course) {
 
 async function importDialog(ctx, course, items, file) {
   const parsed = await readAchievementFile(file);
-  const roster = await getRoster(ctx.db, course.classroom_id);
+  const roster = await courseRoster(ctx, course);
   const plan = planImport(parsed, roster, fullName);
   const old = items.filter((i) => i.kind === 'score' || i.kind === 'final');
   const oldScores = old.length ? (await ctx.db.select('item_scores', { in: { item_id: old.map((i) => i.id) } })).filter((x) => x.score !== null).length : 0;

@@ -2,9 +2,9 @@
 //  ชั้นข้อมูล: ใช้ Supabase จริง หรือ "โหมดทดลอง" (เก็บในเบราว์เซอร์)
 //  หน้าจอทุกหน้าเรียกผ่าน API ชุดเดียวกัน จึงสลับได้โดยไม่ต้องแก้หน้าจอ
 // =====================================================================
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2569.11.1-27';
-import { createOffline, idbKv } from './offline.js?v=2569.11.1-27';
-import { seedDemo } from './demo-data.js?v=2569.11.1-27';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2569.11.1-28';
+import { createOffline, idbKv } from './offline.js?v=2569.11.1-28';
+import { seedDemo } from './demo-data.js?v=2569.11.1-28';
 
 const thaiError = (e) => {
   const m = String(e?.message || e);
@@ -161,8 +161,10 @@ function demoDb() {
   const RPC = {
     daily_attendance_summary({ cid, d_from, d_to }) {
       const att = T('daily_attendance').filter((a) => a.classroom_id === cid && a.date >= d_from && a.date <= d_to);
-      const days = new Set(att.map((a) => a.date)).size;
       return T('enrollments').filter((e) => e.classroom_id === cid).map((e) => {
+        // นับวันเรียนเฉพาะช่วงที่อยู่ในห้อง (เหมือน schema.sql)
+        const lo = e.entered_on && e.entered_on > d_from ? e.entered_on : d_from; const hi = e.left_on && e.left_on < d_to ? e.left_on : d_to;
+        const days = new Set(att.filter((a) => a.date >= lo && a.date <= hi).map((a) => a.date)).size;
         const mine = att.filter((a) => a.student_id === e.student_id);
         const c = (s) => mine.filter((a) => a.status === s).length;
         const came = c('present') + c('late');
@@ -212,8 +214,9 @@ function demoDb() {
     course_attendance_summary({ crs }) {
       const course = T('courses').find((c) => c.id === crs);
       const att = T('period_attendance').filter((a) => a.course_id === crs);
-      const slots = new Set(att.map((a) => a.date + '#' + a.period)).size;
       return T('enrollments').filter((e) => e.classroom_id === course?.classroom_id).map((e) => {
+        // นับคาบเฉพาะช่วงที่อยู่ในห้อง (เหมือน schema.sql)
+        const slots = new Set(att.filter((a) => (!e.entered_on || a.date >= e.entered_on) && (!e.left_on || a.date <= e.left_on)).map((a) => a.date + '#' + a.period)).size;
         const came = att.filter((a) => a.student_id === e.student_id && ['present', 'late'].includes(a.status)).length;
         const pct = slots ? Math.round(10000 * came / slots) / 100 : null;
         return { student_id: e.student_id, attended: came, total_periods: slots, pct, below_80: slots ? pct < 80 : false };

@@ -1,6 +1,6 @@
-import { attachBulk } from '../bulk.js?v=2569.11.1-27';
-import { esc, $, toast, options, fullName, todayIso, thaiDate, STATUS } from '../util.js?v=2569.11.1-27';
-import { getRoster } from '../data.js?v=2569.11.1-27';
+import { attachBulk } from '../bulk.js?v=2569.11.1-28';
+import { esc, $, toast, options, fullName, todayIso, thaiDate, STATUS } from '../util.js?v=2569.11.1-28';
+import { courseRoster } from '../data.js?v=2569.11.1-28';
 
 const pref = { course: null, date: null, period: 1 };
 
@@ -17,7 +17,7 @@ export async function render(el, ctx) {
   const course = ctx.courseById[pref.course];
   const canEdit = ctx.isAdmin || course.teachers.some((t) => t.id === ctx.me.id);
   const [roster, rows, summary] = await Promise.all([
-    getRoster(ctx.db, course.classroom_id),
+    courseRoster(ctx, course),
     ctx.db.select('period_attendance', { eq: { course_id: course.id } }),
     ctx.db.rpc('course_attendance_summary', { crs: course.id }),
   ]);

@@ -1,8 +1,8 @@
 // รายงาน ปพ.5: ผลสัมฤทธิ์รายวิชา · ผลการเรียนรายชั้น (GPA/อันดับ) · สรุปผลสัมฤทธิ์
-import { esc, fullName, levelName } from '../util.js?v=2569.11.1-27';
-import { getRoster } from '../data.js?v=2569.11.1-27';
-import { loadCourse, computeCourse, fmtGrade, gpa, rank, distribution, weightOf, GRADE_LABELS } from '../grading.js?v=2569.11.1-27';
-import { head, signs, termText } from './report-common.js?v=2569.11.1-27';
+import { esc, fullName, levelName } from '../util.js?v=2569.11.1-28';
+import { courseRoster, termRoster } from '../data.js?v=2569.11.1-28';
+import { loadCourse, computeCourse, fmtGrade, gpa, rank, distribution, weightOf, GRADE_LABELS } from '../grading.js?v=2569.11.1-28';
+import { head, signs, termText } from './report-common.js?v=2569.11.1-28';
 
 const rounding = (ctx) => ctx.settings.score_rounding || 'floor';
 const unit = (s) => (s?.credits ? `${Number(s.credits)} หน่วยกิต` : s?.hours_per_year ? `${s.hours_per_year} ชั่วโมง/ปี` : '');
@@ -22,7 +22,7 @@ function distTable(grades) {
 
 // ---------- ปพ.5 รายวิชา ----------
 export async function p5Report(ctx, course) {
-  const [roster, data] = await Promise.all([getRoster(ctx.db, course.classroom_id), loadCourse(ctx.db, course)]);
+  const [roster, data] = await Promise.all([courseRoster(ctx, course), loadCourse(ctx.db, course)]);
   const res = computeCourse(course, data, roster, rounding(ctx));
   const sc = data.items.filter((i) => i.kind === 'score');
   const fi = data.items.filter((i) => i.kind === 'final');
@@ -55,7 +55,7 @@ export async function p5Report(ctx, course) {
 // ข้อมูลทุกวิชาของห้อง
 async function roomResults(ctx, room) {
   const courses = ctx.courses.filter((k) => k.classroom_id === room.id);
-  const roster = await getRoster(ctx.db, room.id);
+  const roster = await termRoster(ctx, room);
   const per = await Promise.all(courses.map(async (k) => computeCourse(k, await loadCourse(ctx.db, k), roster, rounding(ctx))));
   return { courses, roster, per };
 }

@@ -1,4 +1,4 @@
-import { sortByNumber, iso, fromIso } from './util.js?v=2569.11.1-27';
+import { sortByNumber, iso, fromIso } from './util.js?v=2569.11.1-28';
 
 // ---------------------------------------------------------------------
 //  นักเรียนอยู่ในห้องตามวันที่/ภาคเรียน — รองรับนักเรียนย้ายเข้า/ออกกลางปี
@@ -38,6 +38,12 @@ export async function getRoster(db, classroomId, { includeLeft = false, asOf = n
     .sort(sortByNumber);
 }
 
+// รายชื่อตามภาคเรียน: ภาคเรียนของรายวิชา (course.term_id) / ภาคเรียนที่ระบุ (ไม่ระบุ = ภาคปัจจุบัน)
+// นักเรียนที่ย้ายเข้ากลางปีไม่อยู่ในภาคก่อนหน้า · ใช้กับทุกหน้าที่ผูกกับภาคเรียน (คะแนน เวลาเรียนรายวิชา รายงาน)
+export const termOfCourse = (ctx, course) => ctx.terms?.find((t) => t.id === course?.term_id) || ctx.term || null;
+export const courseRoster = (ctx, course) => getRoster(ctx.db, course.classroom_id, { term: termOfCourse(ctx, course) });
+export const termRoster = (ctx, room, term = ctx.term) => getRoster(ctx.db, room.id, { term: term || null });
+
 // ช่วงวันที่ของภาคเรียน (ถ้าไม่ได้ตั้งไว้ ใช้ทั้งปีการศึกษาโดยประมาณ)
 export function termRange(term) {
   if (!term) return { from: iso(new Date(new Date().getFullYear(), 0, 1)), to: iso(new Date()) };
@@ -68,7 +74,7 @@ export function termMonths(term) {
 const refCache = {};
 export async function loadGrowthRef(db, set) {
   if (refCache[set]) return refCache[set];
-  const { makeRef } = await import('./assess.js?v=2569.11.1-27');
+  const { makeRef } = await import('./assess.js?v=2569.11.1-28');
   const ref = makeRef(await db.select('growth_reference', { eq: { ref_set: set } }));
   if (ref.size) refCache[set] = ref;            // ตารางว่างไม่เก็บ เผื่อผู้ดูแลระบบเพิ่งโหลดตาราง
   return ref;

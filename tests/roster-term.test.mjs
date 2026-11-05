@@ -1,6 +1,6 @@
 // ทดสอบรายชื่อนักเรียนตามวันที่/ภาคเรียน (ย้ายเข้า-ออกกลางปี): node tests/roster-term.test.mjs
 import assert from 'node:assert/strict';
-import { getRoster, enrolledOn, enrolledDuring, inTermList, joinedDuringTerm, leftDuringTerm, academicYearMonths, termRange } from '../js/data.js';
+import { courseRoster, termRoster, termOfCourse, getRoster, enrolledOn, enrolledDuring, inTermList, joinedDuringTerm, leftDuringTerm, academicYearMonths, termRange } from '../js/data.js';
 
 const t1 = { academic_year: 2569, term: 1, start_date: '2026-05-18', end_date: '2026-10-31' };
 const t2 = { academic_year: 2569, term: 2, start_date: '2026-11-02', end_date: '2027-03-31' };
@@ -42,6 +42,18 @@ assert.equal(await ids({ asOf: '2026-12-10' }), 's1,s2');                       
 assert.equal(await ids({ from: '2026-11-01', to: '2026-11-30' }), 's1,s2,s3');           // ทั้งเดือน พ.ย.
 assert.equal(await ids({ term: t1 }), 's1,s3');
 assert.equal(await ids({ term: t2 }), 's1,s2');
+
+// หน้าที่ผูกกับภาคเรียน (คะแนน เวลาเรียนรายวิชา รายงาน) ใช้รายชื่อของภาคนั้น ไม่ใช่รายชื่อปัจจุบัน
+{
+  const terms = [{ id: 'T1', ...t1 }, { id: 'T2', ...t2 }];
+  const ctx = { db, terms, term: terms[1] };                         // ภาคปัจจุบัน = 2
+  const names = async (p) => (await p).map((s) => s.id).join(',');
+  assert.equal(termOfCourse(ctx, { term_id: 'T1' }).term, 1);
+  assert.equal(await names(courseRoster(ctx, { classroom_id: 'c', term_id: 'T1' })), 's1,s3', 'วิชาภาค 1: ไม่มีคนที่ย้ายเข้าภาค 2');
+  assert.equal(await names(courseRoster(ctx, { classroom_id: 'c', term_id: 'T2' })), 's1,s2');
+  assert.equal(await names(termRoster(ctx, { id: 'c' })), 's1,s2', 'ไม่ระบุภาค = ภาคปัจจุบัน');
+  assert.equal(await names(termRoster(ctx, { id: 'c' }, terms[0])), 's1,s3');
+}
 
 // เดือนของปีการศึกษา (พ.ค.–เม.ย.) ถึงเดือนปัจจุบัน
 const ms = (ay, today) => academicYearMonths(ay, today).map((m) => `${m.y}-${m.m0 + 1}`).join(' ');
