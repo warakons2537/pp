@@ -1,12 +1,12 @@
 // =====================================================================
 //  ส่งออก / นำเข้า แบบบันทึกผลสัมฤทธิ์ (ไฟล์ Excel แบบที่โรงเรียนใช้อยู่)
 // =====================================================================
-import { levelName, roomName } from './util.js?v=2569.11.1-35';
-import { courseRoster } from './data.js?v=2569.11.1-35';
-import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-35';
-import { achievementSheet, sheetName as stuName } from './achievement.js?v=2569.11.1-35';
-import { buildXlsx, safeSheetName, downloadBytes } from './xlsx-write.js?v=2569.11.1-35';
-import { sheetMatrix, findAchievementSheet, parseAchievement, matchStudents } from './achievement-import.js?v=2569.11.1-35';
+import { levelName, roomName } from './util.js?v=2569.11.1-36';
+import { courseRoster } from './data.js?v=2569.11.1-36';
+import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-36';
+import { achievementSheet, sheetName as stuName } from './achievement.js?v=2569.11.1-36';
+import { buildXlsx, safeSheetName, downloadBytes } from './xlsx-write.js?v=2569.11.1-36';
+import { sheetMatrix, findAchievementSheet, parseAchievement, matchStudents } from './achievement-import.js?v=2569.11.1-36';
 
 const fileSafe = (s) => String(s).replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim();
 

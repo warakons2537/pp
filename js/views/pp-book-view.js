@@ -4,15 +4,16 @@
 //  - ดูตัวอย่างทุกหน้า เลือกพิมพ์รายหน้า → พิมพ์ / บันทึกเป็น PDF ได้ในแอป (ไม่ต้องมี Excel)
 //  - หรือสร้างไฟล์ Excel ที่หน้าตาเหมือนต้นฉบับ
 // =====================================================================
-import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-35';
-import { Template } from '../xlsx-template.js?v=2569.11.1-35';
-import { buildBookData, makeBook, prepareBook, defaultBook, bookChecks } from '../pp-book.js?v=2569.11.1-35';
-import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-35';
-import { Workbook } from '../xl-model.js?v=2569.11.1-35';
-import { Engine } from '../xl-formula.js?v=2569.11.1-35';
-import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-35';
-import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-35';
-import { adjOpt, adjText, adjustDialog, pickSheetsDialog, AUTO_ADJ } from '../page-adjust.js?v=2569.11.1-35';
+import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-36';
+import { Template } from '../xlsx-template.js?v=2569.11.1-36';
+import { buildBookData, makeBook, prepareBook, defaultBook, bookChecks } from '../pp-book.js?v=2569.11.1-36';
+import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-36';
+import { Workbook } from '../xl-model.js?v=2569.11.1-36';
+import { Engine } from '../xl-formula.js?v=2569.11.1-36';
+import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-36';
+import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-36';
+import { adjOpt, adjText, adjustDialog, pickSheetsDialog, AUTO_ADJ } from '../page-adjust.js?v=2569.11.1-36';
+import { openPageEditor } from '../page-editor.js?v=2569.11.1-36';
 
 const PATH = 'pp/template';
 let cache = { at: null, bytes: null, t: null };          // ไฟล์ต้นฉบับที่โหลดแล้ว (อยู่ในหน่วยความจำ)
@@ -226,6 +227,23 @@ export async function bookView(paper, ctx, room) {
     changed();
   }
 
+  // ปรับหน้าแบบลากบนหน้ากระดาษจริง (ขอบ คอลัมน์ แถว ตำแหน่ง ขนาด) — ใช้ได้เมื่อเปิดตัวอย่างแล้ว · แผ่นรายคนใช้ปุ่ม "ปรับหน้า…" เดิม
+  async function openDrag(n) {
+    if (!book || per.get(n)) { toast('แผ่นรายคนใช้ปุ่ม "ปรับหน้า…" (ค่าเดียวกันทุกคน)', 'err'); return; }
+    const res = await openPageEditor({ title: n, adj: layout.adj[n], canApplyOthers: on.size > 1,
+      render: (a) => renderer().renderSheet(n, { orientation: layout.orient[n] || null, fit: layout.fit[n] || null, adj: { ...(layout.auto ? AUTO_ADJ : {}), ...(adjOpt(a) || {}) } }) });
+    if (!res) return;
+    const KEYS = ['mt', 'mb', 'ml', 'mr', 'scale', 'ox', 'oy', 'hCenter', 'vCenter', 'autoFit'];
+    const apply = (t, a) => { if (a) layout.adj[t] = a; else delete layout.adj[t]; delete layout.skip[t]; };
+    apply(n, res.adj);
+    if (res.others && res.adj) {
+      const names = await pickSheetsDialog(layout.order.filter((x) => on.has(x) && x !== n && !per.get(x)), [], new Set(Object.keys(layout.adj)));
+      for (const t of names || []) { const next = { ...(layout.adj[t] || {}) }; for (const k of KEYS) { if (res.adj[k] !== undefined) next[k] = res.adj[k]; else delete next[k]; } apply(t, next); }
+      if (names) toast(`ใช้ขอบ/ขนาด/ตำแหน่งกับ ${names.length} แผ่นแล้ว`);
+    }
+    changed();
+  }
+
   // ปรับหน้าหลายแผ่นพร้อมกัน: เลือกแผ่น (ขั้นที่ 1) → กำหนดค่า (ขั้นที่ 2) ใช้กับทุกแผ่นที่เลือก
   async function openAdjustMany() {
     const names = await pickSheetsDialog(layout.order, [['ที่เลือกพิมพ์', (n) => on.has(n)], ['วิชาที่ 1–20', (n) => /^วิชาที่ /.test(n)]], new Set(Object.keys(layout.adj)));
@@ -277,7 +295,7 @@ export async function bookView(paper, ctx, room) {
       ${legacyOk ? '' : `<p class="small" style="color:var(--amber);margin:4px 0">เครื่องนี้ไม่มีฟอนต์ TH SarabunPSK จึงใช้ฟอนต์ Sarabun แทน รูปร่างตัวอักษรต่างจากที่พิมพ์จาก Excel เล็กน้อย (ตำแหน่งและขนาดตารางเหมือนเดิม) — ติดตั้งฟอนต์ TH SarabunPSK ในเครื่องเพื่อให้เหมือนที่สุด</p>`}
       <div id="pv-body">${groups.map((g) => `
         <section class="pv-sec" data-n="${esc(g.n)}">
-          <h4 style="margin:10px 0 4px">${esc(g.n)} <button type="button" class="btn btn-sm ${adjText(layout.adj[g.n]) ? 'btn-primary' : ''}" data-adj-n="${esc(g.n)}" title="ขอบกระดาษ ขนาดตัวอักษร ระยะบรรทัด ขนาดย่อ/ขยาย">ปรับหน้า…</button> <span class="small muted">· ${g.pages.length} หน้า${g.pages[0] ? ` · ${g.pages[0].orient === 'landscape' ? 'แนวนอน' : 'แนวตั้ง'} · ย่อ ${Math.round(g.pages[0].scale * 100)}%` : ''}</span></h4>
+          <h4 style="margin:10px 0 4px">${esc(g.n)} <button type="button" class="btn btn-sm" data-drag-n="${esc(g.n)}" title="ลากปรับขอบ คอลัมน์ แถว ตำแหน่ง และขนาดบนหน้ากระดาษจริง (แบบ Word)">ลากปรับ…</button> <button type="button" class="btn btn-sm ${adjText(layout.adj[g.n]) ? 'btn-primary' : ''}" data-adj-n="${esc(g.n)}" title="ขอบกระดาษ ขนาดตัวอักษร ระยะบรรทัด ขนาดย่อ/ขยาย">ปรับหน้า…</button> <span class="small muted">· ${g.pages.length} หน้า${g.pages[0] ? ` · ${g.pages[0].orient === 'landscape' ? 'แนวนอน' : 'แนวตั้ง'} · ย่อ ${Math.round(g.pages[0].scale * 100)}%` : ''}</span></h4>
           ${g.err ? `<p class="small" style="color:var(--red)">วาดหน้านี้ไม่สำเร็จ: ${esc(g.err)}</p>` : ''}
           <div class="pv-grid">${g.pages.map((p, i) => `
             <label class="pv-card ${(layout.skip[g.n] || []).includes(i) ? 'off' : ''}">
@@ -299,7 +317,7 @@ export async function bookView(paper, ctx, room) {
       }
     }, { rootMargin: '600px' });
     $$('.pv-inner', pv).forEach((el) => io.observe(el));
-    pv.onclick = (e) => { const b = e.target.closest('[data-adj-n]'); if (b) { e.preventDefault(); openAdjust(b.dataset.adjN, true); } };
+    pv.onclick = (e) => { const d = e.target.closest('[data-drag-n]'); if (d) { e.preventDefault(); openDrag(d.dataset.dragN); return; } const b = e.target.closest('[data-adj-n]'); if (b) { e.preventDefault(); openAdjust(b.dataset.adjN, true); } };
     pv.onchange = (e) => {
       const cb = e.target.closest('input[data-i]'); if (!cb) return;
       const n = cb.closest('.pv-sec').dataset.n; const i = +cb.dataset.i;
