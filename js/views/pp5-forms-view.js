@@ -6,13 +6,13 @@
 //  เฟส 3: ผลประเมินตัวชี้วัดและคะแนนรายวิชา (วิชาที่ 1–n)
 //  เฟส 4: คุณลักษณะ · สมรรถนะ · กิจกรรม · คะแนนรายชั้น · เกรดรายชั้น · สรุปเกรดร้อยละ
 // =====================================================================
-import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-29';
-import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-29';
-import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays } from '../pp-forms.js?v=2569.11.1-29';
-import { Renderer } from '../xl-render.js?v=2569.11.1-29';
-import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-29';
-import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-29';
-import { adjOpt, adjText, adjustDialog } from '../page-adjust.js?v=2569.11.1-29';
+import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-30';
+import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-30';
+import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays } from '../pp-forms.js?v=2569.11.1-30';
+import { Renderer } from '../xl-render.js?v=2569.11.1-30';
+import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-30';
+import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-30';
+import { adjOpt, adjText, adjustDialog } from '../page-adjust.js?v=2569.11.1-30';
 
 // ค่าปรับหน้าที่ผู้ใช้ตั้งไว้ (จำในเบราว์เซอร์ ใช้กับทุกห้อง/ภาคเรียน) · ชื่อแผ่น → { mt, mb, ml, mr, font, row, col, scale, hCenter }
 const ADJ_KEY = 'pp5-page-adjust';
@@ -67,7 +67,7 @@ export async function pp5FormsView(host, ctx, room0) {
   const renderGroup = (n) => {
     if (!F.fill(n, m)) return { n, pages: [], err: 'ยังไม่มีแบบพิมพ์' };
     try {
-      const { dpi, opt } = pp5Layout(n);
+      const { dpi, opt } = pp5Layout(n, m);
       if (!renderers.has(dpi)) renderers.set(dpi, new Renderer(F.wb, F.eng, { dpi }));
       const adj = { ...(opt.adj || {}), ...(adjOpt(adjAll[n]) || {}) };
       return { n, pages: renderers.get(dpi).renderSheet(n, { ...opt, adj: Object.keys(adj).length ? adj : undefined, overlays: pp5Overlays(n, m) }) };
@@ -117,7 +117,7 @@ export async function pp5FormsView(host, ctx, room0) {
     $$('[data-ind]', paper).forEach((b) => b.addEventListener('click', () => ctx.go('scores', { course: b.dataset.ind, tab: 'indicators' })));
     $$('[data-go]', paper).forEach((b) => b.addEventListener('click', () => ctx.go(b.dataset.go)));
     $$('[data-adj-n]', paper).forEach((b) => b.addEventListener('click', async () => {
-      const n = b.dataset.adjN; const { opt } = pp5Layout(n);
+      const n = b.dataset.adjN; const { opt } = pp5Layout(n, m);
       const res = await adjustDialog(n, adjAll[n], { margins: F.wb.sheet(n)?.page.margins, scale: opt.adj?.scale ?? null });
       if (!res) return;
       const targets = res.all ? on().map((g) => g.n) : [n];

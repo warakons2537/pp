@@ -245,6 +245,24 @@ console.log('pp-forms: ผ่านทั้งหมด');
   assert.equal(per['วิชาที่ 8'], 5, 'วิชาที่ 8 ต้องไม่มีหน้าว่างเกิน'); assert.equal(per['วิชาที่ 11'], 1); assert.equal(per['คะแนนรายชั้น'], 2); assert.equal(per['เกรดร้อยละ'], 1);
 }
 
+// ---------- วิชาที่ 1–10 ที่ไม่มีตัวชี้วัด: พิมพ์แบบหน้าเดียว คะแนนอยู่หน้าแรก ----------
+{
+  const { Renderer } = await import('../js/xl-render.js');
+  const { compactSubject, pp5Layout } = await import('../js/pp-forms.js');
+  const N = 6;
+  const st = (i) => ({ no: i + 1, s: { id: 'x' + i, prefix: 'เด็กชาย', first_name: 'ก' + i, last_name: 'ข', student_code: String(i), gender: 'ช' }, citizen: null, birth: '2013-01-01', occ: [], fam: {}, att: {}, nut: [0, 0, 0, 0], trait8: [], rtw: [], values12: [], comp5: [], acts: [], health: [null, null, null, null] });
+  const subj = (indicators, nItems) => ({ code: 'ท1', name: 'ไทย', credits: 1, mid: 70, fin: 30, indicators, items: Array.from({ length: nItems }, (_, k) => ({ title: 'งาน' + k, max: 10 })),
+    rows: Array.from({ length: N }, () => ({ ind: indicators.map(() => 'ผ'), scores: Array.from({ length: nItems }, () => 7), final: 20, special: null, calc: { mid: 49, final: 20, total: 69, grade: 3, indPass: 0, indFail: 0, indicator: null } })) });
+  const dd = (subjects) => ({ level: 'มัธยมศึกษาปีที่ 1', term: 1, year: 2569, room: 1, approveDate: null, homeroom: [], rounds: [null, null, null, null], school: {}, counts: {}, students: Array.from({ length: N }, (_, i) => st(i)), subjects, warnings: [] });
+  const bytes = new Uint8Array(fs.readFileSync(new URL('../pp/forms.xlsx', import.meta.url)));
+  const pages = async (subjects, name) => { const FF = await Forms.open(bytes); const mm = classModel(dd(subjects)); assert.ok(FF.fill(name, mm)); const { dpi, opt } = pp5Layout(name, mm); return new Renderer(FF.wb, FF.eng, { dpi }).renderSheet(name, opt); };
+  assert.ok(compactSubject(classModel(dd([subj([], 4)])), 1) && !compactSubject(classModel(dd([subj(['ก'], 4)])), 1) && !compactSubject(classModel(dd([subj([], 13)])), 1));
+  const p = await pages([subj([], 4)], 'วิชาที่ 1');
+  assert.equal(p.length, 1, 'ไม่มีตัวชี้วัด = 1 หน้า'); assert.match(p[0].html, /งาน0/); assert.match(p[0].html, />69</, 'คะแนนรวมขึ้นหน้าแรก');
+  assert.equal((await pages([subj(['ก'], 4)], 'วิชาที่ 1')).length, 5, 'มีตัวชี้วัด = แผ่นเต็ม 5 หน้าเหมือนเดิม');
+  assert.equal((await pages([subj([], 13)], 'วิชาที่ 1')).length, 5, 'ช่องคะแนนเกิน 12 ใช้แผ่นเต็ม');
+}
+
 // ---------- เส้นทแยง "ปิดภาคเรียน" ในแผ่นเวลาเรียนรายเดือน ----------
 {
   const { monthClosures, pp5Overlays } = await import('../js/pp-forms.js');

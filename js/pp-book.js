@@ -4,14 +4,14 @@
 //  → หน้าตา สูตร และการแบ่งหน้าเหมือนต้นฉบับทุกหน้า
 //  ไม่แตะเซลล์ที่ไฟล์ต้นฉบับล็อกไว้ (เช่น ชื่อโรงเรียนที่ผู้พัฒนาโปรแกรมล็อก)
 // =====================================================================
-import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-29';
-import { levelName } from './util.js?v=2569.11.1-29';
-import { getRoster, loadGrowthRef, termRange, inTermList } from './data.js?v=2569.11.1-29';
-import { ageMonths, classify } from './assess.js?v=2569.11.1-29';
-import { scoreColIndex } from './score-columns.js?v=2569.11.1-29';
-import { occupationOf, personName, addressShort } from './student-family.js?v=2569.11.1-29';
-import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-29';
-import { enrollmentCounts } from './yeardata.js?v=2569.11.1-29';
+import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-30';
+import { levelName } from './util.js?v=2569.11.1-30';
+import { getRoster, loadGrowthRef, termRange, inTermList } from './data.js?v=2569.11.1-30';
+import { ageMonths, classify } from './assess.js?v=2569.11.1-30';
+import { scoreColIndex } from './score-columns.js?v=2569.11.1-30';
+import { occupationOf, personName, addressShort } from './student-family.js?v=2569.11.1-30';
+import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-30';
+import { enrollmentCounts } from './yeardata.js?v=2569.11.1-30';
 
 export const MONTHS = [['พ.ค.', 5], ['มิ.ย.', 6], ['ก.ค.', 7], ['ส.ค.', 8], ['ก.ย.', 9], ['ต.ค.', 10], ['พ.ย.', 11], ['ธ.ค.', 12], ['ม.ค.', 1], ['ก.พ.', 2], ['มี.ค.', 3], ['เม.ย.', 4]];
 export const SUBJECT_ROWS = [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];   // แถวในแผ่น "รายวิชา" ของวิชาที่ 1–20
@@ -71,7 +71,7 @@ export function bookChecks(d, selected, expected = [], term = null) {
     const none = sub.rows.filter((r) => r.scores.every((x) => x === null) && r.ind.every((x) => !x) && (r.final === null || r.final === undefined)).length;
     if (!sub.rows.length) return;
     const nInd = (sub.indicators || []).length;
-    if (Array.isArray(sub.indicators) && !nInd) add('warn', `วิชา ${sub.name || i + 1} ยังไม่มีตัวชี้วัด (ช่อง ผ/มผ จะว่าง) · เมนู "คะแนนรายวิชา" → ตั้งค่าช่องคะแนน`);
+    if (Array.isArray(sub.indicators) && !nInd && i < 10 && (sub.items || []).length > 12) add('warn', `วิชา ${sub.name || i + 1} ไม่มีตัวชี้วัด แต่มีช่องคะแนนเกิน 12 ช่อง จึงพิมพ์แผ่นเต็ม (หน้าตัวชี้วัดจะว่าง) · เมนู "คะแนนรายวิชา" → ตั้งค่าช่องคะแนน`);
     else if (nInd) { const noInd = sub.rows.filter((r) => r.ind.every((x) => !x)).length;
       if (noInd) add('warn', `วิชา ${sub.name || i + 1}: ${noInd} คนยังไม่ได้ประเมินตัวชี้วัด ผ/มผ · เมนู "คะแนนรายวิชา" → แท็บ ตัวชี้วัด`); }
     if (none === sub.rows.length) add('warn', `วิชา ${sub.name || i + 1} ยังไม่ได้ลงคะแนน/ตัวชี้วัดเลย`);

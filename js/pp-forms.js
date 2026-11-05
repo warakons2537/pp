@@ -5,11 +5,11 @@
 //  - แอปคำนวณทุกช่องเองจากข้อมูลในระบบ (buildBookData) แล้วใส่ลงช่องของแบบพิมพ์
 //    กติกาการคำนวณตรงกับไฟล์โปรแกรม ปพ.5-6 เดิมของโรงเรียน (ตรวจด้วย tests/pp-forms.test.mjs)
 // =====================================================================
-import { Workbook, key } from './xl-model.js?v=2569.11.1-29';
-import { Engine } from './xl-formula.js?v=2569.11.1-29';
-import { levelName, thaiDate } from './util.js?v=2569.11.1-29';
-import { toGrade } from './grading.js?v=2569.11.1-29';
-import { scoreColIndex } from './score-columns.js?v=2569.11.1-29';
+import { Workbook, key } from './xl-model.js?v=2569.11.1-30';
+import { Engine } from './xl-formula.js?v=2569.11.1-30';
+import { levelName, thaiDate } from './util.js?v=2569.11.1-30';
+import { toGrade } from './grading.js?v=2569.11.1-30';
+import { scoreColIndex } from './score-columns.js?v=2569.11.1-30';
 
 export const FORMS_URL = new URL('../pp/forms.xlsx', import.meta.url).href;
 let formsBytes = null;
@@ -340,14 +340,17 @@ for (let k = 0; k < 4; k++) {
 //  วิชาที่ 11–20: แบบย่อ (ซ่อนช่องตัวชี้วัด) ช่องคะแนนอยู่ที่ BZ–CK (12 ช่อง) พิมพ์หน้าเดียว
 // ---------------------------------------------------------------------
 export const SUBJECT_COMPACT_FROM = 11;
+// วิชาที่ 1–10 ที่ไม่มีตัวชี้วัด (และมีช่องคะแนนไม่เกิน 12) พิมพ์แบบย่อหน้าเดียว — ไม่พิมพ์หน้าตัวชี้วัด/หน้าคะแนนที่ว่าง คะแนนอยู่หน้าแรกทันที
+export const compactSubject = (m, n) => { const sub = m?.d?.subjects?.[n - 1]; return !!sub && n < SUBJECT_COMPACT_FROM && !sub.indicators.length && sub.items.length <= 12; };
 const colNumOf = (name) => [...name].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0);
 const fmtNum = (x) => (isNum(x) ? round2(x) : null);
 for (let n = 1; n <= 20; n++) {
-  const compact = n >= SUBJECT_COMPACT_FROM;
   WRITERS[`วิชาที่ ${n}`] = {
     noFill: true, black: true, area: '$A$1:$CO$56',
+    hide: (m) => (compactSubject(m, n) ? [[3, 77]] : null), noBreaks: (m) => compactSubject(m, n),
     write(put, m) {
       const d = m.d; const sub = d.subjects[n - 1]; const cm = m.subjects[n - 1]; if (!sub) return;
+      const compact = n >= SUBJECT_COMPACT_FROM || compactSubject(m, n);
       const mid = Number(sub.mid ?? 70); const fin = Number(sub.fin ?? 30);
       const t1 = `ผลการประเมินมาตรฐาน/ตัวชี้วัด ${sheetTitle(m)}`; const t1s = `ผลสัมฤทธิ์ทางการเรียน ${m.levelLine}`;
       const t2 = `รายวิชา ${sub.code || ''} ${sub.name || ''}`.trim(); const ratio = 'อัตราส่วนคะแนน ระหว่างภาค : ปลายภาค  = ';
@@ -530,9 +533,9 @@ export const FORM_SHEETS = Object.keys(WRITERS);
 // เฟส 1 ของชุด ปพ.5 ในตัว (เรียงตามลำดับที่โรงเรียนพิมพ์)
 // การจัดหน้าของแต่ละแผ่นให้ตรงกับใบตัวอย่างของโรงเรียน (ค่าที่วัดจากไฟล์ PDF ตัวอย่าง)
 //   dpi = ฐานคิดความกว้างคอลัมน์ · opt = ตัวเลือกจัดหน้า (orientation / adj.scale %)
-export function pp5Layout(name) {
+export function pp5Layout(name, m = null) {
   const sn = /^วิชาที่ (\d+)$/.exec(name);
-  if (sn) return { dpi: 100, opt: Number(sn[1]) < SUBJECT_COMPACT_FROM ? { adj: { scale: 104 } } : {} };   // 1–10: 5 หน้าตามตัวแบ่งเดิม · 11+: แบบย่อ 1 หน้า
+  if (sn) return { dpi: 100, opt: Number(sn[1]) < SUBJECT_COMPACT_FROM && !compactSubject(m, Number(sn[1])) ? { adj: { scale: 104 } } : {} };   // 1–10: 5 หน้าตามตัวแบ่งเดิม · 11+: แบบย่อ 1 หน้า
   if (name === 'คะแนนรายชั้น') return { dpi: 100, opt: { orientation: 'portrait', adj: { scale: 100 } } };
   if (name === 'เกรดรายชั้น') return { dpi: 100, opt: { orientation: 'portrait', adj: { scale: 108 } } };
   if (name === 'เกรดร้อยละ') return { dpi: 120, opt: { adj: { scale: 84 } } };
@@ -615,7 +618,9 @@ export class Forms {
   fill(sheet, m, i = 0) {
     const w = WRITERS[sheet]; if (!w) return false;
     if (w.noFill) this.stripFills(sheet);
-    if (w.hide) for (const [a, b] of w.hide) this.hideCols(sheet, a, b);
+    const hide = typeof w.hide === 'function' ? w.hide(m, i) : w.hide;
+    if (hide) for (const [a, b] of hide) this.hideCols(sheet, a, b);
+    if (w.noBreaks?.(m, i)) { const sh = this.wb.sheet(sheet); if (sh) { sh.colBreaks = []; sh.geo = null; } }
     if (w.area) this.ensurePrintArea(sheet, w.area);
     if (w.black) this.blackText(sheet);
     this.reset(sheet);

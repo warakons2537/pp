@@ -2,12 +2,12 @@
 //  ปพ.6: ตารางรายชื่อ (ล็อกการพิมพ์เมื่อเกรดยังไม่ครบ) · หน้าเกรดรายคน · สรุปเกรด (Excel)
 //  ใช้ข้อมูลชุดเดียวกับหน้าพิมพ์ ปพ.6 (loadRoomYear) ไม่มีการเขียนฐานข้อมูล
 // =====================================================================
-import { attachBulk } from '../bulk.js?v=2569.11.1-29';
-import { esc, $, roomName, fullName, levelName, modal } from '../util.js?v=2569.11.1-29';
-import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.11.1-29';
-import { ACTIVITIES } from '../assess.js?v=2569.11.1-29';
-import { icon } from '../icons.js?v=2569.11.1-29';
-import { Sheet, buildXlsx, safeSheetName, downloadBytes } from '../xlsx-write.js?v=2569.11.1-29';
+import { attachBulk } from '../bulk.js?v=2569.11.1-30';
+import { esc, $, roomName, fullName, levelName, modal } from '../util.js?v=2569.11.1-30';
+import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.11.1-30';
+import { ACTIVITIES } from '../assess.js?v=2569.11.1-30';
+import { icon } from '../icons.js?v=2569.11.1-30';
+import { Sheet, buildXlsx, safeSheetName, downloadBytes } from '../xlsx-write.js?v=2569.11.1-30';
 
 const termTxt = (t) => `ภาคเรียนที่ ${t.term} ปีการศึกษา ${t.academic_year}`;
 const g2 = (v) => (v === null || v === undefined ? '-' : Number(v).toFixed(2));
