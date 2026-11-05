@@ -5,11 +5,11 @@
 //  - แอปคำนวณทุกช่องเองจากข้อมูลในระบบ (buildBookData) แล้วใส่ลงช่องของแบบพิมพ์
 //    กติกาการคำนวณตรงกับไฟล์โปรแกรม ปพ.5-6 เดิมของโรงเรียน (ตรวจด้วย tests/pp-forms.test.mjs)
 // =====================================================================
-import { Workbook, key } from './xl-model.js?v=2569.11.1-31';
-import { Engine } from './xl-formula.js?v=2569.11.1-31';
-import { levelName, thaiDate } from './util.js?v=2569.11.1-31';
-import { toGrade } from './grading.js?v=2569.11.1-31';
-import { scoreColIndex } from './score-columns.js?v=2569.11.1-31';
+import { Workbook, key } from './xl-model.js?v=2569.11.1-34';
+import { Engine } from './xl-formula.js?v=2569.11.1-34';
+import { levelName, thaiDate } from './util.js?v=2569.11.1-34';
+import { toGrade } from './grading.js?v=2569.11.1-34';
+import { scoreColIndex } from './score-columns.js?v=2569.11.1-34';
 
 export const FORMS_URL = new URL('../pp/forms.xlsx', import.meta.url).href;
 let formsBytes = null;
@@ -340,6 +340,22 @@ for (let k = 0; k < 4; k++) {
 //  วิชาที่ 11–20: แบบย่อ (ซ่อนช่องตัวชี้วัด) ช่องคะแนนอยู่ที่ BZ–CK (12 ช่อง) พิมพ์หน้าเดียว
 // ---------------------------------------------------------------------
 export const SUBJECT_COMPACT_FROM = 11;
+// ตัวชี้วัดเกิน 36 ช่อง (ช่องในแผ่นมี C–AL = 36): พิมพ์หน้าตัวชี้วัดต่อเป็นแผ่น "วิชาที่ n · ตัวชี้วัด 37–72" ฯลฯ ใช้แผ่นเดียวกันแต่ใส่ตัวชี้วัดชุดถัดไป
+export const IND_PER_SHEET = 36;
+export function indicatorContinuations(d) {
+  const out = [];
+  (d?.subjects || []).slice(0, SUBJECT_COMPACT_FROM - 1).forEach((s, i) => {
+    const total = s.indicators?.length || 0;
+    for (let off = IND_PER_SHEET; off < total; off += IND_PER_SHEET) out.push({ name: `วิชาที่ ${i + 1} · ตัวชี้วัด ${off + 1}–${Math.min(off + IND_PER_SHEET, total)}`, base: `วิชาที่ ${i + 1}`, n: i + 1, off });
+  });
+  return out;
+}
+// ชุดข้อมูลของหน้าตัวชี้วัดต่อ: วิชาที่ n เหลือเฉพาะตัวชี้วัดตั้งแต่ลำดับ off
+export function continuationModel(d, n, off) {
+  const subjects = d.subjects.map((s, i) => (i === n - 1
+    ? { ...s, indOffset: off, indicators: s.indicators.slice(off, off + IND_PER_SHEET), rows: s.rows.map((r) => ({ ...r, ind: r.ind.slice(off, off + IND_PER_SHEET) })) } : s));
+  return classModel({ ...d, subjects });
+}
 // วิชาที่ 1–10 ที่ไม่มีตัวชี้วัด (และมีช่องคะแนนไม่เกิน 12) พิมพ์แบบย่อหน้าเดียว — ไม่พิมพ์หน้าตัวชี้วัด/หน้าคะแนนที่ว่าง คะแนนอยู่หน้าแรกทันที
 export const compactSubject = (m, n) => { const sub = m?.d?.subjects?.[n - 1]; return !!sub && n < SUBJECT_COMPACT_FROM && !sub.indicators.length && sub.items.length <= 12; };
 const colNumOf = (name) => [...name].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0);
@@ -352,7 +368,8 @@ for (let n = 1; n <= 20; n++) {
       const d = m.d; const sub = d.subjects[n - 1]; const cm = m.subjects[n - 1]; if (!sub) return;
       const compact = n >= SUBJECT_COMPACT_FROM || compactSubject(m, n);
       const mid = Number(sub.mid ?? 70); const fin = Number(sub.fin ?? 30);
-      const t1 = `ผลการประเมินมาตรฐาน/ตัวชี้วัด ${sheetTitle(m)}`; const t1s = `ผลสัมฤทธิ์ทางการเรียน ${m.levelLine}`;
+      const cont = sub.indOffset || 0;
+      const t1 = `ผลการประเมินมาตรฐาน/ตัวชี้วัด ${sheetTitle(m)}${cont ? ` (ต่อ ตัวชี้วัดที่ ${cont + 1}–${cont + sub.indicators.length})` : ''}`; const t1s = `ผลสัมฤทธิ์ทางการเรียน ${m.levelLine}`;
       const t2 = `รายวิชา ${sub.code || ''} ${sub.name || ''}`.trim(); const ratio = 'อัตราส่วนคะแนน ระหว่างภาค : ปลายภาค  = ';
       // ช่องคะแนนเริ่มที่ BZ (คอลัมน์ 78) ทั้งแผ่นเต็มและแบบย่อ — ตามชุดตัวอย่างของโรงเรียน (หน้า 3–4 ของแผ่นเต็มว่าง) · ชิ้นที่ 13+ ต่อไปที่ AP…
       const scoreCol = (k) => colLetters(scoreColIndex(k));
@@ -379,7 +396,7 @@ for (let n = 1; n <= 20; n++) {
         put(`A${r}`, st.no); put(`B${r}`, nameOf(st));
         if (nInd) {
           row.ind.slice(0, nInd).forEach((x, k) => put(`${colLetters(3 + k)}${r}`, x || null));
-          put(`AM${r}`, c.indPass ?? 0); put(`AN${r}`, c.indFail ?? 0); put(`AO${r}`, c.indicator || null);
+          if (!cont) { put(`AM${r}`, c.indPass ?? 0); put(`AN${r}`, c.indFail ?? 0); put(`AO${r}`, c.indicator || null); }
         }
         row.scores.slice(0, nItem).forEach((x, k) => put(`${scoreCol(k)}${r}`, x));
         put(`CL${r}`, c.mid ?? null); put(`CM${r}`, row.final ?? null); put(`CN${r}`, g.total); put(`CO${r}`, g.grade);
@@ -395,7 +412,7 @@ for (let n = 1; n <= 20; n++) {
         const v = rows.map((row) => row.ind[k]).filter(Boolean); const cl = colLetters(3 + k);
         const ok = v.filter((x) => x === 'ผ').length; put(`${cl}52`, ok); put(`${cl}53`, v.length - ok); put(`${cl}54`, v.length ? round2((ok / v.length) * 100) : null);
       }
-      if (nInd) { const v = rows.map((row) => row.calc?.indicator).filter(Boolean); const ok = v.filter((x) => x === 'ผ').length; put('AO52', ok); put('AO53', v.length - ok); put('AO54', v.length ? round2((ok / v.length) * 100) : null); }
+      if (nInd && !cont) { const v = rows.map((row) => row.calc?.indicator).filter(Boolean); const ok = v.filter((x) => x === 'ผ').length; put('AO52', ok); put('AO53', v.length - ok); put('AO54', v.length ? round2((ok / v.length) * 100) : null); }
       const tot = (key, get, ratio100) => { const v = rows.map((row, i) => get(row, i)).filter(isNum); if (!v.length) return; const a = sum(v) / v.length;
         put(`${key}52`, round2(sum(v))); put(`${key}53`, round2(a)); put(`${key}54`, ratio100 ? round2((a / ratio100) * 100) : null); };
       tot('CL', (row) => row.calc?.mid, mid); tot('CM', (row) => row.final, fin); tot('CN', (row, i) => cm.rows[i].total, 100);

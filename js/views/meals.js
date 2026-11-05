@@ -1,9 +1,9 @@
 import { esc, $, toast, options, roomName, fullName, iso, fromIso, todayIso, thaiDate, daysInMonth,
-  THAI_MONTHS, THAI_DOW } from '../util.js?v=2569.11.1-31';
-import { attachSheet } from '../sheet.js?v=2569.11.1-31';
-import { attachBulk } from '../bulk.js?v=2569.11.1-31';
-import { onSwipe } from '../swipe.js?v=2569.11.1-31';
-import { getRoster, termMonths, enrolledOn } from '../data.js?v=2569.11.1-31';
+  THAI_MONTHS, THAI_DOW } from '../util.js?v=2569.11.1-34';
+import { attachSheet } from '../sheet.js?v=2569.11.1-34';
+import { attachBulk } from '../bulk.js?v=2569.11.1-34';
+import { onSwipe } from '../swipe.js?v=2569.11.1-34';
+import { getRoster, termMonths, enrolledOn } from '../data.js?v=2569.11.1-34';
 
 // สถานะการทานอาหาร (ใช้สีเดียวกับเช็กชื่อ)
 const MEAL = {

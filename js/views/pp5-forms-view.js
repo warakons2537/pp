@@ -6,17 +6,21 @@
 //  เฟส 3: ผลประเมินตัวชี้วัดและคะแนนรายวิชา (วิชาที่ 1–n)
 //  เฟส 4: คุณลักษณะ · สมรรถนะ · กิจกรรม · คะแนนรายชั้น · เกรดรายชั้น · สรุปเกรดร้อยละ
 // =====================================================================
-import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-31';
-import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-31';
-import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays, ATT_MONTHS } from '../pp-forms.js?v=2569.11.1-31';
-import { Renderer } from '../xl-render.js?v=2569.11.1-31';
-import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-31';
-import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-31';
-import { adjOpt, adjText, adjustDialog, pickSheetsDialog } from '../page-adjust.js?v=2569.11.1-31';
+import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-34';
+import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-34';
+import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays, ATT_MONTHS, indicatorContinuations, continuationModel } from '../pp-forms.js?v=2569.11.1-34';
+import { Renderer } from '../xl-render.js?v=2569.11.1-34';
+import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-34';
+import { ensureCss, printWithStatus } from './pp-book-view.js?v=2569.11.1-34';
+import { adjOpt, adjText, adjustDialog, pickSheetsDialog, AUTO_ADJ } from '../page-adjust.js?v=2569.11.1-34';
 
 // ค่าปรับหน้าที่ผู้ใช้ตั้งไว้ (จำในเบราว์เซอร์ ใช้กับทุกห้อง/ภาคเรียน) · ชื่อแผ่น → { mt, mb, ml, mr, font, row, col, scale, hCenter }
 const ADJ_KEY = 'pp5-page-adjust';
 const loadAdj = () => { try { return JSON.parse(localStorage.getItem(ADJ_KEY) || '{}') || {}; } catch { return {}; } };
+// จัดหน้าอัตโนมัติทั้งชุด: ทุกหน้าของแต่ละแผ่นขนาดเท่ากัน จัดกึ่งกลาง ขอบเท่ากัน (10 มม.) — ค่า "ปรับหน้า…" รายแผ่นทับได้
+const AUTO_KEY = 'pp5-auto-layout';
+const loadAuto = () => { try { return localStorage.getItem(AUTO_KEY) === '1'; } catch { return false; } };
+const saveAuto = (v) => { try { localStorage.setItem(AUTO_KEY, v ? '1' : '0'); } catch { /* */ } };
 const saveAdj = (a) => { try { localStorage.setItem(ADJ_KEY, JSON.stringify(a)); } catch { /* */ } };
 
 const ZOOM = { 0.32: 'เล็ก', 0.5: 'กลาง', 0.8: 'ใหญ่' };
@@ -63,15 +67,20 @@ export async function pp5FormsView(host, ctx, room0) {
   const term = termObj.term;
   let sheets = []; const groups = []; let data; let F; let m;
   const renderers = new Map();      // ตามฐาน dpi ของแต่ละแผ่น (ดู pp5Layout)
-  const adjAll = loadAdj();
+  const adjAll = loadAdj(); let auto = loadAuto();
   // วาดแผ่นเดียว: ค่าตั้งต้นของใบตัวอย่าง (pp5Layout) + ค่าที่ผู้ใช้ปรับ (ทับค่าตั้งต้น)
+  const conts = new Map();
+  const baseOf = (n) => conts.get(n)?.base || n;          // ชื่อแผ่น "วิชาที่ n · ตัวชี้วัด 37–72" → หน้าตัวชี้วัดต่อของวิชานั้น
   const renderGroup = (n) => {
-    if (!F.fill(n, m)) return { n, pages: [], err: 'ยังไม่มีแบบพิมพ์' };
+    const ct = conts.get(n); const base = ct ? ct.base : n; const mm = ct ? continuationModel(data, ct.n, ct.off) : m;
+    if (!F.fill(base, mm)) return { n, pages: [], err: 'ยังไม่มีแบบพิมพ์' };
     try {
-      const { dpi, opt } = pp5Layout(n, m);
+      const { dpi, opt } = pp5Layout(base, mm);
       if (!renderers.has(dpi)) renderers.set(dpi, new Renderer(F.wb, F.eng, { dpi }));
-      const adj = { ...(opt.adj || {}), ...(adjOpt(adjAll[n]) || {}) };
-      return { n, pages: renderers.get(dpi).renderSheet(n, { ...opt, adj: Object.keys(adj).length ? adj : undefined, overlays: pp5Overlays(n, m) }) };
+      const bopt = { ...(opt.adj || {}) }; if (auto) { delete bopt.scale; Object.assign(bopt, AUTO_ADJ); }       // อัตโนมัติ: ไม่ใช้ค่าย่อ/ขยายตั้งต้นของแผ่น
+      const adj = { ...bopt, ...(adjOpt(adjAll[n]) || {}) };
+      const pages = renderers.get(dpi).renderSheet(base, { ...opt, adj: Object.keys(adj).length ? adj : undefined, overlays: pp5Overlays(base, mm) });
+      return { n, pages: ct ? pages.slice(0, 2) : pages };      // หน้าตัวชี้วัดต่อ = 2 หน้าแรกของแผ่น (หน้าคะแนนไม่ต้องพิมพ์ซ้ำ)
     } catch (err) { return { n, pages: [], err: err.message }; }
   };
   try {
@@ -80,6 +89,8 @@ export async function pp5FormsView(host, ctx, room0) {
     m = classModel(data);
     F = await Forms.open(await loadFormsBytes());
     sheets = pp5Set(term, data.subjects.length);
+    const contList = indicatorContinuations(data); contList.forEach((c) => conts.set(c.name, c));
+    sheets = sheets.flatMap((n) => [n, ...contList.filter((c) => c.base === n).map((c) => c.name)]);   // หน้าตัวชี้วัดต่อวางต่อจากแผ่นวิชานั้น
     for (const n of sheets) groups.push(renderGroup(n));
   } catch (err) { console.error(err); paper.innerHTML = `<div class="empty">เตรียมแบบพิมพ์ไม่สำเร็จ: ${esc(err.message)}</div>`; toast(err.message, 'err'); return; }
 
@@ -90,7 +101,7 @@ export async function pp5FormsView(host, ctx, room0) {
   if (pref.init !== initKey) { pref.init = initKey; pref.off = new Set(emptyRound); }
   ensureCss();
   const on = () => groups.filter((g) => !pref.off.has(g.n));
-  const issuesNow = () => bookChecks(data, on().map((g) => g.n), sheets.filter((n) => !emptyRound.has(n)), term);
+  const issuesNow = () => bookChecks({ ...data, warnings: (data.warnings || []).filter((w) => !/ตัวชี้วัดเกิน 36/.test(w)) }, on().map((g) => g.n), sheets.filter((n) => !emptyRound.has(n)), term);
   const warnHtml = (issues) => (issues.length
     ? `<div class="small" style="margin:6px 0;padding:8px 10px;border:1px solid var(--amber,#b7791f);border-radius:8px"><b>⚠ ตรวจก่อนพิมพ์ — พบ ${issues.length} ข้อ</b><ul style="margin:4px 0 0;padding-left:20px">${issues.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul></div>`
     : '<p class="small" style="margin:4px 0">✓ ตรวจแล้ว: ไม่พบหน้าที่ขาดหรือข้อมูลที่ยังไม่ได้ลง</p>');
@@ -102,6 +113,7 @@ export async function pp5FormsView(host, ctx, room0) {
       <div class="row no-print" style="justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
         <h3 style="margin:0">ปพ.5 — ห้อง ${esc(roomName(room))} ภาคเรียนที่ ${term}/${termObj.academic_year} <span class="small muted">· พิมพ์ ${total} หน้า จาก ${list.length} แผ่น</span></h3>
         <div class="row" style="flex-wrap:wrap;align-items:flex-end">${fontSelectHtml('p5-font')}
+          <label class="field" title="อัตโนมัติ: ทุกหน้าของแต่ละแผ่นขนาดเท่ากัน จัดกึ่งกลางทั้งแนวนอนและแนวตั้ง ขอบ 10 มม. เท่ากันทุกหน้า">การจัดหน้า<select id="p5-auto"><option value="0" ${auto ? '' : 'selected'}>ตามแบบพิมพ์โรงเรียน</option><option value="1" ${auto ? 'selected' : ''}>อัตโนมัติ: กึ่งกลาง ขนาดเท่ากัน</option></select></label>
           <label class="field">ขนาด<select id="p5-zoom">${Object.entries(ZOOM).map(([v, l]) => `<option value="${v}" ${+v === z ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
           <button class="btn" id="p5-adj-multi" title="เลือกหลายแผ่นแล้วปรับขอบ/ขนาดตัวอักษร/ย่อขยายด้วยค่าเดียวกัน">ปรับหน้าหลายแผ่น…</button>
           <button class="btn btn-primary" id="p5-print" ${total ? '' : 'disabled'}>พิมพ์ / บันทึกเป็น PDF (${total} หน้า)</button></div>
@@ -119,8 +131,8 @@ export async function pp5FormsView(host, ctx, room0) {
     $$('[data-ind]', paper).forEach((b) => b.addEventListener('click', () => ctx.go('scores', { course: b.dataset.ind, tab: 'indicators' })));
     $$('[data-go]', paper).forEach((b) => b.addEventListener('click', () => ctx.go(b.dataset.go)));
     $$('[data-adj-n]', paper).forEach((b) => b.addEventListener('click', async () => {
-      const n = b.dataset.adjN; const { opt } = pp5Layout(n, m);
-      const res = await adjustDialog(n, adjAll[n], { margins: F.wb.sheet(n)?.page.margins, scale: opt.adj?.scale ?? null });
+      const n = b.dataset.adjN; const { opt } = pp5Layout(baseOf(n), m);
+      const res = await adjustDialog(n, adjAll[n], { margins: F.wb.sheet(baseOf(n))?.page.margins, scale: opt.adj?.scale ?? null });
       if (!res) return;
       const targets = res.all ? on().map((g) => g.n) : [n];
       for (const t of targets) { if (res.adj) adjAll[t] = { ...res.adj }; else delete adjAll[t]; const i = groups.findIndex((g) => g.n === t); if (i >= 0) groups[i] = renderGroup(t); }
@@ -134,20 +146,23 @@ export async function pp5FormsView(host, ctx, room0) {
       if (!names) return;
       const same = names.every((n) => JSON.stringify(adjAll[n] || null) === JSON.stringify(adjAll[names[0]] || null));
       const res = await adjustDialog(`${names.length} แผ่น`, same ? adjAll[names[0]] : undefined,
-        { margins: F.wb.sheet(names[0])?.page.margins, scale: null, noAll: true }, `แผ่นที่เลือก ${names.length} แผ่น (${names.slice(0, 4).join(', ')}${names.length > 4 ? '…' : ''}) ในการดูตัวอย่าง/พิมพ์/PDF`);
+        { margins: F.wb.sheet(baseOf(names[0]))?.page.margins, scale: null, noAll: true }, `แผ่นที่เลือก ${names.length} แผ่น (${names.slice(0, 4).join(', ')}${names.length > 4 ? '…' : ''}) ในการดูตัวอย่าง/พิมพ์/PDF`);
       if (!res) return;
       for (const t of names) { if (res.adj) adjAll[t] = { ...res.adj }; else delete adjAll[t]; const i = groups.findIndex((g) => g.n === t); if (i >= 0) groups[i] = renderGroup(t); }
       saveAdj(adjAll); draw(); toast(res.adj ? `ปรับหน้า ${names.length} แผ่นแล้ว` : `ล้างค่าปรับหน้า ${names.length} แผ่นแล้ว`);
     });
+    $('#p5-auto', paper).addEventListener('change', (e) => {
+      auto = e.target.value === '1'; saveAuto(auto);
+      for (let i = 0; i < groups.length; i++) groups[i] = renderGroup(groups[i].n);
+      draw(); toast(auto ? 'จัดหน้าอัตโนมัติทั้งชุดแล้ว (ปรับรายแผ่นด้วย "ปรับหน้า…" ทับได้)' : 'กลับเป็นการจัดหน้าตามแบบพิมพ์โรงเรียน');
+    });
     $('#p5-zoom', paper).addEventListener('change', (e) => { pref.zoom = +e.target.value; draw(); });
     $('#p5-font', paper).addEventListener('change', (e) => { setThaiFont(e.target.value); toast('เปลี่ยนฟอนต์แล้ว กำลังจัดหน้าใหม่'); pp5FormsView(host, ctx, room0); });
     $('#p5-print', paper).addEventListener('click', async (e) => {
+      const btn = e.currentTarget;   // จับปุ่มไว้ก่อน await (หลังรอหน้าต่างยืนยัน e.currentTarget จะเป็นค่าว่าง)
       const issues = issuesNow();
       if (issues.length && (await modal('ตรวจก่อนพิมพ์', `<p style="margin:0">พบ ${issues.length} ข้อที่ควรตรวจก่อนพิมพ์:</p><ul class="small" style="margin:6px 0 0;padding-left:20px;max-height:50vh;overflow:auto">${issues.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul>`, { okText: 'พิมพ์ต่อ', cancelText: 'กลับไปตรวจ' })) === null) return;
-      const btn = e.currentTarget; btn.disabled = true;
-      const tab = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? window.open('', '_blank') : null;   // มือถือ: เปิดแท็บใหม่ในจังหวะกดปุ่ม
-      try { await printPages(on().flatMap((g) => g.pages), fileName(room, termObj), tab); }
-      catch (err) { toast(`พิมพ์ไม่สำเร็จ: ${err.message}`, 'err'); } finally { btn.disabled = false; }
+      await printWithStatus(btn, on().flatMap((g) => g.pages), fileName(room, termObj));
     });
   };
   draw();

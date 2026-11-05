@@ -4,15 +4,15 @@
 //  - ดูตัวอย่างทุกหน้า เลือกพิมพ์รายหน้า → พิมพ์ / บันทึกเป็น PDF ได้ในแอป (ไม่ต้องมี Excel)
 //  - หรือสร้างไฟล์ Excel ที่หน้าตาเหมือนต้นฉบับ
 // =====================================================================
-import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-31';
-import { Template } from '../xlsx-template.js?v=2569.11.1-31';
-import { buildBookData, makeBook, prepareBook, defaultBook, bookChecks } from '../pp-book.js?v=2569.11.1-31';
-import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-31';
-import { Workbook } from '../xl-model.js?v=2569.11.1-31';
-import { Engine } from '../xl-formula.js?v=2569.11.1-31';
-import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-31';
-import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-31';
-import { adjOpt, adjText, adjustDialog, pickSheetsDialog } from '../page-adjust.js?v=2569.11.1-31';
+import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-34';
+import { Template } from '../xlsx-template.js?v=2569.11.1-34';
+import { buildBookData, makeBook, prepareBook, defaultBook, bookChecks } from '../pp-book.js?v=2569.11.1-34';
+import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-34';
+import { Workbook } from '../xl-model.js?v=2569.11.1-34';
+import { Engine } from '../xl-formula.js?v=2569.11.1-34';
+import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-34';
+import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-34';
+import { adjOpt, adjText, adjustDialog, pickSheetsDialog, AUTO_ADJ } from '../page-adjust.js?v=2569.11.1-34';
 
 const PATH = 'pp/template';
 let cache = { at: null, bytes: null, t: null };          // ไฟล์ต้นฉบับที่โหลดแล้ว (อยู่ในหน่วยความจำ)
@@ -86,6 +86,7 @@ export async function bookView(paper, ctx, room) {
       <p class="small muted">ติ๊กแผ่นที่จะพิมพ์ · ลูกศรเลื่อนลำดับ · เลือกแนวกระดาษและการย่อรายแผ่นได้ · แผ่นรายคน (เช่น ปพ.6) พิมพ์ทุกคนในห้อง หรือระบุเลขที่ เช่น 1-5, 8 · เลือก/ไม่เลือกรายหน้าได้ในตัวอย่าง · ระบบจำการจัดหน้าไว้ให้ครั้งต่อไป</p>
       <div class="tbl-wrap" style="max-height:52vh"><table class="tbl tbl-dense" id="b-list"><thead><tr><th class="n">พิมพ์</th><th class="n">ลำดับ</th><th>แผ่นงาน</th><th>แนวกระดาษ</th><th>การย่อ</th><th>ปรับหน้า</th><th>นักเรียน <span class="small muted">(แผ่นรายคน)</span></th><th></th></tr></thead><tbody></tbody></table></div>
       <details style="margin-top:8px"><summary class="small">ขั้นสูง</summary>
+        <label class="small" title="ทุกหน้าของแต่ละแผ่นขนาดเท่ากัน จัดกึ่งกลางทั้งแนวนอน/แนวตั้ง ขอบ 10 มม. · มีผลกับตัวอย่าง/พิมพ์/PDF (ไฟล์ Excel ใช้ค่าของไฟล์ต้นฉบับ)"><input type="checkbox" id="b-auto" ${layout.auto ? 'checked' : ''}> จัดหน้าอัตโนมัติ (กึ่งกลาง ขนาดเท่ากัน)</label>
         <label class="small">ความกว้างคอลัมน์คิดแบบ <select id="b-dpi">${Object.entries(DPI).map(([v, l]) => `<option value="${v}" ${+v === +layout.dpi ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
         <p class="small muted" style="margin:4px 0 0">Excel คำนวณความกว้างคอลัมน์จากขนาดตัวอักษรบนจอ ไฟล์ ปพ. ต้นฉบับจัดหน้าบนจอ 125% ถ้าพิมพ์จาก Excel ในเครื่องที่ตั้งจอ 100% ตารางจะแคบลงเล็กน้อย</p>
       </details>
@@ -127,6 +128,7 @@ export async function bookView(paper, ctx, room) {
   });
   $('#b-def', paper).addEventListener('click', () => { const z = layout.zoom; const d = layout.dpi; layout = fresh(); layout.zoom = z; layout.dpi = d; on.clear(); layout.on.forEach((n) => on.add(n)); changed(); });
   $('#b-none', paper).addEventListener('click', () => { on.clear(); changed(); });
+  $('#b-auto', paper).addEventListener('change', (e) => { layout.auto = e.target.checked; if (book) book.pages.clear(); changed(); });
   $('#b-dpi', paper).addEventListener('change', (e) => { layout.dpi = +e.target.value; if (book) { book.R = null; book.pages.clear(); } changed(); });
 
   // ---------- ไฟล์ Excel ----------
@@ -194,9 +196,9 @@ export async function bookView(paper, ctx, room) {
     if (book.font !== getThaiFont()) { await useThaiFont(); book.font = getThaiFont(); book.R = null; book.pages.clear(); }
     const p = per.get(n);
     const list = p ? parseWho(layout.who[n], book.data.students.length) : null;
-    const k = `${n}|${book.font}|${layout.orient[n] || ''}|${layout.fit[n] || ''}|${layout.dpi}|${JSON.stringify(layout.adj[n] || null)}|${list ? list.join(',') : ''}`;
+    const k = `${n}|${book.font}|${layout.orient[n] || ''}|${layout.fit[n] || ''}|${layout.dpi}|${layout.auto ? 'A' : ''}|${JSON.stringify(layout.adj[n] || null)}|${list ? list.join(',') : ''}`;
     if (book.pages.has(k)) return book.pages.get(k);
-    const opt = { orientation: layout.orient[n] || null, fit: layout.fit[n] || null, adj: adjOpt(layout.adj[n]) };
+    const opt = { orientation: layout.orient[n] || null, fit: layout.fit[n] || null, adj: { ...(layout.auto ? AUTO_ADJ : {}), ...(adjOpt(layout.adj[n]) || {}) } };
     let pages;
     if (!p) pages = renderer().renderSheet(n, opt);
     else {
@@ -311,14 +313,12 @@ export async function bookView(paper, ctx, room) {
     $('#pv-all', pv).addEventListener('click', () => { for (const g of groups) delete layout.skip[g.n]; store(); showPreview(); });
     $('#pv-reload', pv).addEventListener('click', () => showPreview(true));
     $('#pv-print', pv).addEventListener('click', async (e) => {
+      const btn = e.currentTarget;   // จับปุ่มไว้ก่อน await (หลังรอหน้าต่างยืนยัน e.currentTarget จะเป็นค่าว่าง)
       const list = []; for (const g of groups) g.pages.forEach((p, i) => { if (!(layout.skip[g.n] || []).includes(i)) list.push(p); });
       if (!list.length) { toast('ไม่ได้เลือกหน้าใดเลย', 'err'); return; }
       issues = issuesNow();
       if (issues.length && (await modal('ตรวจก่อนพิมพ์', `<p style="margin:0">พบ ${issues.length} ข้อที่ควรตรวจก่อนพิมพ์:</p><ul class="small" style="margin:6px 0 0;padding-left:20px;max-height:50vh;overflow:auto">${issues.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul>`, { okText: 'พิมพ์ต่อ', cancelText: 'กลับไปตรวจ' })) === null) return;
-      const btn = e.currentTarget; btn.disabled = true;
-      // มือถือ/แท็บเล็ต: เปิดแท็บใหม่ทันที (ต้องเปิดในจังหวะที่กดปุ่ม ไม่งั้นถูกบล็อก)
-      const tab = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? window.open('', '_blank') : null;
-      try { await printPages(list, fileBase(ctx, room), tab); } catch (err) { toast(`พิมพ์ไม่สำเร็จ: ${err.message}`, 'err'); } finally { btn.disabled = false; }
+      await printWithStatus(btn, list, fileBase(ctx, room));
     });
   }
   $('#b-adj-multi', paper).addEventListener('click', openAdjustMany);
@@ -420,6 +420,26 @@ html,body{margin:0;padding:0;background:#fff}
   win.addEventListener('afterprint', cleanup, { once: true });
   win.focus(); win.print();
   setTimeout(() => { if (document.body.contains(ifr)) ifr.remove(); }, 120000);
+}
+
+// กดพิมพ์แล้วมีความคืบหน้าให้เห็น (เตรียมหลายสิบหน้าใช้เวลาสักครู่) + ปุ่มสำรองเปิดในแท็บใหม่ เผื่อเบราว์เซอร์ไม่เปิดหน้าต่างพิมพ์จาก iframe
+export async function printWithStatus(btn, list, title) {
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = `กำลังเตรียม ${list.length} หน้า…`;
+  btn.parentElement?.querySelector('.print-fallback')?.remove();
+  toast(`กำลังเตรียม ${list.length} หน้าเพื่อพิมพ์ อาจใช้เวลาสักครู่…`);
+  const tab = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? window.open('', '_blank') : null;   // มือถือ: เปิดแท็บใหม่ในจังหวะกดปุ่ม
+  try {
+    await printPages(list, title, tab);
+    toast(`เปิดหน้าต่างพิมพ์แล้ว (${list.length} หน้า) · ถ้าไม่ขึ้น ใช้ปุ่ม "เปิดในแท็บใหม่" ข้างปุ่มพิมพ์`);
+    const fb = document.createElement('button'); fb.type = 'button'; fb.className = 'btn btn-sm print-fallback';
+    fb.textContent = 'ไม่มีหน้าต่างพิมพ์ขึ้น? เปิดในแท็บใหม่'; fb.title = 'เปิดเอกสารในแท็บใหม่แล้วสั่งพิมพ์จากที่นั่น (ต้องอนุญาตป๊อปอัปของเว็บนี้)';
+    fb.addEventListener('click', async () => {
+      const t = window.open('', '_blank'); if (!t) { toast('เบราว์เซอร์บล็อกแท็บใหม่ — กรุณาอนุญาตป๊อปอัปของเว็บนี้แล้วกดอีกครั้ง', 'err'); return; }
+      try { await printPages(list, title, t); } catch (err) { toast(`พิมพ์ไม่สำเร็จ: ${err.message}`, 'err'); }
+    });
+    btn.insertAdjacentElement('afterend', fb);
+  } catch (err) { toast(`พิมพ์ไม่สำเร็จ: ${err.message}`, 'err'); } finally { btn.disabled = false; btn.textContent = label; }
 }
 
 function wireUpload(paper, ctx, again) {
