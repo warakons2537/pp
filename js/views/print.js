@@ -1,14 +1,14 @@
 // พิมพ์เอกสาร ปพ.: ปพ.6 รายบุคคล · ปก ปพ.5 รายชั้น · ปก ปพ.5 รายวิชา · ใบรับรองผลการศึกษา
-import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js?v=2569.11.1-23';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-23';
-import { loadRoomYear, personName } from '../yeardata.js?v=2569.11.1-23';
-import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.11.1-23';
-import { icon } from '../icons.js?v=2569.11.1-23';
-import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js?v=2569.11.1-23';
-import { bookView } from './pp-book-view.js?v=2569.11.1-23';
-import { listView, studentView, missingOf, termsOf } from './pp6-hub.js?v=2569.11.1-23';
-import { pp6FormsView } from './pp6-forms-view.js?v=2569.11.1-23';
-import { pp5FormsView } from './pp5-forms-view.js?v=2569.11.1-23';
+import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js?v=2569.11.1-24';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-24';
+import { loadRoomYear, personName } from '../yeardata.js?v=2569.11.1-24';
+import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.11.1-24';
+import { icon } from '../icons.js?v=2569.11.1-24';
+import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js?v=2569.11.1-24';
+import { bookView } from './pp-book-view.js?v=2569.11.1-24';
+import { listView, studentView, missingOf, termsOf } from './pp6-hub.js?v=2569.11.1-24';
+import { pp6FormsView } from './pp6-forms-view.js?v=2569.11.1-24';
+import { pp5FormsView } from './pp5-forms-view.js?v=2569.11.1-24';
 
 const DOCS = { pp5: 'ปพ.5 ครบชุด (แบบพิมพ์ในระบบ)', book: 'เล่ม ปพ. (เหมือนไฟล์ต้นฉบับ)', pp6: 'ปพ.6 รายบุคคล', coverClass: 'ปก ปพ.5 รายชั้น', coverCourse: 'ปก ปพ.5 รายวิชา', cert: 'ใบรับรองผลการศึกษา' };
 const pref = { doc: 'book', room: null, only: null, from: 1, to: 99, scope: 'term', page2: true, course: null, pp6View: 'list', stu: null,
@@ -37,7 +37,7 @@ export async function render(el, ctx) {
     <div class="page-head"><div><h1>พิมพ์เอกสาร ปพ.</h1><p>ดูตัวอย่างทุกหน้าก่อนพิมพ์ แต่ละคนขึ้นหน้าใหม่ให้อัตโนมัติ</p></div>
     <div class="row no-print">
       ${pref.doc === 'pp6' ? `<button class="btn btn-pill" id="pp6-back">${icon('back')}กลับไปรายชื่อ</button>` : ''}
-      <label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label>
+      ${pref.doc === 'pp5' ? '' : `<label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label>`}
       ${['pp6', 'cert'].includes(pref.doc) ? `<label class="field">เลขที่<span class="row" style="gap:4px;align-items:center">
         <input type="number" id="from" min="1" value="${pref.from}" style="width:70px"> ถึง <input type="number" id="to" min="1" value="${pref.to}" style="width:70px"></span></label>` : ''}
       ${pref.doc === 'pp6' && !nativePp6 ? `<label class="field">ช่วงข้อมูล<select id="scope"><option value="term" ${pref.scope === 'term' ? 'selected' : ''}>ภาคเรียนที่ ${ctx.term.term} (ภาคปัจจุบัน)</option>
@@ -59,7 +59,7 @@ export async function render(el, ctx) {
   const again = () => render(el, ctx);
   wireTabs(el, again);
   $('#pp6-back', el)?.addEventListener('click', () => { pref.pp6View = 'list'; again(); });
-  $('#room', el).addEventListener('change', (e) => { pref.room = e.target.value; pref.from = 1; pref.to = 99; pref.only = null; pref.pp6View = 'list'; again(); });
+  $('#room', el)?.addEventListener('change', (e) => { pref.room = e.target.value; pref.from = 1; pref.to = 99; pref.only = null; pref.pp6View = 'list'; again(); });
   $('#from', el)?.addEventListener('change', (e) => { pref.from = Number(e.target.value) || 1; pref.only = null; again(); });
   $('#to', el)?.addEventListener('change', (e) => { pref.to = Number(e.target.value) || 99; pref.only = null; again(); });
   $('#scope', el)?.addEventListener('change', (e) => { pref.scope = e.target.value; again(); });

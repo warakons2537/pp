@@ -4,14 +4,14 @@
 //  → หน้าตา สูตร และการแบ่งหน้าเหมือนต้นฉบับทุกหน้า
 //  ไม่แตะเซลล์ที่ไฟล์ต้นฉบับล็อกไว้ (เช่น ชื่อโรงเรียนที่ผู้พัฒนาโปรแกรมล็อก)
 // =====================================================================
-import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-23';
-import { levelName } from './util.js?v=2569.11.1-23';
-import { getRoster, loadGrowthRef, termRange, inTermList } from './data.js?v=2569.11.1-23';
-import { ageMonths, classify } from './assess.js?v=2569.11.1-23';
-import { scoreColIndex } from './score-columns.js?v=2569.11.1-23';
-import { occupationOf, personName, addressShort } from './student-family.js?v=2569.11.1-23';
-import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-23';
-import { enrollmentCounts } from './yeardata.js?v=2569.11.1-23';
+import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-24';
+import { levelName } from './util.js?v=2569.11.1-24';
+import { getRoster, loadGrowthRef, termRange, inTermList } from './data.js?v=2569.11.1-24';
+import { ageMonths, classify } from './assess.js?v=2569.11.1-24';
+import { scoreColIndex } from './score-columns.js?v=2569.11.1-24';
+import { occupationOf, personName, addressShort } from './student-family.js?v=2569.11.1-24';
+import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-24';
+import { enrollmentCounts } from './yeardata.js?v=2569.11.1-24';
 
 export const MONTHS = [['พ.ค.', 5], ['มิ.ย.', 6], ['ก.ค.', 7], ['ส.ค.', 8], ['ก.ย.', 9], ['ต.ค.', 10], ['พ.ย.', 11], ['ธ.ค.', 12], ['ม.ค.', 1], ['ก.พ.', 2], ['มี.ค.', 3], ['เม.ย.', 4]];
 export const SUBJECT_ROWS = [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];   // แถวในแผ่น "รายวิชา" ของวิชาที่ 1–20
@@ -103,8 +103,18 @@ export function bookChecks(d, selected, expected = [], term = null) {
 // ---------------------------------------------------------------------
 //  รวบรวมข้อมูลห้อง 1 ห้อง 1 ภาคเรียน
 // ---------------------------------------------------------------------
-export async function buildBookData(ctx, room) {
-  const { db } = ctx; const term = ctx.term;
+// รายวิชาของห้องในภาคเรียนใดก็ได้ (ctx.courses มีเฉพาะภาคเรียนปัจจุบัน — ภาคอื่น/ปีอื่นอ่านจากฐานข้อมูล)
+export async function coursesOf(ctx, room, term) {
+  if (term.id === ctx.term?.id) return ctx.courses.filter((k) => k.classroom_id === room.id && k.term_id === term.id);
+  const rows = await ctx.db.select('courses', { eq: { classroom_id: room.id, term_id: term.id } });
+  return rows.map((k) => ({ ...k, subject: ctx.subjectById[k.subject_id], classroom: room,
+    teachers: (ctx.courseTeacherRows || []).filter((x) => x.course_id === k.id).map((x) => ctx.profileById[x.teacher_id]).filter(Boolean) }))
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || String(a.subject?.code).localeCompare(String(b.subject?.code)));
+}
+
+// term = ภาคเรียนที่ต้องการ (ไม่ระบุ = ภาคเรียนปัจจุบัน) — เลือกภาคเรียน/ปีการศึกษาย้อนหลังได้
+export async function buildBookData(ctx, room, { term: termArg = null } = {}) {
+  const { db } = ctx; const term = termArg || ctx.term;
   const everyone = await getRoster(db, room.id, { includeLeft: true });     // รวมคนที่ย้ายออก (ใช้นับจำนวนในปก ปพ.5)
   // รายชื่อในเล่มของภาคเรียนนี้ = นักเรียนที่อยู่ถึงสิ้นภาค (ย้ายเข้ากลางปีไม่อยู่ในภาคก่อนหน้า · ย้ายออกหลังสิ้นภาคยังอยู่ในภาคนั้น)
   const live = everyone.filter((s) => inTermList(s, term));
@@ -126,8 +136,9 @@ export async function buildBookData(ctx, room) {
     ids.length ? db.select('homeroom_comments', { eq: { term_id: term.id }, in: { student_id: ids } }) : [],
   ]);
 
-  const courses = ctx.courses.filter((k) => k.classroom_id === room.id && k.term_id === term.id).slice(0, 20);
-  if (ctx.courses.filter((k) => k.classroom_id === room.id && k.term_id === term.id).length > 20) warnings.push('ไฟล์ต้นฉบับมีวิชาได้ 20 วิชา วิชาที่เกินจะไม่อยู่ในเล่ม');
+  const allCourses = await coursesOf(ctx, room, term);
+  const courses = allCourses.slice(0, 20);
+  if (allCourses.length > 20) warnings.push('ไฟล์ต้นฉบับมีวิชาได้ 20 วิชา วิชาที่เกินจะไม่อยู่ในเล่ม');
   const rounding = ctx.settings.score_rounding || 'floor';
   const subjects = [];
   for (const k of courses) {

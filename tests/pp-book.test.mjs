@@ -1,6 +1,6 @@
 // ทดสอบชุดมาตรฐานและการตรวจก่อนพิมพ์ของเล่ม ปพ.: node tests/pp-book.test.mjs
 import assert from 'node:assert/strict';
-import { defaultBook, bookChecks, fillBook, MONTHS } from '../js/pp-book.js';
+import { defaultBook, bookChecks, fillBook, coursesOf, MONTHS } from '../js/pp-book.js';
 import { scoreColIndex } from '../js/score-columns.js';
 
 const names = ['ข้อมูลพื้นฐาน', 'ปก ปพ.5 รายชั้น', 'ปก ปพ.5 รายวิชา', 'ชื่อนักเรียน', ...MONTHS.map((m) => m[0]), 'เวลา รวม 1', 'เวลา รวม 2', 'น้ำหนัก-ส่วนสูง',
@@ -55,5 +55,19 @@ assert.equal(bookChecks(d, ['ปก ปพ.5 รายชั้น'], ['ปก �
   const val = (ref) => e.get(ref)?.v;
   assert.equal(val('BZ5'), 'งาน 1'); assert.equal(val('BZ6'), 10); assert.equal(val('BZ7'), 1); assert.equal(val('CK7'), 12);   // ชิ้นที่ 1–12 = BZ–CK
   assert.equal(val('AP7'), 13); assert.equal(val('AQ7'), 14);                                                                      // ชิ้นที่ 13–14 = AP–AQ
+}
+// รายวิชาของภาคเรียนใดก็ได้ (เลือกภาคเรียน/ปีการศึกษาย้อนหลังในแบบพิมพ์ ปพ.5)
+{
+  const room = { id: 'c1' };
+  const ctx = {
+    term: { id: 't-now' }, courses: [{ id: 'k-now', classroom_id: 'c1', term_id: 't-now' }, { id: 'k-other-room', classroom_id: 'c2', term_id: 't-now' }],
+    subjectById: { s1: { code: 'ท', name: 'ไทย' }, s2: { code: 'ค', name: 'คณิต' } }, profileById: { p1: { id: 'p1', full_name: 'ครู ก' } }, courseTeacherRows: [{ course_id: 'k-old2', teacher_id: 'p1' }],
+    db: { select: async (t, q) => { assert.equal(t, 'courses'); assert.deepEqual(q.eq, { classroom_id: 'c1', term_id: 't-old' });
+      return [{ id: 'k-old2', subject_id: 's2', sort_order: 2, classroom_id: 'c1', term_id: 't-old' }, { id: 'k-old1', subject_id: 's1', sort_order: 1, classroom_id: 'c1', term_id: 't-old' }]; } },
+  };
+  assert.deepEqual((await coursesOf(ctx, room, { id: 't-now' })).map((k) => k.id), ['k-now'], 'ภาคปัจจุบันใช้ ctx.courses เฉพาะห้องนี้');
+  const old = await coursesOf(ctx, room, { id: 't-old' });
+  assert.deepEqual(old.map((k) => k.id), ['k-old1', 'k-old2'], 'ภาคอื่นอ่านจากฐานข้อมูลและเรียงตามลำดับ');
+  assert.equal(old[0].subject.name, 'ไทย'); assert.equal(old[0].classroom, room); assert.deepEqual(old[1].teachers.map((t) => t.full_name), ['ครู ก']);
 }
 console.log('pp-book: ผ่านทั้งหมด');
