@@ -4,14 +4,14 @@
 //  → หน้าตา สูตร และการแบ่งหน้าเหมือนต้นฉบับทุกหน้า
 //  ไม่แตะเซลล์ที่ไฟล์ต้นฉบับล็อกไว้ (เช่น ชื่อโรงเรียนที่ผู้พัฒนาโปรแกรมล็อก)
 // =====================================================================
-import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-21';
-import { levelName } from './util.js?v=2569.11.1-21';
-import { getRoster, loadGrowthRef, termRange } from './data.js?v=2569.11.1-21';
-import { ageMonths, classify } from './assess.js?v=2569.11.1-21';
-import { scoreColIndex } from './score-columns.js?v=2569.11.1-21';
-import { occupationOf, personName, addressShort } from './student-family.js?v=2569.11.1-21';
-import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-21';
-import { enrollmentCounts } from './yeardata.js?v=2569.11.1-21';
+import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-22';
+import { levelName } from './util.js?v=2569.11.1-22';
+import { getRoster, loadGrowthRef, termRange, inTermList } from './data.js?v=2569.11.1-22';
+import { ageMonths, classify } from './assess.js?v=2569.11.1-22';
+import { scoreColIndex } from './score-columns.js?v=2569.11.1-22';
+import { occupationOf, personName, addressShort } from './student-family.js?v=2569.11.1-22';
+import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-22';
+import { enrollmentCounts } from './yeardata.js?v=2569.11.1-22';
 
 export const MONTHS = [['พ.ค.', 5], ['มิ.ย.', 6], ['ก.ค.', 7], ['ส.ค.', 8], ['ก.ย.', 9], ['ต.ค.', 10], ['พ.ย.', 11], ['ธ.ค.', 12], ['ม.ค.', 1], ['ก.พ.', 2], ['มี.ค.', 3], ['เม.ย.', 4]];
 export const SUBJECT_ROWS = [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];   // แถวในแผ่น "รายวิชา" ของวิชาที่ 1–20
@@ -106,7 +106,8 @@ export function bookChecks(d, selected, expected = [], term = null) {
 export async function buildBookData(ctx, room) {
   const { db } = ctx; const term = ctx.term;
   const everyone = await getRoster(db, room.id, { includeLeft: true });     // รวมคนที่ย้ายออก (ใช้นับจำนวนในปก ปพ.5)
-  const live = everyone.filter((s) => s.enroll_status !== 'left');
+  // รายชื่อในเล่มของภาคเรียนนี้ = นักเรียนที่อยู่ถึงสิ้นภาค (ย้ายเข้ากลางปีไม่อยู่ในภาคก่อนหน้า · ย้ายออกหลังสิ้นภาคยังอยู่ในภาคนั้น)
+  const live = everyone.filter((s) => inTermList(s, term));
   const roster = live.slice(0, MAX_STUDENTS);
   const ids = roster.map((s) => s.id);
   const warnings = [];

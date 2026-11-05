@@ -135,6 +135,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--g-focus); box-sh
 @media (hover: hover) { .tbl tbody tr:hover td { background: var(--g-row-hover); } }
 .reg th { background: var(--g-primary); color: var(--g-on-primary); border-color: color-mix(in srgb, var(--g-on-primary) 25%, var(--g-primary)); font-weight: 500; }
 .reg th.name { background: var(--g-primary); }
+/* ช่องที่แก้ไม่ได้ในตารางเช็กชื่อ: นอกช่วงที่นักเรียนอยู่ในห้อง / วันในอนาคต (เช็กชื่อย้อนหลัง) */
+.reg td.off { background-color: color-mix(in srgb, currentColor 10%, transparent); }
+.reg td.off button.cell { cursor: not-allowed; opacity: .45; }
 .reg th.wk, .reg th.calc { background-color: var(--g-primary); background-image: linear-gradient(rgba(255, 255, 255, .16), rgba(255, 255, 255, .16)); color: var(--g-on-primary); }
 .reg th button.day:hover { color: var(--g-on-primary); background: rgba(255, 255, 255, .18); }
 .tg-row button, .seg button { min-height: 48px; }

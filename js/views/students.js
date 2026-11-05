@@ -1,13 +1,14 @@
-import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.11.1-21';
-import { getRoster } from '../data.js?v=2569.11.1-21';
-import { readDmcFile } from '../dmc.js?v=2569.11.1-21';
-import { icon } from '../icons.js?v=2569.11.1-21';
-import { sortableRows } from '../reorder.js?v=2569.11.1-21';
-import { reorderPlan } from '../reorder-core.js?v=2569.11.1-21';
-import { familyHtml, familyPatch } from '../student-family.js?v=2569.11.1-21';
+import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.11.1-22';
+import { getRoster, termRange, enrolledDuring, inTermList, joinedDuringTerm, leftDuringTerm } from '../data.js?v=2569.11.1-22';
+import { readDmcFile } from '../dmc.js?v=2569.11.1-22';
+import { icon } from '../icons.js?v=2569.11.1-22';
+import { sortableRows } from '../reorder.js?v=2569.11.1-22';
+import { reorderPlan } from '../reorder-core.js?v=2569.11.1-22';
+import { familyHtml, familyPatch } from '../student-family.js?v=2569.11.1-22';
 
 let selected = null;   // ห้องที่เลือกค้างไว้ระหว่างเปลี่ยนหน้า
 let chipFilter = 'all';   // ตัวกรองสถานะ: all | active | left
+let termSel = 'all';      // รายชื่อแยกภาคเรียน: all (ปัจจุบัน) | id ของภาคเรียน
 
 // ไอคอนในป้ายสถานะ (ป้ายต้องมีไอคอนกำกับเสมอ ตามระบบดีไซน์ WL)
 const SVG_OK = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"></path></svg>';
@@ -27,18 +28,37 @@ export async function render(el, ctx) {
   if (ctx.params?.room || ctx.params?.student) ctx.params = {};
   if (!rooms.some((r) => r.id === selected)) selected = rooms[0].id;
   const room = ctx.classroomById[selected];
-  const roster = await getRoster(ctx.db, selected, { includeLeft: true });
-  const active = roster.filter((s) => s.enroll_status !== 'left');
-  const shown = [...active, ...roster.filter((s) => s.enroll_status === 'left')];     // ที่ย้ายออกแล้วอยู่ท้ายรายการ (ลากเรียงเฉพาะที่ยังเรียนอยู่)
+  const rosterAll = await getRoster(ctx.db, selected, { includeLeft: true });
+  const activeNow = rosterAll.filter((s) => s.enroll_status !== 'left');
+  // รายชื่อแยกภาคเรียน: นักเรียนที่อยู่ในห้องช่วงใดช่วงหนึ่งของภาคนั้น (ย้ายเข้ากลางปีจะไม่อยู่ในภาคก่อนหน้า) · ดูอย่างเดียว
+  const terms = ctx.terms.filter((t) => t.academic_year === room.academic_year).sort((a, b) => a.term - b.term);
+  if (termSel !== 'all' && !terms.some((t) => t.id === termSel)) termSel = 'all';
+  const tm = terms.find((t) => t.id === termSel) || null;
+  const locked = !!tm;
+  const inTerm = (t) => { const { from, to } = termRange(t); return rosterAll.filter((e) => enrolledDuring(e, from, to)); };
+  const roster = tm ? inTerm(tm) : rosterAll;
+  const isLeft = (s) => (tm ? !inTermList(s, tm) : s.enroll_status === 'left');         // ในมุมมองรายภาค "ย้ายออก" = ออกก่อนสิ้นภาค
+  const active = roster.filter((s) => !isLeft(s));
+  const shown = [...active, ...roster.filter(isLeft)];     // ที่ย้ายออกแล้วอยู่ท้ายรายการ (ลากเรียงเฉพาะที่ยังเรียนอยู่)
   const boys = active.filter((s) => s.gender === 'ช').length;
 
   const teachers = ctx.homeroomTeachers(room.id).map((t) => t.full_name).join(', ') || '—';
   const demo = ctx.db.mode === 'demo';
   const meta = (s) => `เลขที่ <span class="g-meta-no">${s.number ?? ''}</span> · รหัส ${esc(s.student_code ?? '–')}${s.gender ? ` · ${s.gender === 'ช' ? 'ชาย' : 'หญิง'}` : ''}`;
-  const pill = (s) => (s.enroll_status === 'left'
-    ? `<span class="g-pill g-warn">${SVG_CLOCK}<span>ย้ายออก ${esc(thaiDate(s.left_on, true))}</span></span>`
-    : `<span class="g-pill g-ok">${SVG_OK}<span>กำลังเรียน</span></span>`);
-  const chips = [['all', 'ทั้งหมด', roster.length], ['active', 'กำลังเรียน', active.length], ['left', 'ย้ายออก', roster.length - active.length]];
+  const pill = (s) => (tm
+    ? (isLeft(s) ? `<span class="g-pill g-warn">${SVG_CLOCK}<span>ย้ายออก ${esc(thaiDate(s.left_on, true))}</span></span>`
+      : joinedDuringTerm(s, tm) ? `<span class="g-pill g-ok">${SVG_OK}<span>เข้า ${esc(thaiDate(s.entered_on, true))}</span></span>`
+        : `<span class="g-pill g-ok">${SVG_OK}<span>เรียนตลอดภาค</span></span>`)
+    : s.enroll_status === 'left'
+      ? `<span class="g-pill g-warn">${SVG_CLOCK}<span>ย้ายออก ${esc(thaiDate(s.left_on, true))}</span></span>`
+      : `<span class="g-pill g-ok">${SVG_OK}<span>กำลังเรียน</span></span>`);
+  const chips = [['all', 'ทั้งหมด', roster.length], ['active', tm ? 'อยู่ถึงสิ้นภาค' : 'กำลังเรียน', active.length], ['left', tm ? 'ย้ายออกระหว่างภาค' : 'ย้ายออก', roster.length - active.length]];
+  const termChips = terms.length ? `<div class="g-chips" role="group" aria-label="รายชื่อแยกภาคเรียน">
+        <button class="g-chip" type="button" data-term="all" aria-pressed="${!tm}"><span>ปัจจุบัน</span><span class="g-num" style="font-weight:700">${activeNow.length}</span></button>
+        ${terms.map((t) => { const list = inTerm(t); const joined = list.filter((e) => joinedDuringTerm(e, t)).length;
+          return `<button class="g-chip" type="button" data-term="${esc(t.id)}" aria-pressed="${tm?.id === t.id}"><span>ภาคเรียนที่ ${t.term}${joined ? ` · เข้าระหว่างภาค ${joined}` : ''}</span><span class="g-num" style="font-weight:700">${list.length}</span></button>`; }).join('')}
+      </div>
+      ${locked ? `<p class="g-muted g-small" style="margin:0">รายชื่อของภาคเรียนที่ ${tm.term}/${tm.academic_year} (ดูอย่างเดียว · นักเรียนที่ย้ายเข้ากลางปีจะไม่อยู่ในภาคก่อนหน้า) · เลขที่เป็นของห้องตลอดปี · แก้ข้อมูลนักเรียนได้ตามปกติ</p>` : ''}` : '';
 
   el.innerHTML = `
     <div class="wl-g" id="wlg">
@@ -61,7 +81,8 @@ export async function render(el, ctx) {
         <button class="g-btn" id="renum" type="button">เรียงเลขที่ใหม่</button>
         <span class="g-muted g-small">ชาย ${boys} · หญิง ${active.length - boys} · รวม ${active.length} คน</span>
       </div>
-      ${active.length > 1 ? `<div class="ord-bar g-muted g-small" id="ord-bar" role="status"><span id="ord-msg">${icon('grip')} ลากที่ไอคอนหน้าชื่อเพื่อเรียงลำดับ แล้วเลขที่จะเปลี่ยนตามทันที (ใช้ลูกศรขึ้น/ลงแทนการลากได้)</span>
+      ${termChips}
+      ${active.length > 1 && !locked ? `<div class="ord-bar g-muted g-small" id="ord-bar" role="status"><span id="ord-msg">${icon('grip')} ลากที่ไอคอนหน้าชื่อเพื่อเรียงลำดับ แล้วเลขที่จะเปลี่ยนตามทันที (ใช้ลูกศรขึ้น/ลงแทนการลากได้)</span>
         <button class="g-btn" id="ord-undo" type="button" hidden>เลิกทำ</button></div>` : ''}
 
       ${roster.length ? `
@@ -73,9 +94,9 @@ export async function render(el, ctx) {
           <thead><tr><th class="g-c-chk"><label class="g-chkcell"><input class="g-chk" type="checkbox" id="g-all" aria-label="เลือกทั้งหมดที่แสดงอยู่"></label></th>
             <th class="drag-h g-c-drag"><span class="g-sr">เรียงลำดับ</span></th><th class="g-c-no n">เลขที่</th><th class="g-c-sid">เลขประจำตัว</th><th class="g-c-name">ชื่อ-สกุล</th>
             <th class="g-c-sex">เพศ</th><th class="g-c-status">สถานะ</th><th class="g-c-act"><span class="g-sr">จัดการ</span></th></tr></thead>
-          <tbody>${shown.map((s) => { const left = s.enroll_status === 'left'; return `<tr data-sid="${esc(s.id)}" data-eid="${esc(s.enrollment_id)}" data-st="${left ? 'left' : 'active'}" ${left ? '' : 'data-sortable'}>
-            <td class="g-c-chk"><label class="g-chkcell"><input class="g-chk" type="checkbox" data-sid="${esc(s.id)}" data-eid="${esc(s.enrollment_id)}" ${left ? 'disabled' : ''} aria-label="เลือก ${esc(fullName(s))}"></label></td>
-            <td class="drag-cell g-c-drag">${left ? '' : `<button type="button" class="drag" title="ลากเพื่อเรียงลำดับ" aria-label="ย้ายลำดับของ ${esc(fullName(s))} (ลากหรือกดลูกศรขึ้นลง)">${icon('grip')}</button>`}</td>
+          <tbody>${shown.map((s) => { const left = isLeft(s); return `<tr data-sid="${esc(s.id)}" data-eid="${esc(s.enrollment_id)}" data-st="${left ? 'left' : 'active'}" ${left || locked ? '' : 'data-sortable'}>
+            <td class="g-c-chk"><label class="g-chkcell"><input class="g-chk" type="checkbox" data-sid="${esc(s.id)}" data-eid="${esc(s.enrollment_id)}" ${left || locked ? 'disabled' : ''} aria-label="เลือก ${esc(fullName(s))}"></label></td>
+            <td class="drag-cell g-c-drag">${left || locked ? '' : `<button type="button" class="drag" title="ลากเพื่อเรียงลำดับ" aria-label="ย้ายลำดับของ ${esc(fullName(s))} (ลากหรือกดลูกศรขึ้นลง)">${icon('grip')}</button>`}</td>
             <td class="n g-c-no g-num">${s.number ?? ''}</td><td class="g-c-sid g-num">${esc(s.student_code ?? '')}</td>
             <td class="w g-c-name">${esc(fullName(s))}</td><td class="g-c-sex">${esc(s.gender ?? '')}</td>
             <td class="g-c-status">${pill(s)}</td>
@@ -93,15 +114,16 @@ export async function render(el, ctx) {
     </div>`;
 
   const again = () => render(el, ctx);
-  $('#room', el).addEventListener('change', (e) => { selected = e.target.value; again(); });
+  $('#room', el).addEventListener('change', (e) => { selected = e.target.value; termSel = 'all'; again(); });
+  el.querySelectorAll('[data-term]').forEach((b) => b.addEventListener('click', () => { termSel = b.dataset.term; again(); }));
   if (focusSid) { const tr = el.querySelector(`tr[data-sid="${CSS.escape(focusSid)}"]`); if (tr) { tr.scrollIntoView({ block: 'center' }); tr.classList.add('flash'); setTimeout(() => tr.classList.remove('flash'), 1800); } }
   $('#dmc-file', el).addEventListener('change', (e) => importFlow(e.target, ctx, room, again));
-  wireReorder(el, ctx, active, again);
+  if (!locked) wireReorder(el, ctx, active, again);
   wireSelection(el, ctx, again);
-  $('#add', el).addEventListener('click', () => editStudent(ctx, room, null, active.length + 1, again));
-  $('#renum', el).addEventListener('click', () => renumber(ctx, active, again));
+  $('#add', el).addEventListener('click', () => editStudent(ctx, room, null, activeNow.length + 1, again));
+  $('#renum', el).addEventListener('click', () => renumber(ctx, activeNow, again));
   el.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () =>
-    editStudent(ctx, room, roster.find((s) => s.id === b.dataset.edit), null, again)));
+    editStudent(ctx, room, rosterAll.find((s) => s.id === b.dataset.edit), null, again)));
   el.querySelectorAll('[data-info]').forEach((b) => b.addEventListener('click', () => showDmc(ctx, b.dataset.info)));
 }
 
