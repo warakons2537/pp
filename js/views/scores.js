@@ -1,12 +1,12 @@
-import { attachSheet } from '../sheet.js?v=2569.11.1-28';
-import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.11.1-28';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-28';
-import { courseRoster } from '../data.js?v=2569.11.1-28';
-import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.11.1-28';
-import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.11.1-28';
-import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.11.1-28';
+import { attachSheet } from '../sheet.js?v=2569.11.1-29';
+import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.11.1-29';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-29';
+import { courseRoster } from '../data.js?v=2569.11.1-29';
+import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.11.1-29';
+import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.11.1-29';
+import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.11.1-29';
 
-const pref = { course: null, tab: 'scores', termId: null };
+const pref = { course: null, tab: 'scores', termId: null, level: '', subject: '' };
 const KIND = { score: 'คะแนนเก็บระหว่างภาค', final: 'สอบปลายภาค', indicator: 'ตัวชี้วัด (ผ/มผ)' };
 
 // เลือกหลายแถวแล้วลบพร้อมกัน: ช่องติ๊กแถว [data-sel=<กลุ่ม>] + ช่องเลือกทั้งหมด [data-selall=<กลุ่ม>] + ปุ่ม [data-delsel=<กลุ่ม>]
@@ -55,7 +55,14 @@ export async function render(el, real) {
     wireTerm();
     return;
   }
-  if (!list.some((k) => k.id === pref.course)) pref.course = list[0].id;
+  // ตัวกรอง: ระดับชั้น → วิชา (ตัวเลือกวิชาแคบลงตามระดับชั้นที่เลือก) แล้วจึงเลือกห้อง/วิชาที่จะกรอก
+  const levels = [...new Set(list.map((k) => k.classroom.level))];
+  if (!levels.includes(pref.level)) pref.level = '';
+  const byLevel = pref.level ? list.filter((k) => k.classroom.level === pref.level) : list;
+  const subjOf = new Map(byLevel.map((k) => [k.subject_id, `${k.subject?.code ?? ''} ${k.subject?.name ?? ''}`.trim()]));
+  if (pref.subject && !subjOf.has(pref.subject)) pref.subject = '';
+  const shown = pref.subject ? byLevel.filter((k) => k.subject_id === pref.subject) : byLevel;
+  if (!shown.some((k) => k.id === pref.course)) pref.course = shown[0].id;
   const course = ctx.courseById[pref.course];
   const canEdit = ctx.isAdmin || course.teachers.some((t) => t.id === ctx.me.id);
   const rounding = ctx.settings.score_rounding || 'floor';
@@ -72,7 +79,10 @@ export async function render(el, real) {
       <div><h1>คะแนนรายวิชา</h1>
         <p>กรอกคะแนน ตัดเกรด และประเมินตัวชี้วัดรายวิชา · ${esc(course.subject?.credits ? `${course.subject.credits} หน่วยกิต` : course.subject?.hours_per_year ? `${course.subject.hours_per_year} ชม./ปี` : '')}
           · ระหว่างภาค:ปลายภาค ${course.midterm_ratio}:${course.final_ratio} · <span class="live">อัปเดตทันที</span></p></div>
-      <div class="row">${termPicker(real, termObj)}<label class="field">วิชา<select id="course">${options(list, course.id, ctx.courseLabel)}</select></label>
+      <div class="row">${termPicker(real, termObj)}
+        <label class="field">ระดับชั้น<select id="f-level"><option value="">ทุกระดับชั้น</option>${levels.map((l) => `<option value="${esc(l)}" ${pref.level === l ? 'selected' : ''}>${esc(levelName(l))}</option>`).join('')}</select></label>
+        <label class="field">กรองตามวิชา<select id="f-subj"><option value="">ทุกวิชา</option>${[...subjOf].sort((a, b) => a[1].localeCompare(b[1], 'th')).map(([id, n]) => `<option value="${esc(id)}" ${pref.subject === id ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
+        <label class="field">วิชา/ห้อง${shown.length !== list.length ? ` (${shown.length}/${list.length})` : ''}<select id="course">${options(shown, course.id, ctx.courseLabel)}</select></label>
         <button class="btn" id="xls" ${items.length ? '' : 'disabled'} title="ไฟล์ Excel แบบบันทึกผลสัมฤทธิ์ (แผ่นงานผลสัมฤทธิ์) มีสูตรคำนวณ แก้ต่อใน Excel ได้">ส่งออก Excel</button></div>
     </div>
     ${tabGroups([
@@ -81,6 +91,8 @@ export async function render(el, real) {
     <div id="pane"></div>`;
   el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { pref.tab = b.dataset.tab; render(el, real); }));
   wireTabGroups(el); wireTerm();
+  $('#f-level', el).addEventListener('change', (e) => { pref.level = e.target.value; pref.subject = ''; pref.course = null; render(el, real); });
+  $('#f-subj', el).addEventListener('change', (e) => { pref.subject = e.target.value; pref.course = null; render(el, real); });
   $('#course', el).addEventListener('change', (e) => { pref.course = e.target.value; render(el, real); });
   const pane = $('#pane', el);
   const again = () => render(el, real);
