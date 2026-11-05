@@ -4,15 +4,15 @@
 //  - ดูตัวอย่างทุกหน้า เลือกพิมพ์รายหน้า → พิมพ์ / บันทึกเป็น PDF ได้ในแอป (ไม่ต้องมี Excel)
 //  - หรือสร้างไฟล์ Excel ที่หน้าตาเหมือนต้นฉบับ
 // =====================================================================
-import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-30';
-import { Template } from '../xlsx-template.js?v=2569.11.1-30';
-import { buildBookData, makeBook, prepareBook, defaultBook, bookChecks } from '../pp-book.js?v=2569.11.1-30';
-import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-30';
-import { Workbook } from '../xl-model.js?v=2569.11.1-30';
-import { Engine } from '../xl-formula.js?v=2569.11.1-30';
-import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-30';
-import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-30';
-import { adjOpt, adjText, adjustDialog } from '../page-adjust.js?v=2569.11.1-30';
+import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-31';
+import { Template } from '../xlsx-template.js?v=2569.11.1-31';
+import { buildBookData, makeBook, prepareBook, defaultBook, bookChecks } from '../pp-book.js?v=2569.11.1-31';
+import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-31';
+import { Workbook } from '../xl-model.js?v=2569.11.1-31';
+import { Engine } from '../xl-formula.js?v=2569.11.1-31';
+import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-31';
+import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-31';
+import { adjOpt, adjText, adjustDialog, pickSheetsDialog } from '../page-adjust.js?v=2569.11.1-31';
 
 const PATH = 'pp/template';
 let cache = { at: null, bytes: null, t: null };          // ไฟล์ต้นฉบับที่โหลดแล้ว (อยู่ในหน่วยความจำ)
@@ -78,6 +78,7 @@ export async function bookView(paper, ctx, room) {
         <div class="row" style="flex-wrap:wrap">
           <button class="btn btn-sm" id="b-def">ค่าเริ่มต้น (ปก ปพ.5 รายชั้น → เกรดร้อยละ)</button>
           <button class="btn btn-sm" id="b-none">ไม่เลือกเลย</button>
+          <button class="btn" id="b-adj-multi" title="เลือกหลายแผ่นแล้วปรับขอบ/ขนาดตัวอักษร/ย่อขยายด้วยค่าเดียวกัน">ปรับหน้าหลายแผ่น…</button>
           <button class="btn btn-primary" id="b-prev">ดูตัวอย่าง / พิมพ์ / PDF</button>
           <button class="btn" id="b-make">สร้างไฟล์ Excel</button>
         </div>
@@ -223,6 +224,18 @@ export async function bookView(paper, ctx, room) {
     changed();
   }
 
+  // ปรับหน้าหลายแผ่นพร้อมกัน: เลือกแผ่น (ขั้นที่ 1) → กำหนดค่า (ขั้นที่ 2) ใช้กับทุกแผ่นที่เลือก
+  async function openAdjustMany() {
+    const names = await pickSheetsDialog(layout.order, [['ที่เลือกพิมพ์', (n) => on.has(n)], ['วิชาที่ 1–20', (n) => /^วิชาที่ /.test(n)]], new Set(Object.keys(layout.adj)));
+    if (!names) return;
+    const same = names.every((n) => JSON.stringify(layout.adj[n] || null) === JSON.stringify(layout.adj[names[0]] || null));
+    const res = await adjustDialog(`${names.length} แผ่น`, same ? layout.adj[names[0]] : undefined, { margins: book?.wb.sheet(names[0])?.page.margins, noAll: true },
+      `แผ่นที่เลือก ${names.length} แผ่น (${names.slice(0, 4).join(', ')}${names.length > 4 ? '…' : ''})`);
+    if (!res) return;
+    for (const t of names) { if (res.adj) layout.adj[t] = { ...res.adj }; else delete layout.adj[t]; delete layout.skip[t]; }
+    changed(); toast(res.adj ? `ปรับหน้า ${names.length} แผ่นแล้ว` : `ล้างค่าปรับหน้า ${names.length} แผ่นแล้ว`);
+  }
+
   async function showPreview(force = false) {
     const sheets = layout.order.filter((n) => on.has(n));
     if (!sheets.length) { pv.hidden = false; pv.innerHTML = '<div class="empty">ยังไม่ได้เลือกแผ่นงาน</div>'; return; }
@@ -308,6 +321,7 @@ export async function bookView(paper, ctx, room) {
       try { await printPages(list, fileBase(ctx, room), tab); } catch (err) { toast(`พิมพ์ไม่สำเร็จ: ${err.message}`, 'err'); } finally { btn.disabled = false; }
     });
   }
+  $('#b-adj-multi', paper).addEventListener('click', openAdjustMany);
   $('#b-prev', paper).addEventListener('click', () => { pv.hidden = false; showPreview(); pv.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   if (book) { pv.hidden = false; showPreview(); }
   wireUpload(paper, ctx, () => bookView(paper, ctx, room));

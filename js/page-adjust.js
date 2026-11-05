@@ -2,7 +2,7 @@
 //  ปรับหน้ากระดาษรายแผ่น (แบบ Word): ขอบ · ขนาดตัวอักษร · ระยะบรรทัด · ความกว้างคอลัมน์ · ย่อ/ขยาย · จัดกึ่งกลาง
 //  ใช้ร่วมกันในแท็บ "เล่ม ปพ." และ "ปพ.5 ครบชุด" · ตัวแสดงผล (xl-render.js) รับค่าผ่าน adj
 // =====================================================================
-import { esc, modal } from './util.js?v=2569.11.1-30';
+import { esc, modal } from './util.js?v=2569.11.1-31';
 
 // ค่าปรับหน้า (ขอบเป็นมม.) → ค่าที่ตัวแสดงผลใช้ (ขอบเป็นนิ้ว)
 export function adjOpt(a) {
@@ -49,7 +49,7 @@ export async function adjustDialog(n, cur, hint = {}, what = 'การดูต
       </div></fieldset>
     <label class="small" style="display:block;margin:0 0 8px">จัดตารางกึ่งกลางหน้าแนวนอน
       <select name="hc"><option value="">ตามแบบพิมพ์เดิม</option><option value="1" ${cur.hCenter === true ? 'selected' : ''}>จัดกึ่งกลาง</option><option value="0" ${cur.hCenter === false ? 'selected' : ''}>ชิดซ้ายตามขอบ</option></select></label>
-    <label class="small" style="display:block"><input type="checkbox" name="all" value="1"> ใช้ค่าเดียวกันกับทุกแผ่นที่เลือกพิมพ์</label>
+    ${hint.noAll ? '' : '<label class="small" style="display:block"><input type="checkbox" name="all" value="1"> ใช้ค่าเดียวกันกับทุกแผ่นที่เลือกพิมพ์</label>'}
     <label class="small" style="display:block"><input type="checkbox" name="reset" value="1"> ล้างค่าที่ปรับ กลับเป็นตามแบบพิมพ์เดิม</label>`;
   const r = await modal(`ปรับหน้ากระดาษ — ${n}`, html, { okText: 'ใช้ค่านี้', wide: false });
   if (!r) return null;
@@ -57,4 +57,36 @@ export async function adjustDialog(n, cur, hint = {}, what = 'การดูต
   const a = { mt: v('mt'), mb: v('mb'), ml: v('ml'), mr: v('mr'), font: v('font'), row: v('row'), col: v('col'), scale: v('scale'), hCenter: r.hc === '' ? undefined : r.hc === '1' };
   for (const k of Object.keys(a)) if (a[k] === undefined || (typeof a[k] === 'number' && !Number.isFinite(a[k]))) delete a[k];
   return { adj: r.reset || !Object.keys(a).length ? null : a, all: !!r.all };
+}
+
+/**
+ * เลือกหลายแผ่นพร้อมกันเพื่อปรับหน้าด้วยค่าเดียวกัน (ขั้นที่ 1 ของ "ปรับหน้าหลายแผ่น") — ขั้นที่ 2 ใช้ adjustDialog
+ * @param names   รายชื่อแผ่นที่เลือกได้ (ตามลำดับ)
+ * @param groups  [[ป้ายกลุ่ม, (ชื่อแผ่น) => boolean]] ปุ่มเลือกเป็นกลุ่ม เช่น ทุกวิชา · เวลาเรียนรายเดือน
+ * @param marked  ชื่อแผ่นที่ปรับไว้แล้ว (แสดงเครื่องหมาย ●)
+ * @returns null (ยกเลิก) | ชื่อแผ่นที่เลือก (อย่างน้อย 1)
+ */
+export async function pickSheetsDialog(names, groups = [], marked = new Set()) {
+  const html = `
+    <p class="small muted" style="margin:0 0 6px">ติ๊กแผ่นที่ต้องการปรับหน้าด้วยค่าเดียวกัน แล้วกด "ต่อไป" เพื่อกำหนดขอบ/ขนาด/ระยะ · ● = เคยปรับไว้แล้ว</p>
+    <div class="row" style="flex-wrap:wrap;gap:4px;margin:0 0 6px">
+      <button type="button" class="btn btn-sm" data-pick="*">เลือกทั้งหมด</button><button type="button" class="btn btn-sm" data-pick="">ไม่เลือก</button>
+      ${groups.map(([l], i) => `<button type="button" class="btn btn-sm" data-pick="g${i}">${esc(l)}</button>`).join('')}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px 14px;max-height:45vh;overflow:auto;border:1px solid var(--rule-strong);border-radius:8px;padding:8px">
+      ${names.map((n, i) => `<label class="small" style="display:flex;gap:4px;align-items:center"><input type="checkbox" name="s${i}" value="${esc(n)}" data-i="${i}">${esc(n)}${marked.has(n) ? ' ●' : ''}</label>`).join('')}</div>
+    <p class="small muted" id="pick-n" style="margin:6px 0 0">เลือกแล้ว 0 แผ่น</p>`;
+  const done = modal('ปรับหน้าหลายแผ่น — เลือกแผ่น', html, { okText: 'ต่อไป', wide: true });
+  const wrap = document.querySelector('.modal-wrap:last-of-type'); const form = wrap?.querySelector('form');
+  const boxes = () => [...(form?.querySelectorAll('input[type=checkbox]') || [])];
+  const count = () => { const el = form?.querySelector('#pick-n'); if (el) el.textContent = `เลือกแล้ว ${boxes().filter((b) => b.checked).length} แผ่น`; };
+  form?.addEventListener('change', count);
+  form?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pick]'); if (!b) return;
+    const k = b.dataset.pick; const g = k.startsWith('g') ? groups[Number(k.slice(1))][1] : null;
+    boxes().forEach((c) => { c.checked = k === '*' ? true : g ? g(c.value) : false; }); count();
+  });
+  const r = await done;
+  if (!r) return null;
+  const picked = Object.entries(r).filter(([k]) => /^s\d+$/.test(k)).map(([, v]) => v);
+  return picked.length ? picked : null;
 }

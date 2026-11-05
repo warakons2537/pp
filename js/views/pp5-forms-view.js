@@ -6,13 +6,13 @@
 //  เฟส 3: ผลประเมินตัวชี้วัดและคะแนนรายวิชา (วิชาที่ 1–n)
 //  เฟส 4: คุณลักษณะ · สมรรถนะ · กิจกรรม · คะแนนรายชั้น · เกรดรายชั้น · สรุปเกรดร้อยละ
 // =====================================================================
-import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-30';
-import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-30';
-import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays } from '../pp-forms.js?v=2569.11.1-30';
-import { Renderer } from '../xl-render.js?v=2569.11.1-30';
-import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-30';
-import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-30';
-import { adjOpt, adjText, adjustDialog } from '../page-adjust.js?v=2569.11.1-30';
+import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-31';
+import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-31';
+import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays, ATT_MONTHS } from '../pp-forms.js?v=2569.11.1-31';
+import { Renderer } from '../xl-render.js?v=2569.11.1-31';
+import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-31';
+import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-31';
+import { adjOpt, adjText, adjustDialog, pickSheetsDialog } from '../page-adjust.js?v=2569.11.1-31';
 
 // ค่าปรับหน้าที่ผู้ใช้ตั้งไว้ (จำในเบราว์เซอร์ ใช้กับทุกห้อง/ภาคเรียน) · ชื่อแผ่น → { mt, mb, ml, mr, font, row, col, scale, hCenter }
 const ADJ_KEY = 'pp5-page-adjust';
@@ -27,6 +27,7 @@ const fileName = (room, term) => `ปพ.5 ${roomName(room)} ภาค${term.ter
 
 // ที่เลือกปีการศึกษา/ภาคเรียน/ห้อง (จำไว้ระหว่างเปลี่ยนหน้า) — ไม่เลือก = ภาคเรียนปัจจุบัน
 const sel = { year: null, termId: null, roomId: null };
+const ATT_NAMES = new Set(ATT_MONTHS.map((x) => x[0]));
 const levelOrder = (c) => ['อ', 'ป', 'ม'].indexOf(c.level[0]) * 100 + Number(c.level.split('.')[1]) * 10 + c.room;
 // ห้องของปีการศึกษาใดก็ได้ (ctx.classrooms มีเฉพาะปีปัจจุบัน) · ครูเห็นเฉพาะห้องที่เป็นครูประจำชั้น
 async function roomsOfYear(ctx, year) {
@@ -102,6 +103,7 @@ export async function pp5FormsView(host, ctx, room0) {
         <h3 style="margin:0">ปพ.5 — ห้อง ${esc(roomName(room))} ภาคเรียนที่ ${term}/${termObj.academic_year} <span class="small muted">· พิมพ์ ${total} หน้า จาก ${list.length} แผ่น</span></h3>
         <div class="row" style="flex-wrap:wrap;align-items:flex-end">${fontSelectHtml('p5-font')}
           <label class="field">ขนาด<select id="p5-zoom">${Object.entries(ZOOM).map(([v, l]) => `<option value="${v}" ${+v === z ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+          <button class="btn" id="p5-adj-multi" title="เลือกหลายแผ่นแล้วปรับขอบ/ขนาดตัวอักษร/ย่อขยายด้วยค่าเดียวกัน">ปรับหน้าหลายแผ่น…</button>
           <button class="btn btn-primary" id="p5-print" ${total ? '' : 'disabled'}>พิมพ์ / บันทึกเป็น PDF (${total} หน้า)</button></div>
       </div>
       <div class="no-print"><p class="small muted" style="margin:0">ปุ่ม "ปรับหน้า…" ที่หน้าแรกของแต่ละแผ่น = ปรับขอบ ขนาดตัวอักษร ระยะบรรทัด ย่อ/ขยาย (จำไว้ในเครื่องนี้) · หน้าตาตามชุด ปพ.5 ที่โรงเรียนพิมพ์ (ปก ทะเบียน เวลาเรียน น้ำหนัก-ส่วนสูง โภชนาการ ผลรายวิชา คุณลักษณะ กิจกรรม สรุปคะแนน เกรด) · ติ๊กออกเพื่อไม่พิมพ์แผ่นนั้น · กระดาษ A4</p>
@@ -124,6 +126,19 @@ export async function pp5FormsView(host, ctx, room0) {
       for (const t of targets) { if (res.adj) adjAll[t] = { ...res.adj }; else delete adjAll[t]; const i = groups.findIndex((g) => g.n === t); if (i >= 0) groups[i] = renderGroup(t); }
       saveAdj(adjAll); draw();
     }));
+    $('#p5-adj-multi', paper).addEventListener('click', async () => {
+      const names = await pickSheetsDialog(on().map((g) => g.n), [
+        ['ทุกวิชา', (n) => /^วิชาที่ /.test(n)], ['เวลาเรียน', (n) => ATT_NAMES.has(n) || /^เวลา รวม/.test(n)],
+        ['น้ำหนัก-ส่วนสูง/โภชนาการ', (n) => /^(น้ำหนัก-ส่วนสูง|โภชนาการ|ความชุก|สรุปโภชนาการ)/.test(n)],
+        ['อื่น ๆ', (n) => !/^(วิชาที่ |เวลา รวม|น้ำหนัก-ส่วนสูง|โภชนาการ|ความชุก|สรุปโภชนาการ)/.test(n) && !ATT_NAMES.has(n)]], new Set(Object.keys(adjAll)));
+      if (!names) return;
+      const same = names.every((n) => JSON.stringify(adjAll[n] || null) === JSON.stringify(adjAll[names[0]] || null));
+      const res = await adjustDialog(`${names.length} แผ่น`, same ? adjAll[names[0]] : undefined,
+        { margins: F.wb.sheet(names[0])?.page.margins, scale: null, noAll: true }, `แผ่นที่เลือก ${names.length} แผ่น (${names.slice(0, 4).join(', ')}${names.length > 4 ? '…' : ''}) ในการดูตัวอย่าง/พิมพ์/PDF`);
+      if (!res) return;
+      for (const t of names) { if (res.adj) adjAll[t] = { ...res.adj }; else delete adjAll[t]; const i = groups.findIndex((g) => g.n === t); if (i >= 0) groups[i] = renderGroup(t); }
+      saveAdj(adjAll); draw(); toast(res.adj ? `ปรับหน้า ${names.length} แผ่นแล้ว` : `ล้างค่าปรับหน้า ${names.length} แผ่นแล้ว`);
+    });
     $('#p5-zoom', paper).addEventListener('change', (e) => { pref.zoom = +e.target.value; draw(); });
     $('#p5-font', paper).addEventListener('change', (e) => { setThaiFont(e.target.value); toast('เปลี่ยนฟอนต์แล้ว กำลังจัดหน้าใหม่'); pp5FormsView(host, ctx, room0); });
     $('#p5-print', paper).addEventListener('click', async (e) => {
