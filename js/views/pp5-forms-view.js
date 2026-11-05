@@ -6,13 +6,13 @@
 //  เฟส 3: ผลประเมินตัวชี้วัดและคะแนนรายวิชา (วิชาที่ 1–n)
 //  เฟส 4: คุณลักษณะ · สมรรถนะ · กิจกรรม · คะแนนรายชั้น · เกรดรายชั้น · สรุปเกรดร้อยละ
 // =====================================================================
-import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-34';
-import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-34';
-import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays, ATT_MONTHS, indicatorContinuations, continuationModel } from '../pp-forms.js?v=2569.11.1-34';
-import { Renderer } from '../xl-render.js?v=2569.11.1-34';
-import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-34';
-import { ensureCss, printWithStatus } from './pp-book-view.js?v=2569.11.1-34';
-import { adjOpt, adjText, adjustDialog, pickSheetsDialog, AUTO_ADJ } from '../page-adjust.js?v=2569.11.1-34';
+import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-35';
+import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-35';
+import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays, ATT_MONTHS, indicatorContinuations, continuationModel } from '../pp-forms.js?v=2569.11.1-35';
+import { Renderer } from '../xl-render.js?v=2569.11.1-35';
+import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-35';
+import { ensureCss, printWithStatus } from './pp-book-view.js?v=2569.11.1-35';
+import { adjOpt, adjText, adjustDialog, pickSheetsDialog, AUTO_ADJ } from '../page-adjust.js?v=2569.11.1-35';
 
 // ค่าปรับหน้าที่ผู้ใช้ตั้งไว้ (จำในเบราว์เซอร์ ใช้กับทุกห้อง/ภาคเรียน) · ชื่อแผ่น → { mt, mb, ml, mr, font, row, col, scale, hCenter }
 const ADJ_KEY = 'pp5-page-adjust';
@@ -24,7 +24,7 @@ const saveAuto = (v) => { try { localStorage.setItem(AUTO_KEY, v ? '1' : '0'); }
 const saveAdj = (a) => { try { localStorage.setItem(ADJ_KEY, JSON.stringify(a)); } catch { /* */ } };
 
 const ZOOM = { 0.32: 'เล็ก', 0.5: 'กลาง', 0.8: 'ใหญ่' };
-const pref = { zoom: 0.32, off: new Set(), init: null };      // off = แผ่นที่ติ๊กออก (จำไว้ระหว่างเปลี่ยนห้อง/ภาค)
+const pref = { zoom: 0.32, off: new Set(), manual: new Set(), init: null };      // off = แผ่นที่ติ๊กออก (จำไว้ระหว่างเปลี่ยนห้อง/ภาค)
 // ทางลัดไปหน้าแก้ข้อมูลที่ขึ้นในใบ ปพ.5 (ข้อมูลทุกช่องในใบแก้ได้จากในระบบ)
 const EDIT_LINKS = [['students', 'นักเรียน · บิดามารดา · ผู้ปกครอง · ที่อยู่'], ['setup', 'โรงเรียน · ห้อง · รายวิชา · ภาคเรียน'], ['scores', 'คะแนน · ตัวชี้วัด'], ['daily', 'เวลาเรียน'], ['health', 'น้ำหนัก-ส่วนสูง'], ['traits', 'คุณลักษณะ · กิจกรรม']];
 const fileName = (room, term) => `ปพ.5 ${roomName(room)} ภาค${term.term}-${term.academic_year}`.replace(/[^0-9A-Za-zก-๙ ._()-]+/g, '-');
@@ -98,7 +98,9 @@ export async function pp5FormsView(host, ctx, room0) {
   const emptyRound = new Set();
   [0, 1, 2, 3].forEach((k) => { if (!data.rounds?.[k]) for (const n of [`โภชนาการ ${k + 1}`, `ความชุก ${k + 1}`, `สรุปโภชนาการ ${k + 1}`]) emptyRound.add(n); });
   const initKey = `${room.id}|${termObj.id}`;
-  if (pref.init !== initKey) { pref.init = initKey; pref.off = new Set(emptyRound); }
+  if (pref.init !== initKey) { pref.init = initKey; pref.off = new Set(); pref.manual = new Set(); }
+  // แผ่นโภชนาการของครั้งที่ยังไม่ได้ชั่ง = ติ๊กออกให้ · ตรวจใหม่ทุกครั้งที่เปิดหน้านี้ (กรอกน้ำหนักเพิ่มแล้วกลับมา แผ่นจะติ๊กกลับเอง) · แผ่นที่ผู้ใช้ติ๊กเองแล้วไม่แตะต้อง
+  for (const n of sheets) if (/^(โภชนาการ|ความชุก|สรุปโภชนาการ) \d$/.test(n) && !pref.manual.has(n)) { if (emptyRound.has(n)) pref.off.add(n); else pref.off.delete(n); }
   ensureCss();
   const on = () => groups.filter((g) => !pref.off.has(g.n));
   const issuesNow = () => bookChecks({ ...data, warnings: (data.warnings || []).filter((w) => !/ตัวชี้วัดเกิน 36/.test(w)) }, on().map((g) => g.n), sheets.filter((n) => !emptyRound.has(n)), term);
@@ -127,7 +129,7 @@ export async function pp5FormsView(host, ctx, room0) {
       <div class="pv-grid" style="justify-content:flex-start">${list.map((g) => g.pages.map((p, i) => `
         <div class="pv-card"><span class="pv-cap">${esc(g.n)}${g.pages.length > 1 ? ` · ${i + 1}/${g.pages.length}` : ''}${g.err ? ` · ${esc(g.err)}` : ''}${i === 0 ? ` <button type="button" class="btn btn-sm ${adjAll[g.n] ? 'btn-primary' : ''}" data-adj-n="${esc(g.n)}" title="${esc(adjText(adjAll[g.n]) || 'ขอบกระดาษ ขนาดตัวอักษร ระยะบรรทัด ขนาดย่อ/ขยาย')}">ปรับหน้า…</button>` : ''}</span>
           <span class="pv-box" style="width:${Math.round(p.w * z * 4 / 3)}px;height:${Math.round(p.h * z * 4 / 3)}px"><span class="pv-inner" style="transform:scale(${z})">${p.html}</span></span></div>`).join('')).join('')}</div>`;
-    $$('input[data-n]', paper).forEach((cb) => cb.addEventListener('change', () => { if (cb.checked) pref.off.delete(cb.dataset.n); else pref.off.add(cb.dataset.n); draw(); }));
+    $$('input[data-n]', paper).forEach((cb) => cb.addEventListener('change', () => { pref.manual.add(cb.dataset.n); if (cb.checked) pref.off.delete(cb.dataset.n); else pref.off.add(cb.dataset.n); draw(); }));
     $$('[data-ind]', paper).forEach((b) => b.addEventListener('click', () => ctx.go('scores', { course: b.dataset.ind, tab: 'indicators' })));
     $$('[data-go]', paper).forEach((b) => b.addEventListener('click', () => ctx.go(b.dataset.go)));
     $$('[data-adj-n]', paper).forEach((b) => b.addEventListener('click', async () => {

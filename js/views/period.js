@@ -1,6 +1,6 @@
-import { attachBulk } from '../bulk.js?v=2569.11.1-34';
-import { esc, $, toast, options, fullName, todayIso, thaiDate, STATUS } from '../util.js?v=2569.11.1-34';
-import { courseRoster } from '../data.js?v=2569.11.1-34';
+import { attachBulk } from '../bulk.js?v=2569.11.1-35';
+import { esc, $, toast, options, fullName, todayIso, thaiDate, STATUS } from '../util.js?v=2569.11.1-35';
+import { courseRoster } from '../data.js?v=2569.11.1-35';
 
 const pref = { course: null, date: null, period: 1 };
 
