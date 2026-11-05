@@ -1,4 +1,4 @@
-import { sortByNumber, iso, fromIso } from './util.js?v=2569.11.1-34';
+import { sortByNumber, iso, fromIso } from './util.js?v=2569.11.1-35';
 
 // ---------------------------------------------------------------------
 //  นักเรียนอยู่ในห้องตามวันที่/ภาคเรียน — รองรับนักเรียนย้ายเข้า/ออกกลางปี
@@ -74,7 +74,7 @@ export function termMonths(term) {
 const refCache = {};
 export async function loadGrowthRef(db, set) {
   if (refCache[set]) return refCache[set];
-  const { makeRef } = await import('./assess.js?v=2569.11.1-34');
+  const { makeRef } = await import('./assess.js?v=2569.11.1-35');
   const ref = makeRef(await db.select('growth_reference', { eq: { ref_set: set } }));
   if (ref.size) refCache[set] = ref;            // ตารางว่างไม่เก็บ เผื่อผู้ดูแลระบบเพิ่งโหลดตาราง
   return ref;
