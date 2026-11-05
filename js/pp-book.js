@@ -4,14 +4,14 @@
 //  → หน้าตา สูตร และการแบ่งหน้าเหมือนต้นฉบับทุกหน้า
 //  ไม่แตะเซลล์ที่ไฟล์ต้นฉบับล็อกไว้ (เช่น ชื่อโรงเรียนที่ผู้พัฒนาโปรแกรมล็อก)
 // =====================================================================
-import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-24';
-import { levelName } from './util.js?v=2569.11.1-24';
-import { getRoster, loadGrowthRef, termRange, inTermList } from './data.js?v=2569.11.1-24';
-import { ageMonths, classify } from './assess.js?v=2569.11.1-24';
-import { scoreColIndex } from './score-columns.js?v=2569.11.1-24';
-import { occupationOf, personName, addressShort } from './student-family.js?v=2569.11.1-24';
-import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-24';
-import { enrollmentCounts } from './yeardata.js?v=2569.11.1-24';
+import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-25';
+import { levelName } from './util.js?v=2569.11.1-25';
+import { getRoster, loadGrowthRef, termRange, inTermList } from './data.js?v=2569.11.1-25';
+import { ageMonths, classify } from './assess.js?v=2569.11.1-25';
+import { scoreColIndex } from './score-columns.js?v=2569.11.1-25';
+import { occupationOf, personName, addressShort } from './student-family.js?v=2569.11.1-25';
+import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-25';
+import { enrollmentCounts } from './yeardata.js?v=2569.11.1-25';
 
 export const MONTHS = [['พ.ค.', 5], ['มิ.ย.', 6], ['ก.ค.', 7], ['ส.ค.', 8], ['ก.ย.', 9], ['ต.ค.', 10], ['พ.ย.', 11], ['ธ.ค.', 12], ['ม.ค.', 1], ['ก.พ.', 2], ['มี.ค.', 3], ['เม.ย.', 4]];
 export const SUBJECT_ROWS = [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];   // แถวในแผ่น "รายวิชา" ของวิชาที่ 1–20
@@ -70,6 +70,10 @@ export function bookChecks(d, selected, expected = [], term = null) {
     if (!sel.has(`วิชาที่ ${i + 1}`)) return;
     const none = sub.rows.filter((r) => r.scores.every((x) => x === null) && r.ind.every((x) => !x) && (r.final === null || r.final === undefined)).length;
     if (!sub.rows.length) return;
+    const nInd = (sub.indicators || []).length;
+    if (Array.isArray(sub.indicators) && !nInd) add('warn', `วิชา ${sub.name || i + 1} ยังไม่มีตัวชี้วัด (ช่อง ผ/มผ จะว่าง) · เมนู "คะแนนรายวิชา" → ตั้งค่าช่องคะแนน`);
+    else if (nInd) { const noInd = sub.rows.filter((r) => r.ind.every((x) => !x)).length;
+      if (noInd) add('warn', `วิชา ${sub.name || i + 1}: ${noInd} คนยังไม่ได้ประเมินตัวชี้วัด ผ/มผ · เมนู "คะแนนรายวิชา" → แท็บ ตัวชี้วัด`); }
     if (none === sub.rows.length) add('warn', `วิชา ${sub.name || i + 1} ยังไม่ได้ลงคะแนน/ตัวชี้วัดเลย`);
     else if (none) add('warn', `วิชา ${sub.name || i + 1}: ${none} คนยังไม่ได้ลงคะแนน/ตัวชี้วัด`);
   });
@@ -151,6 +155,7 @@ export async function buildBookData(ctx, room, { term: termArg = null } = {}) {
     if (sc.length > 48) warnings.push(`${k.subject?.name}: ช่องคะแนนเกิน 48 ช่อง ใส่ได้เฉพาะ 48 ช่องแรก`);
     else if (sc.length > 12 && subjects.length >= 10) warnings.push(`${k.subject?.name}: วิชาลำดับที่ 11 ขึ้นไปในใบ ปพ.5 แสดงช่องคะแนนได้ 12 ช่อง (มี ${sc.length} ช่อง) ช่องที่เกินจะไม่ขึ้นในใบ`);
     subjects.push({
+      courseId: k.id,
       code: k.subject?.code ?? '', name: k.subject?.name ?? '', credits: k.subject?.credits ?? (k.subject?.hours_per_year ? k.subject.hours_per_year / 40 : null),
       group: k.subject?.subject_group ?? '', teachers: k.teachers.map((t) => t.full_name).filter(Boolean),
       mid: k.midterm_ratio, fin: k.final_ratio,
