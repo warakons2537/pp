@@ -1,9 +1,10 @@
 import { esc, $, toast, options, roomName, fullName, iso, fromIso, todayIso, thaiDate, daysInMonth,
-  THAI_MONTHS, THAI_DOW, STATUS, nextStatus } from '../util.js?v=2569.11.1-22';
-import { attachSheet } from '../sheet.js?v=2569.11.1-22';
-import { attachBulk } from '../bulk.js?v=2569.11.1-22';
-import { onSwipe } from '../swipe.js?v=2569.11.1-22';
-import { getRoster, termMonths, enrolledOn } from '../data.js?v=2569.11.1-22';
+  THAI_MONTHS, THAI_DOW, STATUS, nextStatus } from '../util.js?v=2569.11.1-23';
+import { attachSheet } from '../sheet.js?v=2569.11.1-23';
+import { attachBulk } from '../bulk.js?v=2569.11.1-23';
+import { onSwipe } from '../swipe.js?v=2569.11.1-23';
+import { getRoster, termMonths, enrolledOn } from '../data.js?v=2569.11.1-23';
+import { loadSchoolDays, dayMapOf, isHoliday, KIND_SHORT } from '../holidays.js?v=2569.11.1-23';
 
 // เช็กชื่อประจำวัน: เดือนของภาคเรียนปัจจุบัน · นักเรียนที่ยังเรียนอยู่
 const DAILY = {
@@ -43,8 +44,13 @@ export async function renderAttendance(el, ctx, cfg) {
     from = iso(new Date(y, m0, 1)); to = iso(new Date(y, m0, daysInMonth(y, m0)));
   } else { from = to = pref.date; }
   const roster = await cfg.roster(ctx, room, { from, to, date: pref.date, mode: pref.mode });
-  // ช่องที่แก้ไม่ได้: นอกช่วงที่นักเรียนอยู่ในห้อง · วันในอนาคต (เฉพาะเช็กชื่อย้อนหลัง)
-  const offDay = (s, date) => !cfg.inClass(s, date) || (cfg.noFuture && date > today);
+  // วันหยุด/วันสำคัญที่ผู้ดูแลระบบแจ้งไว้ (school_days) — วันหยุดปิดช่องเช็กชื่อ · วันสำคัญขึ้นข้อความอย่างเดียว
+  const { rows: dayRows } = await loadSchoolDays(ctx.db, from, to);
+  const dayMap = dayMapOf(dayRows);
+  const dayCls = (date) => { const r = dayMap.get(date); return r ? (r.kind === 'holiday' ? ' hol' : ' spc') : ''; };
+  const dayTip = (date) => { const r = dayMap.get(date); return r ? ` — ${r.name}` : ''; };
+  // ช่องที่แก้ไม่ได้: นอกช่วงที่นักเรียนอยู่ในห้อง · วันในอนาคต (เฉพาะเช็กชื่อย้อนหลัง) · วันหยุด
+  const offDay = (s, date) => !cfg.inClass(s, date) || (cfg.noFuture && date > today) || isHoliday(dayMap, date);
   const rows = await ctx.db.select('daily_attendance', { eq: { classroom_id: room.id }, gte: { date: from }, lte: { date: to } });
   const marks = new Map(rows.map((r) => [`${r.student_id}|${r.date}`, r]));
 
@@ -65,6 +71,7 @@ export async function renderAttendance(el, ctx, cfg) {
     </div>
     <div class="legend small muted"><span class="legend-chips">${Object.entries(STATUS).map(([k, s]) => `<span class="chip ${s.cls}">${s.mark} = ${s.label}</span>`).join('')}</span>
       ${pref.mode === 'month' && canEdit ? '<span class="legend-hint">แตะช่องเพื่อเปลี่ยนสถานะ · แตะหัววันที่เพื่อให้ทุกคนที่ยังว่าง "มา"</span>' : ''}</div>
+    ${dayRows.length ? `<div class="hol-chips small">${dayRows.map((r) => `<span class="chip ${r.kind === 'holiday' ? 'chip-bad' : 'chip-info'}" title="${KIND_SHORT[r.kind] ?? ''}">${esc(thaiDate(r.day, true))} · ${esc(r.name)}</span>`).join('')}</div>` : ''}
     <div id="sheet"></div>`;
 
   const sheet = $('#sheet', el);
@@ -162,12 +169,12 @@ export async function renderAttendance(el, ctx, cfg) {
     const wk = (d) => d.getDay() === 0 || d.getDay() === 6;
     box.innerHTML = `<div class="tbl-wrap"><table class="reg">
       <thead><tr><th class="no">ที่</th><th class="name">ชื่อ-สกุล</th>
-        ${days.map((d) => `<th class="${wk(d) ? 'wk' : ''}" title="${esc(thaiDate(iso(d)))}">${edit ? `<button class="day" data-day="${iso(d)}">` : ''}${d.getDate()}<br><span style="font-weight:400">${THAI_DOW[d.getDay()]}</span>${edit ? '</button>' : ''}</th>`).join('')}
+        ${days.map((d) => `<th class="${wk(d) ? 'wk' : ''}${dayCls(iso(d))}" title="${esc(thaiDate(iso(d)) + dayTip(iso(d)))}">${edit ? `<button class="day" data-day="${iso(d)}">` : ''}${d.getDate()}<br><span style="font-weight:400">${THAI_DOW[d.getDay()]}</span>${edit ? '</button>' : ''}</th>`).join('')}
         <th>มา</th><th>ป่วย</th><th>ลา</th><th>ขาด</th></tr></thead>
       <tbody>${students.map((s, ri) => `<tr data-sid="${esc(s.id)}"><td class="no">${s.number ?? ''}</td><td class="name">${esc(fullName(s))}</td>
         ${days.map((d, ci) => { const k = `${s.id}|${iso(d)}`; const st = m.get(k)?.status;
           const off = offDay(s, iso(d));
-          return `<td class="${wk(d) ? 'wk' : ''}${off ? ' off' : ''}"><button class="cell ${st ? STATUS[st].cls : ''}" data-k="${k}" data-r="${ri}" data-c="${ci}" ${edit && !off ? '' : 'disabled'} aria-label="${esc(fullName(s))} ${d.getDate()}">${st ? STATUS[st].mark : ''}</button></td>`; }).join('')}
+          return `<td class="${wk(d) ? 'wk' : ''}${off ? ' off' : ''}${dayCls(iso(d))}" ${dayMap.get(iso(d)) ? `title="${esc(dayMap.get(iso(d)).name)}"` : ''}><button class="cell ${st ? STATUS[st].cls : ''}" data-k="${k}" data-r="${ri}" data-c="${ci}" ${edit && !off ? '' : 'disabled'} aria-label="${esc(fullName(s))} ${d.getDate()}">${st ? STATUS[st].mark : ''}</button></td>`; }).join('')}
         <td class="tot t-came st-present"></td><td class="tot t-sick"></td><td class="tot t-leave"></td><td class="tot t-absent" style="color:var(--red)"></td></tr>`).join('')}
       </tbody></table></div>`;
     students.forEach((s) => updateTotals(s.id));
@@ -182,18 +189,21 @@ export async function renderAttendance(el, ctx, cfg) {
   }
 
   function drawDay(box, students, m, edit) {
+    const dd = dayMap.get(pref.date); const hol = isHoliday(dayMap, pref.date);
+    if (hol) edit = false;      // วันหยุด: ปิดทั้งปุ่มสถานะ ช่องเลือกหลายคน และ "ทุกคนที่ยังว่าง = มา"
     box.innerHTML = `
       <div class="day-card">
         <div class="day-head">
           <div class="day-title"><b>${esc(thaiDate(pref.date))}</b><span class="touch-only">ปัดซ้าย/ขวาเพื่อเปลี่ยนวัน</span></div>
-          ${edit ? '<button class="btn btn-primary" id="allin">ทุกคนที่ยังว่าง = มา</button>' : ''}
+          ${edit && !hol ? '<button class="btn btn-primary" id="allin">ทุกคนที่ยังว่าง = มา</button>' : ''}
         </div>
+        ${dd ? `<div class="day-note ${dd.kind}" role="status"><b>${KIND_SHORT[dd.kind] ?? ''}</b> · ${esc(dd.name)}${hol ? ' — ปิดช่องเช็กชื่อของวันนี้' : ''}</div>` : ''}
         <div class="day-count" id="daycount"></div>
         ${edit ? '<label class="g-selall"><span class="g-chkcell"><input class="g-chk g-all" type="checkbox" aria-label="เลือกนักเรียนทั้งหมด"></span><span>เลือกทั้งหมด · ตั้งสถานะพร้อมกัน</span></label>' : ''}
       </div>
       <div class="roll${edit ? ' roll-sel' : ''}">${students.map((s) => { const k = `${s.id}|${pref.date}`; const st = m.get(k)?.status;
         return `<div class="roll-row" data-k="${k}">${edit ? `<label class="g-chkcell"><input class="g-chk" type="checkbox" data-id="${esc(s.id)}" aria-label="เลือก ${esc(fullName(s))}"></label>` : ''}<span class="muted tabular">${s.number ?? ''}</span><span class="nm">${esc(fullName(s))}</span>
-          <div class="seg">${Object.entries(STATUS).map(([key, v]) => `<button data-s="${key}" class="${st === key ? `on ${v.cls}` : ''}" ${edit ? '' : 'disabled'}>${v.label}</button>`).join('')}</div></div>`; }).join('')}
+          <div class="seg">${Object.entries(STATUS).map(([key, v]) => `<button data-s="${key}" class="${st === key ? `on ${v.cls}` : ''}" ${edit && !hol ? '' : 'disabled'}>${v.label}</button>`).join('')}</div></div>`; }).join('')}
       </div>`;
     updateDayCount();
     onSwipe(box, (dir) => { const d = fromIso(pref.date); d.setDate(d.getDate() + (dir === 'left' ? 1 : -1)); if (cfg.noFuture && iso(d) > today) return; pref.date = iso(d); renderAttendance(el, ctx, cfg); });   // ปัดซ้าย = วันถัดไป · ปัดขวา = วันก่อนหน้า
@@ -209,6 +219,7 @@ export async function renderAttendance(el, ctx, cfg) {
   }
 
   async function setMany(sids, date, status) {
+    if (isHoliday(dayMap, date)) { toast(`วันนี้เป็นวันหยุด: ${dayMap.get(date).name}`, 'err'); return; }
     const prev = sids.map((sid) => [`${sid}|${date}`, marks.get(`${sid}|${date}`)]);
     sids.forEach((sid) => { const k = `${sid}|${date}`; marks.set(k, { ...(marks.get(k) || {}), student_id: sid, date, status }); paint(k); });
     try {
@@ -223,6 +234,7 @@ export async function renderAttendance(el, ctx, cfg) {
 
   async function fillDay(date) {
     if (cfg.noFuture && date > today) { toast('ยังไม่ถึงวันนั้น', 'err'); return; }
+    if (isHoliday(dayMap, date)) { toast(`วันนี้เป็นวันหยุด: ${dayMap.get(date).name}`, 'err'); return; }
     const blank = roster.filter((s) => !offDay(s, date) && !marks.get(`${s.id}|${date}`));
     if (!blank.length) { toast('ทุกคนมีสถานะแล้ว'); return; }
     blank.forEach((s) => { marks.set(`${s.id}|${date}`, { student_id: s.id, date, status: 'present' }); paint(`${s.id}|${date}`); });

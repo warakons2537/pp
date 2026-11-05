@@ -138,6 +138,16 @@ input:focus, select:focus, textarea:focus { border-color: var(--g-focus); box-sh
 /* ช่องที่แก้ไม่ได้ในตารางเช็กชื่อ: นอกช่วงที่นักเรียนอยู่ในห้อง / วันในอนาคต (เช็กชื่อย้อนหลัง) */
 .reg td.off { background-color: color-mix(in srgb, currentColor 10%, transparent); }
 .reg td.off button.cell { cursor: not-allowed; opacity: .45; }
+/* วันหยุด/วันสำคัญที่ผู้ดูแลระบบแจ้งไว้ (school_days): วันหยุด = หัววันขีดฆ่า + ช่องลายเฉียงและปิดไว้ · วันสำคัญ = ขีดเส้นใต้หัววัน + ช่องสีอ่อน */
+.hol-chips { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 2px 0 10px; }
+.reg th.hol { background-image: linear-gradient(rgba(0, 0, 0, .3), rgba(0, 0, 0, .3)); text-decoration: line-through; }
+.reg th.spc { box-shadow: inset 0 -3px 0 #e0b84d; }
+.reg td.hol { background-image: repeating-linear-gradient(135deg, transparent 0 4px, rgba(190, 40, 40, .3) 4px 5px); }
+.reg td.hol button.cell { cursor: not-allowed; }
+.reg td.spc { background-color: color-mix(in srgb, var(--pen-wash) 60%, transparent); }
+.day-note { padding: 10px 14px; border-radius: 12px; font-weight: 500; }
+.day-note.holiday { background: var(--g-bad-bg); color: var(--g-bad-fg); }
+.day-note.note { background: var(--pen-wash); color: var(--on-pen-wash); }
 .reg th.wk, .reg th.calc { background-color: var(--g-primary); background-image: linear-gradient(rgba(255, 255, 255, .16), rgba(255, 255, 255, .16)); color: var(--g-on-primary); }
 .reg th button.day:hover { color: var(--g-on-primary); background: rgba(255, 255, 255, .18); }
 .tg-row button, .seg button { min-height: 48px; }

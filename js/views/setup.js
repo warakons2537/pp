@@ -1,18 +1,19 @@
-import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.11.1-22';
-import { GRANTABLE, MENU_GROUPS, plain } from '../menus.js?v=2569.11.1-22';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-22';
-import { ROUNDING } from '../grading.js?v=2569.11.1-22';
-import { excelRefToRows } from '../assess.js?v=2569.11.1-22';
-import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.11.1-22';
-import { subjectImportFlow } from './subject-import-view.js?v=2569.11.1-22';
-import { teacherImportFlow } from './teacher-import-view.js?v=2569.11.1-22';
-import { indicatorImportFlow } from './indicator-import-view.js?v=2569.11.1-22';
-import { clearGrowthRef } from '../data.js?v=2569.11.1-22';
-import { teacherKey, displayName } from '../teacher-import.js?v=2569.11.1-22';
-import { applyCourseOrder, inheritedOrder } from '../course-order.js?v=2569.11.1-22';
+import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.11.1-23';
+import { GRANTABLE, MENU_GROUPS, plain } from '../menus.js?v=2569.11.1-23';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-23';
+import { ROUNDING } from '../grading.js?v=2569.11.1-23';
+import { excelRefToRows } from '../assess.js?v=2569.11.1-23';
+import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.11.1-23';
+import { subjectImportFlow } from './subject-import-view.js?v=2569.11.1-23';
+import { teacherImportFlow } from './teacher-import-view.js?v=2569.11.1-23';
+import { indicatorImportFlow } from './indicator-import-view.js?v=2569.11.1-23';
+import { clearGrowthRef } from '../data.js?v=2569.11.1-23';
+import { KINDS, KIND_SHORT, loadSchoolDays, expandRange, fixedHolidayRows } from '../holidays.js?v=2569.11.1-23';
+import { teacherKey, displayName } from '../teacher-import.js?v=2569.11.1-23';
+import { applyCourseOrder, inheritedOrder } from '../course-order.js?v=2569.11.1-23';
 
 let tab = 'school';
-const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', rooms: 'ห้องเรียน', subjects: 'รายวิชา', roomsubj: 'รายวิชาตามชั้น', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', notify: 'การแจ้งเตือน', backup: 'สำรองข้อมูล' };
+const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', holidays: 'วันหยุด/วันสำคัญ', rooms: 'ห้องเรียน', subjects: 'รายวิชา', roomsubj: 'รายวิชาตามชั้น', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', notify: 'การแจ้งเตือน', backup: 'สำรองข้อมูล' };
 
 export async function render(el, ctx) {
   if (!ctx.isAdmin) { el.innerHTML = '<div class="empty">เฉพาะผู้ดูแลระบบ</div>'; return; }
@@ -22,7 +23,7 @@ export async function render(el, ctx) {
   const dot = (k) => (k === 'users' ? '' : badge((ctx.alerts || []).filter((a) => a.tab === k).length));
   el.innerHTML = `
     <div class="page-head"><div><h1>ตั้งค่าระบบ</h1><p>ข้อมูลที่ตั้งไว้ที่นี่ใช้ร่วมกันทั้งระบบธุรการและ ปพ.</p></div></div>
-    ${tabGroups([['ข้อมูลโรงเรียน', 'school', ['school', 'terms', 'rooms', 'subjects', 'roomsubj', 'users']], ['ระบบและข้อมูล', 'setup', ['growth', 'notify', 'backup']]]
+    ${tabGroups([['ข้อมูลโรงเรียน', 'school', ['school', 'terms', 'holidays', 'rooms', 'subjects', 'roomsubj', 'users']], ['ระบบและข้อมูล', 'setup', ['growth', 'notify', 'backup']]]
     .map(([label, ic, keys]) => ({ label, icon: ic, tabs: keys.map((k) => ({ key: k, label: `${TABS[k]}${k === 'users' && pending ? ` <span class="chip chip-bad">${pending}</span>` : ''}${dot(k)}` })) })), tab)}
     <div id="pane"></div>`;
   el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; render(el, ctx); }));
@@ -30,7 +31,7 @@ export async function render(el, ctx) {
   const pane = $('#pane', el);
   const again = async () => { await ctx.refresh(); render(el, ctx); };
   const run = async (fn, msg = 'บันทึกแล้ว') => { try { await fn(); toast(msg); await again(); } catch (err) { toast(err.message, 'err'); } };
-  ({ school, terms, rooms, subjects, roomsubj, users, growth, notify, backup })[tab](pane, ctx, run);
+  ({ school, terms, holidays, rooms, subjects, roomsubj, users, growth, notify, backup })[tab](pane, ctx, run);
 }
 
 // ---------------------------------------------------------------------
@@ -104,6 +105,61 @@ async function clearOthers(ctx, keepId) {
 }
 
 // ---------------------------------------------------------------------
+let holYear = null;     // ปีการศึกษาที่เลือกในแท็บวันหยุด/วันสำคัญ
+async function holidays(pane, ctx, run) {
+  const years = [...new Set([...ctx.terms.map((t) => t.academic_year), ctx.term?.academic_year].filter(Boolean))].sort((a, b) => b - a);
+  if (!years.includes(holYear)) holYear = ctx.term?.academic_year ?? years[0] ?? new Date().getFullYear() + 543;
+  const y0 = holYear - 543;
+  pane.innerHTML = '<div class="card"><p class="muted">กำลังโหลด…</p></div>';
+  const { rows, missing } = await loadSchoolDays(ctx.db, `${y0}-05-01`, `${y0 + 1}-04-30`);
+  if (missing) {
+    pane.innerHTML = `<div class="card"><h2>วันหยุด / วันสำคัญ</h2><div class="empty">ยังไม่ได้เพิ่มตารางวันหยุดในฐานข้อมูล<br><span class="small">เปิด Supabase → SQL Editor แล้วรันไฟล์ <b>supabase/school_days.sql</b> หนึ่งครั้ง (รันซ้ำได้ ไม่แตะข้อมูลอื่น) จากนั้นโหลดหน้านี้ใหม่</span></div></div>`;
+    return;
+  }
+  pane.innerHTML = `<div class="card">
+    <div class="row" style="justify-content:space-between;align-items:flex-end;flex-wrap:wrap">
+      <div class="row"><label class="field">ปีการศึกษา<select id="h-year">${years.map((y) => `<option value="${y}" ${y === holYear ? 'selected' : ''}>${y}</option>`).join('')}</select></label></div>
+      <div class="row"><button class="btn btn-primary" id="h-add">เพิ่มวันหยุด/วันสำคัญ</button><button class="btn" id="h-fixed" title="วันสำคัญที่วันที่เดิมทุกปี เช่น วันเฉลิมพระชนมพรรษา วันแม่ วันพ่อ">เพิ่มวันสำคัญที่วันที่คงที่</button></div>
+    </div>
+    ${rows.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>วันที่</th><th>ชื่อวัน / ข้อความ</th><th>ประเภท</th><th></th></tr></thead><tbody>
+      ${rows.map((r) => `<tr><td class="tc-ttl" data-l="วันที่">${esc(thaiDate(r.day))}</td><td data-l="ชื่อวัน">${esc(r.name)}</td>
+        <td data-l="ประเภท"><span class="chip ${r.kind === 'holiday' ? 'chip-bad' : 'chip-info'}">${KIND_SHORT[r.kind] ?? r.kind}</span></td>
+        <td class="n tc-act"><button class="btn btn-sm" data-edit="${esc(r.id)}">แก้ไข</button> <button class="btn btn-sm btn-danger" data-del="${esc(r.id)}">ลบ</button></td></tr>`).join('')}
+    </tbody></table></div>` : '<div class="empty">ยังไม่มีวันหยุด/วันสำคัญของปีการศึกษานี้</div>'}
+    <p class="muted small">วันหยุดจะขึ้นเป็นแถบข้อความและปิดช่องเช็กชื่อของวันนั้นในหน้าเช็กชื่อประจำวัน/ย้อนหลัง · "วันสำคัญ" ขึ้นข้อความอย่างเดียว ยังเช็กชื่อได้ · วันเสาร์-อาทิตย์ไม่ต้องเพิ่ม · วันพระ/วันหยุดชดเชย/วันหยุดพิเศษของโรงเรียน (เช่น ติดสอบ) เพิ่มเองตามปฏิทินของโรงเรียน</p></div>`;
+  $('#h-year', pane).addEventListener('change', (e) => { holYear = Number(e.target.value); holidays(pane, ctx, run); });
+  const form = (r = {}, range = true) => modal(r.id ? 'แก้ไขวันหยุด/วันสำคัญ' : 'เพิ่มวันหยุด/วันสำคัญ', `
+    <div class="row"><label>วันที่${range && !r.id ? 'เริ่มต้น' : ''}<input type="date" id="h-day" name="day" required value="${esc(r.day ?? '')}" min="${y0}-05-01" max="${y0 + 1}-04-30"></label>
+      ${range && !r.id ? `<label>ถึงวันที่ (เว้นว่าง = วันเดียว)<input type="date" id="h-to" name="to" min="${y0}-05-01" max="${y0 + 1}-04-30"></label>` : ''}</div>
+    <label>ชื่อวัน / ข้อความที่จะแสดง<input type="text" id="h-name" name="name" required maxlength="120" value="${esc(r.name ?? '')}" placeholder="เช่น วันเฉลิมพระชนมพรรษา ร.10 · หยุดพิเศษ โรงเรียนติดสอบ"></label>
+    <label>ประเภท<select id="h-kind" name="kind">${Object.entries(KINDS).map(([k, l]) => `<option value="${k}" ${(r.kind ?? 'holiday') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+    ${range && !r.id ? '<label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="skipwe" value="1" checked> ข้ามวันเสาร์-อาทิตย์ (เมื่อเลือกหลายวัน)</label>' : ''}`);
+  $('#h-add', pane).addEventListener('click', async () => {
+    const r = await form(); if (!r) return;
+    const days = expandRange(r.day, r.to && r.to >= r.day ? r.to : r.day, { skipWeekend: !!r.skipwe && !!r.to });
+    if (!days.length) { toast('ไม่มีวันที่ให้เพิ่ม', 'err'); return; }
+    const clash = rows.filter((x) => days.includes(x.day)).length;
+    if (clash && !await confirmBox(`มีวันหยุด/วันสำคัญอยู่แล้ว ${clash} วันในช่วงนี้ ต้องการแทนที่ด้วยข้อความใหม่หรือไม่?`, 'แทนที่')) return;
+    run(() => ctx.db.upsert('school_days', days.map((day) => ({ day, name: r.name.trim(), kind: r.kind })), 'day'), `บันทึกแล้ว ${days.length} วัน`);
+  });
+  $('#h-fixed', pane).addEventListener('click', async () => {
+    const have = new Set(rows.map((x) => x.day));
+    const add = fixedHolidayRows(holYear).filter((x) => !have.has(x.day));
+    if (!add.length) { toast('มีวันสำคัญเหล่านี้ครบแล้ว'); return; }
+    if (!await confirmBox(`เพิ่มวันสำคัญที่วันที่คงที่ ${add.length} วัน (เช่น ${add.slice(0, 3).map((x) => `${thaiDate(x.day, true)} ${x.name}`).join(' · ')} …) เป็น "วันหยุด" ตรวจ/แก้/ลบได้ภายหลัง · วันพระและวันหยุดที่เลื่อนได้ต้องเพิ่มเอง`, 'เพิ่ม')) return;
+    run(() => ctx.db.upsert('school_days', add, 'day'), `เพิ่ม ${add.length} วันแล้ว`);
+  });
+  pane.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', async () => {
+    const cur = rows.find((x) => x.id === b.dataset.edit); const r = await form(cur, false); if (!r) return;
+    run(() => ctx.db.update('school_days', { id: cur.id }, { day: r.day, name: r.name.trim(), kind: r.kind }));
+  }));
+  pane.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
+    const cur = rows.find((x) => x.id === b.dataset.del);
+    if (!await confirmBox(`ลบ "${cur.name}" (${thaiDate(cur.day)})?`, 'ลบ')) return;
+    run(() => ctx.db.remove('school_days', { id: cur.id }), 'ลบแล้ว');
+  }));
+}
+
 function rooms(pane, ctx, run) {
   const year = ctx.term?.academic_year;
   if (!year) { pane.innerHTML = '<div class="empty">เพิ่มภาคเรียนก่อน</div>'; return; }
@@ -397,7 +453,7 @@ async function growth(pane, ctx, run) {
   $('#g-tpl', pane).href = URL.createObjectURL(new Blob(['\ufeff' + tpl], { type: 'text/csv' }));
   const upsertRows = async (rows) => { for (let i = 0; i < rows.length; i += 500) await ctx.db.upsert('growth_reference', rows.slice(i, i + 500), 'ref_set,sex,basis,key,measure'); clearGrowthRef(); };
   $('#load-excel', pane).addEventListener('click', () => run(async () => {
-    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.11.1-22');
+    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.11.1-23');
     await upsertRows(excelRefToRows(EXCEL_AGE, EXCEL_HT));
   }, 'โหลดตารางจาก Excel เดิมแล้ว'));
   pane.querySelectorAll('[data-use]').forEach((b) => b.addEventListener('click', () =>
@@ -428,7 +484,7 @@ async function growth(pane, ctx, run) {
   });
 }
 
-const BACKUP_TABLES = ['school_settings', 'terms', 'classrooms', 'classroom_teachers', 'profiles', 'students', 'student_private',
+const BACKUP_TABLES = ['school_settings', 'terms', 'school_days', 'classrooms', 'classroom_teachers', 'profiles', 'students', 'student_private',
   'enrollments', 'subjects', 'subject_indicators', 'courses', 'course_teachers', 'daily_attendance', 'meal_checks', 'period_attendance', 'behavior_notes',
   'assessment_items', 'item_scores', 'course_results', 'remedial_cases', 'trait_scores', 'assess_detail', 'activity_results', 'homeroom_comments', 'health_measurements'];
 
