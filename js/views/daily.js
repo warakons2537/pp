@@ -1,43 +1,57 @@
 import { esc, $, toast, options, roomName, fullName, iso, fromIso, todayIso, thaiDate, daysInMonth,
-  THAI_MONTHS, THAI_DOW, STATUS, nextStatus } from '../util.js?v=2569.11.1-21';
-import { attachSheet } from '../sheet.js?v=2569.11.1-21';
-import { attachBulk } from '../bulk.js?v=2569.11.1-21';
-import { onSwipe } from '../swipe.js?v=2569.11.1-21';
-import { getRoster, termMonths } from '../data.js?v=2569.11.1-21';
+  THAI_MONTHS, THAI_DOW, STATUS, nextStatus } from '../util.js?v=2569.11.1-22';
+import { attachSheet } from '../sheet.js?v=2569.11.1-22';
+import { attachBulk } from '../bulk.js?v=2569.11.1-22';
+import { onSwipe } from '../swipe.js?v=2569.11.1-22';
+import { getRoster, termMonths, enrolledOn } from '../data.js?v=2569.11.1-22';
 
-const pref = { room: null, mode: null, ym: null, date: null };
+// เช็กชื่อประจำวัน: เดือนของภาคเรียนปัจจุบัน · นักเรียนที่ยังเรียนอยู่
+const DAILY = {
+  title: 'เช็กชื่อประจำวัน', pref: { room: null, mode: null, ym: null, date: null },
+  intro: (canEdit) => `บันทึกการมาเรียนประจำวัน ดูได้ทั้งรายวันและทั้งเดือน · ${canEdit ? '<span class="live">อัปเดตทันทีเมื่อครูคนอื่นบันทึก</span>' : 'ดูอย่างเดียว (ไม่ใช่ครูประจำชั้นห้องนี้)'}`,
+  months: (ctx) => termMonths(ctx.term),
+  roster: (ctx, room) => getRoster(ctx.db, room.id),
+  inClass: () => true, noFuture: false,
+};
+export const render = (el, ctx) => renderAttendance(el, ctx, DAILY);
 
-export async function render(el, ctx) {
+// ใช้ร่วมกับ "เช็กชื่อย้อนหลัง" (js/views/backdate.js) · cfg กำหนดชื่อหน้า เดือนที่เลือกได้ วิธีดึงรายชื่อ และเงื่อนไขรายช่อง
+export async function renderAttendance(el, ctx, cfg) {
+  const pref = cfg.pref;
   const rooms = ctx.isAdmin ? ctx.classrooms
     : [...ctx.myClassrooms, ...ctx.classrooms.filter((c) => !ctx.myClassrooms.includes(c))];
-  if (!rooms.length) { el.innerHTML = '<h1>เช็กชื่อประจำวัน</h1><div class="empty">ยังไม่มีห้องเรียนในภาคเรียนนี้</div>'; return; }
+  if (!rooms.length) { el.innerHTML = `<h1>${cfg.title}</h1><div class="empty">ยังไม่มีห้องเรียนในภาคเรียนนี้</div>`; return; }
   if (!rooms.some((r) => r.id === pref.room)) pref.room = (ctx.myClassrooms[0] || rooms[0]).id;
   pref.mode ??= window.matchMedia('(max-width: 700px)').matches ? 'day' : 'month';
-  pref.date ??= todayIso();
-  const months = termMonths(ctx.term);
+  pref.date ??= cfg.defaultDate ? cfg.defaultDate() : todayIso();
+  const room = ctx.classroomById[pref.room];
+  const months = cfg.months(ctx, room);
   const now = new Date();
-  if (!pref.ym) {
+  if (!months.length) { el.innerHTML = `<div class="page-head"><div><h1>${cfg.title}</h1></div></div><div class="empty">ยังไม่มีเดือนที่เช็กชื่อได้ในปีการศึกษาของห้องนี้</div>`; return; }
+  if (!months.some((m) => pref.ym === `${m.y}-${m.m0}`)) {
     const cur = months.find((m) => m.y === now.getFullYear() && m.m0 === now.getMonth());
     pref.ym = cur ? `${cur.y}-${cur.m0}` : `${months.at(-1).y}-${months.at(-1).m0}`;
   }
-
-  const room = ctx.classroomById[pref.room];
   const canEdit = ctx.isAdmin
     || ctx.classroomTeacherRows.some((x) => x.classroom_id === room.id && x.teacher_id === ctx.me.id);
-  const roster = await getRoster(ctx.db, room.id);
+  const today = todayIso();
+  if (cfg.noFuture && pref.date > today) pref.date = today;
 
   let from; let to;
   if (pref.mode === 'month') {
     const [y, m0] = pref.ym.split('-').map(Number);
     from = iso(new Date(y, m0, 1)); to = iso(new Date(y, m0, daysInMonth(y, m0)));
   } else { from = to = pref.date; }
+  const roster = await cfg.roster(ctx, room, { from, to, date: pref.date, mode: pref.mode });
+  // ช่องที่แก้ไม่ได้: นอกช่วงที่นักเรียนอยู่ในห้อง · วันในอนาคต (เฉพาะเช็กชื่อย้อนหลัง)
+  const offDay = (s, date) => !cfg.inClass(s, date) || (cfg.noFuture && date > today);
   const rows = await ctx.db.select('daily_attendance', { eq: { classroom_id: room.id }, gte: { date: from }, lte: { date: to } });
   const marks = new Map(rows.map((r) => [`${r.student_id}|${r.date}`, r]));
 
   el.innerHTML = `
     <div class="page-head">
-      <div><h1>เช็กชื่อประจำวัน</h1>
-        <p>บันทึกการมาเรียนประจำวัน ดูได้ทั้งรายวันและทั้งเดือน · ${canEdit ? '<span class="live">อัปเดตทันทีเมื่อครูคนอื่นบันทึก</span>' : 'ดูอย่างเดียว (ไม่ใช่ครูประจำชั้นห้องนี้)'}</p></div>
+      <div><h1>${cfg.title}</h1>
+        <p>${cfg.intro(canEdit)}</p></div>
       <div class="row">
         <label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label>
         <div class="seg" role="group" aria-label="มุมมอง">
@@ -46,7 +60,7 @@ export async function render(el, ctx) {
         </div>
         ${pref.mode === 'month'
           ? `<label class="field">เดือน<select id="ym">${months.map((m) => `<option value="${m.y}-${m.m0}" ${pref.ym === `${m.y}-${m.m0}` ? 'selected' : ''}>${THAI_MONTHS[m.m0]} ${m.y + 543}</option>`).join('')}</select></label>`
-          : `<label class="field">วันที่<input type="date" id="date" value="${pref.date}"></label>`}
+          : `<label class="field">วันที่<input type="date" id="date" value="${pref.date}" ${cfg.noFuture ? `max="${today}"` : ''}></label>`}
       </div>
     </div>
     <div class="legend small muted"><span class="legend-chips">${Object.entries(STATUS).map(([k, s]) => `<span class="chip ${s.cls}">${s.mark} = ${s.label}</span>`).join('')}</span>
@@ -54,7 +68,7 @@ export async function render(el, ctx) {
     <div id="sheet"></div>`;
 
   const sheet = $('#sheet', el);
-  if (!roster.length) { sheet.innerHTML = '<div class="empty">ห้องนี้ยังไม่มีนักเรียน — นำเข้ารายชื่อที่หน้า "นักเรียน"</div>'; }
+  if (!roster.length) { sheet.innerHTML = `<div class="empty">${cfg.emptyText || 'ห้องนี้ยังไม่มีนักเรียน — นำเข้ารายชื่อที่หน้า "นักเรียน"'}</div>`; }
   else if (pref.mode === 'month') drawMonth(sheet, roster, marks, canEdit);
   else drawDay(sheet, roster, marks, canEdit);
 
@@ -119,6 +133,7 @@ export async function render(el, ctx) {
   function saveMany(list) {
     const res = []; const ups = []; const dels = []; const olds = [];
     for (const { el, value } of list) {
+      if (el.disabled) { res.push(false); continue; }          // ช่องที่ปิดไว้ (นอกช่วงที่อยู่ในห้อง/วันในอนาคต) ไม่รับค่า
       const st = parseSt(value);
       if (st === undefined) { res.push(false); continue; }
       res.push(true);
@@ -151,7 +166,8 @@ export async function render(el, ctx) {
         <th>มา</th><th>ป่วย</th><th>ลา</th><th>ขาด</th></tr></thead>
       <tbody>${students.map((s, ri) => `<tr data-sid="${esc(s.id)}"><td class="no">${s.number ?? ''}</td><td class="name">${esc(fullName(s))}</td>
         ${days.map((d, ci) => { const k = `${s.id}|${iso(d)}`; const st = m.get(k)?.status;
-          return `<td class="${wk(d) ? 'wk' : ''}"><button class="cell ${st ? STATUS[st].cls : ''}" data-k="${k}" data-r="${ri}" data-c="${ci}" ${edit ? '' : 'disabled'} aria-label="${esc(fullName(s))} ${d.getDate()}">${st ? STATUS[st].mark : ''}</button></td>`; }).join('')}
+          const off = offDay(s, iso(d));
+          return `<td class="${wk(d) ? 'wk' : ''}${off ? ' off' : ''}"><button class="cell ${st ? STATUS[st].cls : ''}" data-k="${k}" data-r="${ri}" data-c="${ci}" ${edit && !off ? '' : 'disabled'} aria-label="${esc(fullName(s))} ${d.getDate()}">${st ? STATUS[st].mark : ''}</button></td>`; }).join('')}
         <td class="tot t-came st-present"></td><td class="tot t-sick"></td><td class="tot t-leave"></td><td class="tot t-absent" style="color:var(--red)"></td></tr>`).join('')}
       </tbody></table></div>`;
     students.forEach((s) => updateTotals(s.id));
@@ -180,7 +196,7 @@ export async function render(el, ctx) {
           <div class="seg">${Object.entries(STATUS).map(([key, v]) => `<button data-s="${key}" class="${st === key ? `on ${v.cls}` : ''}" ${edit ? '' : 'disabled'}>${v.label}</button>`).join('')}</div></div>`; }).join('')}
       </div>`;
     updateDayCount();
-    onSwipe(box, (dir) => { const d = fromIso(pref.date); d.setDate(d.getDate() + (dir === 'left' ? 1 : -1)); pref.date = iso(d); render(el, ctx); });   // ปัดซ้าย = วันถัดไป · ปัดขวา = วันก่อนหน้า
+    onSwipe(box, (dir) => { const d = fromIso(pref.date); d.setDate(d.getDate() + (dir === 'left' ? 1 : -1)); if (cfg.noFuture && iso(d) > today) return; pref.date = iso(d); renderAttendance(el, ctx, cfg); });   // ปัดซ้าย = วันถัดไป · ปัดขวา = วันก่อนหน้า
     if (!edit) return;
     box.addEventListener('click', (e) => {
       const b = e.target.closest('.seg button');
@@ -206,7 +222,8 @@ export async function render(el, ctx) {
   }
 
   async function fillDay(date) {
-    const blank = roster.filter((s) => !marks.get(`${s.id}|${date}`));
+    if (cfg.noFuture && date > today) { toast('ยังไม่ถึงวันนั้น', 'err'); return; }
+    const blank = roster.filter((s) => !offDay(s, date) && !marks.get(`${s.id}|${date}`));
     if (!blank.length) { toast('ทุกคนมีสถานะแล้ว'); return; }
     blank.forEach((s) => { marks.set(`${s.id}|${date}`, { student_id: s.id, date, status: 'present' }); paint(`${s.id}|${date}`); });
     try {
@@ -221,11 +238,11 @@ export async function render(el, ctx) {
   }
 
   // ---- ตัวควบคุม ----
-  $('#room', el).addEventListener('change', (e) => { pref.room = e.target.value; render(el, ctx); });
-  $('#m-day', el).addEventListener('click', () => { pref.mode = 'day'; render(el, ctx); });
-  $('#m-month', el).addEventListener('click', () => { pref.mode = 'month'; render(el, ctx); });
-  $('#ym', el)?.addEventListener('change', (e) => { pref.ym = e.target.value; render(el, ctx); });
-  $('#date', el)?.addEventListener('change', (e) => { if (e.target.value) { pref.date = e.target.value; render(el, ctx); } });
+  $('#room', el).addEventListener('change', (e) => { pref.room = e.target.value; renderAttendance(el, ctx, cfg); });
+  $('#m-day', el).addEventListener('click', () => { pref.mode = 'day'; renderAttendance(el, ctx, cfg); });
+  $('#m-month', el).addEventListener('click', () => { pref.mode = 'month'; renderAttendance(el, ctx, cfg); });
+  $('#ym', el)?.addEventListener('change', (e) => { pref.ym = e.target.value; renderAttendance(el, ctx, cfg); });
+  $('#date', el)?.addEventListener('change', (e) => { if (e.target.value) { pref.date = e.target.value; renderAttendance(el, ctx, cfg); } });
 
   // ---- เรียลไทม์ ----
   const byId = new Map(rows.map((r) => [r.id, `${r.student_id}|${r.date}`]));
