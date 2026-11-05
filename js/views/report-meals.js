@@ -1,7 +1,7 @@
 // รายงานการรับประทานอาหารกลางวันประจำเดือน (ตารางเดียวกับเวลาเรียนประจำเดือน)
-import { esc, fullName, levelName, iso, fromIso, daysInMonth, THAI_MONTHS } from '../util.js?v=2569.11.1-27';
-import { getRoster } from '../data.js?v=2569.11.1-27';
-import { head, signs, termText } from './report-common.js?v=2569.11.1-27';
+import { esc, fullName, levelName, iso, fromIso, daysInMonth, THAI_MONTHS } from '../util.js?v=2569.11.1-28';
+import { getRoster } from '../data.js?v=2569.11.1-28';
+import { head, signs, termText } from './report-common.js?v=2569.11.1-28';
 
 const MARK = { ate: '/', skip: '×', absent: '–' };
 
@@ -10,7 +10,7 @@ export async function mealsReport(ctx, room, ym) {
   const nd = daysInMonth(y, m0);
   const from = iso(new Date(y, m0, 1)); const to = iso(new Date(y, m0, nd));
   const [roster, rows] = await Promise.all([
-    getRoster(ctx.db, room.id),
+    getRoster(ctx.db, room.id, { from, to }),
     ctx.db.select('meal_checks', { eq: { classroom_id: room.id }, gte: { date: from }, lte: { date: to } }),
   ]);
   if (!rows.length) return '<div class="empty">เดือนนี้ยังไม่มีการบันทึกอาหารกลางวันของห้องนี้</div>';

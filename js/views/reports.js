@@ -1,12 +1,12 @@
 import { esc, $, options, roomName, fullName, levelName, iso, fromIso, daysInMonth, thaiDate, todayIso,
-  THAI_MONTHS, THAI_MONTHS_SHORT, STATUS } from '../util.js?v=2569.11.1-27';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-27';
-import { getRoster, termMonths, termRange } from '../data.js?v=2569.11.1-27';
-import { head, signs, termText } from './report-common.js?v=2569.11.1-27';
-import { p5Report, gradesReport, achieveReport } from './report-grades.js?v=2569.11.1-27';
-import { mealsReport } from './report-meals.js?v=2569.11.1-27';
-import { remedialReport } from './report-remedial.js?v=2569.11.1-27';
-import { nutritionReport, traitReport } from './report-assess.js?v=2569.11.1-27';
+  THAI_MONTHS, THAI_MONTHS_SHORT, STATUS } from '../util.js?v=2569.11.1-28';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-28';
+import { getRoster, courseRoster, termRoster, termMonths, termRange } from '../data.js?v=2569.11.1-28';
+import { head, signs, termText } from './report-common.js?v=2569.11.1-28';
+import { p5Report, gradesReport, achieveReport } from './report-grades.js?v=2569.11.1-28';
+import { mealsReport } from './report-meals.js?v=2569.11.1-28';
+import { remedialReport } from './report-remedial.js?v=2569.11.1-28';
+import { nutritionReport, traitReport } from './report-assess.js?v=2569.11.1-28';
 
 const pref = { tab: 'month', room: null, ym: null, course: null, round: 1 };
 const TABS = { month: 'เวลาเรียนประจำเดือน', term: 'สรุปเวลาเรียนภาคเรียน', course: 'เวลาเรียนรายวิชา (มส)', list: 'รายชื่อนักเรียน', meals: 'อาหารกลางวันประจำเดือน',
@@ -72,7 +72,7 @@ async function monthReport(ctx, room) {
   const nd = daysInMonth(y, m0);
   const from = iso(new Date(y, m0, 1)); const to = iso(new Date(y, m0, nd));
   const [roster, rows] = await Promise.all([
-    getRoster(ctx.db, room.id),
+    getRoster(ctx.db, room.id, { from, to }),
     ctx.db.select('daily_attendance', { eq: { classroom_id: room.id }, gte: { date: from }, lte: { date: to } }),
   ]);
   const mk = new Map(rows.map((r) => [`${r.student_id}|${r.date}`, r.status]));
@@ -105,7 +105,7 @@ async function monthReport(ctx, room) {
 async function termReport(ctx, room, months) {
   const range = termRange(ctx.term);
   const [roster, rows, summary] = await Promise.all([
-    getRoster(ctx.db, room.id),
+    termRoster(ctx, room),
     ctx.db.select('daily_attendance', { eq: { classroom_id: room.id }, gte: { date: range.from }, lte: { date: range.to } }),
     ctx.db.rpc('daily_attendance_summary', { cid: room.id, d_from: range.from, d_to: range.to }),
   ]);
@@ -135,11 +135,11 @@ async function termReport(ctx, room, months) {
 // ---------- 3) เวลาเรียนรายวิชา ----------
 async function courseReport(ctx, course) {
   const [roster, summary] = await Promise.all([
-    getRoster(ctx.db, course.classroom_id),
+    courseRoster(ctx, course),
     ctx.db.rpc('course_attendance_summary', { crs: course.id }),
   ]);
   const sum = Object.fromEntries(summary.map((s) => [s.student_id, s]));
-  const total = summary[0]?.total_periods ?? 0;
+  const total = Math.max(0, ...summary.map((x) => x.total_periods ?? 0));
   const bad = summary.filter((s) => s.below_80).length;
   const room = course.classroom;
   return `<div class="a4">
@@ -147,7 +147,7 @@ async function courseReport(ctx, course) {
     <table><thead><tr><th>ที่</th><th>เลขประจำตัว</th><th class="l">ชื่อ-สกุล</th><th>คาบที่มา</th><th>คาบทั้งหมด</th><th>ร้อยละ</th><th>ผล</th></tr></thead>
       <tbody>${roster.map((s) => { const x = sum[s.id] || {};
         return `<tr class="${x.below_80 ? 'risk' : ''}"><td>${s.number ?? ''}</td><td>${esc(s.student_code ?? '')}</td><td class="l">${esc(fullName(s))}</td>
-          <td>${x.attended ?? 0}</td><td>${total}</td><td>${x.pct == null ? '-' : Number(x.pct).toFixed(2)}</td>
+          <td>${x.attended ?? 0}</td><td>${x.total_periods ?? total}</td><td>${x.pct == null ? '-' : Number(x.pct).toFixed(2)}</td>
           <td>${total ? (x.below_80 ? 'มส' : 'มีสิทธิ์สอบ') : '-'}</td></tr>`; }).join('')}</tbody></table>
     <div class="legend">เกณฑ์: ต้องมีเวลาเรียนไม่น้อยกว่าร้อยละ 80 ของเวลาเรียนทั้งหมด · ไม่มีสิทธิ์สอบ (มส) ${bad} คน · เช็กชื่อแล้ว ${total} คาบ</div>
     ${signs(null, null, [...(course.teachers.length ? course.teachers : [{ full_name: '' }]).map((t) => ({ name: t.full_name, role: 'ครูผู้สอน' })),
@@ -157,7 +157,7 @@ async function courseReport(ctx, course) {
 
 // ---------- 4) รายชื่อนักเรียน ----------
 async function listReport(ctx, room) {
-  const roster = await getRoster(ctx.db, room.id);
+  const roster = await termRoster(ctx, room);
   const boys = roster.filter((s) => s.gender === 'ช').length;
   return `<div class="a4">
     ${head(ctx, `รายชื่อนักเรียน ชั้น${levelName(room.level)}/${room.room}`, termText(ctx))}

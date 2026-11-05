@@ -2,12 +2,12 @@
 //  ตั้งค่าระบบ → รายวิชา → นำเข้าจากไฟล์คะแนน (หลายไฟล์)
 //  อ่านไฟล์ → ตารางตรวจ (แก้รหัส/ชื่อ/ห้อง · เลือกทีละไฟล์เมื่อซ้ำ · ปุ่มดูเพื่อเทียบ) → สร้างวิชา + เปิดสอน + นำเข้าคะแนน
 // =====================================================================
-import { esc, toast, roomName, fullName } from '../util.js?v=2569.11.1-27';
-import { getRoster } from '../data.js?v=2569.11.1-27';
-import { sheetMatrix, findAchievementSheet, parseAchievement, nameKey } from '../achievement-import.js?v=2569.11.1-27';
-import { planImport, applyImport } from '../achievement-io.js?v=2569.11.1-27';
-import { inheritedOrder } from '../course-order.js?v=2569.11.1-27';
-import { buildRows, rowStatus, defaultAction, courseRatio } from '../subject-import.js?v=2569.11.1-27';
+import { esc, toast, roomName, fullName } from '../util.js?v=2569.11.1-28';
+import { getRoster, courseRoster } from '../data.js?v=2569.11.1-28';
+import { sheetMatrix, findAchievementSheet, parseAchievement, nameKey } from '../achievement-import.js?v=2569.11.1-28';
+import { planImport, applyImport } from '../achievement-io.js?v=2569.11.1-28';
+import { inheritedOrder } from '../course-order.js?v=2569.11.1-28';
+import { buildRows, rowStatus, defaultAction, courseRatio } from '../subject-import.js?v=2569.11.1-28';
 
 async function readFiles(files) {
   if (!window.XLSX) throw new Error('โหลดตัวอ่านไฟล์ Excel ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วรีเฟรชหน้า');
@@ -46,7 +46,7 @@ async function compare(ctx, row, st, rows) {
   } else {
     const k = st.course;
     leftTitle = `ในระบบ: ${ctx.courseLabel(ctx.courseById[k.id] || k)}`;
-    const [items, roster] = await Promise.all([ctx.db.select('assessment_items', { eq: { course_id: k.id } }), getRoster(ctx.db, k.classroom_id)]);
+    const [items, roster] = await Promise.all([ctx.db.select('assessment_items', { eq: { course_id: k.id } }), courseRoster(ctx, ctx.courseById[k.id] || k)]);
     const sc = items.filter((i) => i.kind === 'score').sort((a, b) => a.sort_order - b.sort_order);
     const fi = items.filter((i) => i.kind === 'final');
     const scores = items.length ? await ctx.db.select('item_scores', { in: { item_id: items.map((i) => i.id) } }) : [];

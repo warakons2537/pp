@@ -1,15 +1,15 @@
 // รายงานระยะที่ 3: ภาวะโภชนาการ (รายชื่อ + ความชุก + รายชื่อที่ต้องดูแล) และสรุปคุณลักษณะ/กิจกรรม
-import { esc, fullName, levelName, thaiDate } from '../util.js?v=2569.11.1-27';
-import { getRoster, loadGrowthRef, getBirthDates } from '../data.js?v=2569.11.1-27';
-import { classify, ageMonths, WA, HA, WH, OUT_OF_TABLE, TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.11.1-27';
-import { head, signs, termText } from './report-common.js?v=2569.11.1-27';
+import { esc, fullName, levelName, thaiDate } from '../util.js?v=2569.11.1-28';
+import { getRoster, termRoster, enrolledOn, inTermList, loadGrowthRef, getBirthDates } from '../data.js?v=2569.11.1-28';
+import { classify, ageMonths, WA, HA, WH, OUT_OF_TABLE, TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.11.1-28';
+import { head, signs, termText } from './report-common.js?v=2569.11.1-28';
 
 const academic = (ctx) => ({ name: ctx.settings.academic_head_name, role: 'หัวหน้างานวิชาการ' });
 const director = (ctx) => ({ name: ctx.settings.director_name, role: ctx.settings.director_title || 'ผู้อำนวยการโรงเรียน' });
 
 export async function nutritionReport(ctx, room, round) {
-  const roster = await getRoster(ctx.db, room.id);
-  const ids = roster.map((s) => s.id);
+  const everyone = await getRoster(ctx.db, room.id, { includeLeft: true });
+  const ids = everyone.map((s) => s.id);
   const [ref, births, rows] = await Promise.all([
     loadGrowthRef(ctx.db, ctx.settings.growth_ref_set || 'excel'),
     getBirthDates(ctx.db, ids),
@@ -18,6 +18,8 @@ export async function nutritionReport(ctx, room, round) {
   if (!ref.size) return '<div class="empty">ยังไม่มีตารางอ้างอิงการเจริญเติบโต (ตั้งค่าระบบ → ตารางโภชนาการ)</div>';
   const by = Object.fromEntries(rows.map((r) => [r.student_id, r]));
   const date = rows.map((r) => r.measured_on).sort().at(-1);
+  // รายชื่อ = นักเรียนที่อยู่ในห้องวันที่ชั่ง/วัดครั้งนี้ (ถ้ายังไม่ได้ชั่ง ใช้รายชื่อสิ้นภาคเรียนปัจจุบัน)
+  const roster = date ? everyone.filter((s) => enrolledOn(s, date)) : everyone.filter((s) => inTermList(s, ctx.term));
   const list = roster.map((s) => { const m = by[s.id]; const months = m ? ageMonths(births[s.id], m.measured_on) : null;
     return { s, m, months, ...(m ? classify(ref, { sex: s.gender, months, weight: m.weight_kg, height: m.height_cm }) : {}) }; });
   const measured = list.filter((x) => x.m);
@@ -60,7 +62,7 @@ export async function nutritionReport(ctx, room, round) {
 }
 
 export async function traitReport(ctx, room) {
-  const roster = await getRoster(ctx.db, room.id);
+  const roster = await termRoster(ctx, room);
   const ids = roster.map((s) => s.id);
   const term = ctx.term.id;
   const [ts, acts] = await Promise.all([

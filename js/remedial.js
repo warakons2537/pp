@@ -1,7 +1,7 @@
 // ติดตามการแก้ 0 ร มส (เฉพาะ ม.1–ม.3): ค่าคงที่ + รวมรายการจากเกรดที่คำนวณได้กับรายการที่ครูบันทึกไว้
 // ไม่แก้เกรดใน ปพ.5: ผลหลังแก้เก็บในตาราง remedial_cases เท่านั้น
-import { getRoster } from './data.js?v=2569.11.1-27';
-import { loadCourse, computeCourse, fmtGrade } from './grading.js?v=2569.11.1-27';
+import { courseRoster } from './data.js?v=2569.11.1-28';
+import { loadCourse, computeCourse, fmtGrade } from './grading.js?v=2569.11.1-28';
 
 export const CAUSES = { absent: 'ขาดเรียน / เวลาเรียนไม่ถึง', low_score: 'คะแนนไม่ถึงเกณฑ์', missing_work: 'ไม่ส่งงาน',
   missed_exam: 'ขาดสอบ', other: 'อื่น ๆ' };
@@ -44,8 +44,9 @@ export async function loadRemedial(ctx, courses) {
   const rosters = new Map();
   const out = [];
   for (const course of courses) {
-    if (!rosters.has(course.classroom_id)) rosters.set(course.classroom_id, await getRoster(ctx.db, course.classroom_id));
-    const roster = rosters.get(course.classroom_id);
+    const rk = `${course.classroom_id}|${course.term_id}`;
+    if (!rosters.has(rk)) rosters.set(rk, await courseRoster(ctx, course));
+    const roster = rosters.get(rk);
     const res = computeCourse(course, await loadCourse(ctx.db, course), roster, rounding);
     for (const s of roster) {
       const r = res[s.id];

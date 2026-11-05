@@ -4,9 +4,9 @@
 //  รายชื่อ = นักเรียนที่อยู่ในห้องวันนั้น (รองรับย้ายเข้า/ออกกลางปี) · วันนอกช่วงที่นักเรียนอยู่ในห้อง และวันในอนาคต แก้ไม่ได้
 //  ใช้ตารางเช็กชื่อเดียวกับหน้าประจำวัน (ข้อมูล daily_attendance ชุดเดียวกัน)
 // =====================================================================
-import { renderAttendance } from './daily.js?v=2569.11.1-27';
-import { getRoster, academicYearMonths, enrolledOn } from '../data.js?v=2569.11.1-27';
-import { iso } from '../util.js?v=2569.11.1-27';
+import { renderAttendance } from './daily.js?v=2569.11.1-28';
+import { getRoster, academicYearMonths, enrolledOn } from '../data.js?v=2569.11.1-28';
+import { iso } from '../util.js?v=2569.11.1-28';
 
 const yesterday = () => { const d = new Date(); d.setDate(d.getDate() - 1); return iso(d); };
 

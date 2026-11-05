@@ -1,18 +1,18 @@
 // =====================================================================
 //  ส่งออก / นำเข้า แบบบันทึกผลสัมฤทธิ์ (ไฟล์ Excel แบบที่โรงเรียนใช้อยู่)
 // =====================================================================
-import { levelName, roomName } from './util.js?v=2569.11.1-27';
-import { getRoster } from './data.js?v=2569.11.1-27';
-import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-27';
-import { achievementSheet, sheetName as stuName } from './achievement.js?v=2569.11.1-27';
-import { buildXlsx, safeSheetName, downloadBytes } from './xlsx-write.js?v=2569.11.1-27';
-import { sheetMatrix, findAchievementSheet, parseAchievement, matchStudents } from './achievement-import.js?v=2569.11.1-27';
+import { levelName, roomName } from './util.js?v=2569.11.1-28';
+import { courseRoster } from './data.js?v=2569.11.1-28';
+import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-28';
+import { achievementSheet, sheetName as stuName } from './achievement.js?v=2569.11.1-28';
+import { buildXlsx, safeSheetName, downloadBytes } from './xlsx-write.js?v=2569.11.1-28';
+import { sheetMatrix, findAchievementSheet, parseAchievement, matchStudents } from './achievement-import.js?v=2569.11.1-28';
 
 const fileSafe = (s) => String(s).replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim();
 
 // ข้อมูล 1 วิชา → spec ของแผ่นงาน
 export async function courseSpec(ctx, course, { roster, data } = {}) {
-  roster ??= await getRoster(ctx.db, course.classroom_id);
+  roster ??= await courseRoster(ctx, course);
   data ??= await loadCourse(ctx.db, course);
   const rounding = ctx.settings.score_rounding || 'floor';
   const calc = computeCourse(course, data, roster, rounding);

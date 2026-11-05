@@ -1,8 +1,8 @@
-import { esc, $, toast, options, roomName, fullName, todayIso, thaiDate } from '../util.js?v=2569.11.1-27';
-import { getRoster, loadGrowthRef, getBirthDates } from '../data.js?v=2569.11.1-27';
-import { attachSheet } from '../sheet.js?v=2569.11.1-27';
-import { attachGrid } from '../grid.js?v=2569.11.1-27';
-import { classify, ageMonths, ageText, severity, WH, HA, OUT_OF_TABLE } from '../assess.js?v=2569.11.1-27';
+import { esc, $, toast, options, roomName, fullName, todayIso, thaiDate } from '../util.js?v=2569.11.1-28';
+import { getRoster, enrolledOn, loadGrowthRef, getBirthDates } from '../data.js?v=2569.11.1-28';
+import { attachSheet } from '../sheet.js?v=2569.11.1-28';
+import { attachGrid } from '../grid.js?v=2569.11.1-28';
+import { classify, ageMonths, ageText, severity, WH, HA, OUT_OF_TABLE } from '../assess.js?v=2569.11.1-28';
 
 const pref = { room: null, round: 1, date: null };
 const chip = (label) => {
@@ -19,8 +19,8 @@ export async function render(el, ctx) {
   const year = room.academic_year;
   const canEdit = ctx.isAdmin || ctx.classroomTeacherRows.some((x) => x.classroom_id === room.id && x.teacher_id === ctx.me.id);
   const refSet = ctx.settings.growth_ref_set || 'excel';
-  const [roster, ref] = await Promise.all([getRoster(ctx.db, room.id), loadGrowthRef(ctx.db, refSet)]);
-  const ids = roster.map((s) => s.id);
+  const [everyone, ref] = await Promise.all([getRoster(ctx.db, room.id, { includeLeft: true }), loadGrowthRef(ctx.db, refSet)]);
+  const ids = everyone.map((s) => s.id);
   const [births, rows] = await Promise.all([
     getBirthDates(ctx.db, ids),
     ids.length ? ctx.db.select('health_measurements', { in: { student_id: ids }, eq: { academic_year: year } }) : [],
@@ -30,6 +30,8 @@ export async function render(el, ctx) {
   const prev = (sid) => { for (let k = pref.round - 1; k >= 1; k--) { const r = byKey.get(`${sid}|${k}`); if (r) return r; } return null; };
   const dates = rows.filter((r) => r.round === pref.round).map((r) => r.measured_on);
   pref.date = dates.sort().at(-1) || pref.date || todayIso();
+  // รายชื่อ = นักเรียนที่อยู่ในห้องวันที่ชั่ง/วัดครั้งนี้ (คนย้ายเข้าทีหลังไม่อยู่ในครั้งก่อนหน้า · คนที่ออกแล้วไม่อยู่ในครั้งหลัง)
+  const roster = everyone.filter((s) => enrolledOn(s, pref.date));
 
   const calc = (s) => {
     const m = cur(s.id);

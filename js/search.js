@@ -1,9 +1,9 @@
 // ค้นหาด่วน (Ctrl+K หรือปุ่มแว่นขยายบนแถบบน): พิมพ์ชื่อหน้า นักเรียน หรือรายวิชา แล้วข้ามไปทันที
-import { esc, fullName, roomName } from './util.js?v=2569.11.1-27';
-import { getRoster } from './data.js?v=2569.11.1-27';
-import { NAV, plain, MENU_ORDER } from './menus.js?v=2569.11.1-27';
-import { rank } from './search-core.js?v=2569.11.1-27';
-import { openPrefs } from './prefs.js?v=2569.11.1-27';
+import { esc, fullName, roomName } from './util.js?v=2569.11.1-28';
+import { getRoster } from './data.js?v=2569.11.1-28';
+import { NAV, plain, MENU_ORDER } from './menus.js?v=2569.11.1-28';
+import { rank } from './search-core.js?v=2569.11.1-28';
+import { openPrefs } from './prefs.js?v=2569.11.1-28';
 
 const SYN = { daily: 'เช็กชื่อ มาเรียน ขาด ลา', backdate: 'เช็กชื่อย้อนหลัง ย้อนหลัง แก้ไขวันที่ผ่านมา เดือนก่อน ภาคเรียนที่แล้ว', meals: 'อาหาร ข้าวกลางวัน', health: 'น้ำหนัก ส่วนสูง โภชนาการ', traits: 'คุณลักษณะ กิจกรรม อ่านคิดวิเคราะห์',
   period: 'เช็กชื่อ รายคาบ', scores: 'คะแนน เกรด ปพ.5', remedial: 'แก้ 0 ร มส ซ่อม', reports: 'รายงาน พิมพ์ A4', print: 'ปพ.6 ปพ.5 ใบรับรอง เอกสาร', students: 'ทะเบียน รายชื่อ', setup: 'ผู้ใช้ ห้อง ครู วิชา' };

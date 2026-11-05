@@ -1,18 +1,18 @@
 import { esc, $, toast, options, roomName, fullName, iso, fromIso, todayIso, thaiDate, daysInMonth,
-  THAI_MONTHS, THAI_DOW, STATUS, nextStatus } from '../util.js?v=2569.11.1-27';
-import { attachSheet } from '../sheet.js?v=2569.11.1-27';
-import { attachBulk } from '../bulk.js?v=2569.11.1-27';
-import { onSwipe } from '../swipe.js?v=2569.11.1-27';
-import { getRoster, termMonths, enrolledOn } from '../data.js?v=2569.11.1-27';
-import { loadSchoolDays, dayMapOf, isHoliday, KIND_SHORT } from '../holidays.js?v=2569.11.1-27';
+  THAI_MONTHS, THAI_DOW, STATUS, nextStatus } from '../util.js?v=2569.11.1-28';
+import { attachSheet } from '../sheet.js?v=2569.11.1-28';
+import { attachBulk } from '../bulk.js?v=2569.11.1-28';
+import { onSwipe } from '../swipe.js?v=2569.11.1-28';
+import { getRoster, termMonths, enrolledOn } from '../data.js?v=2569.11.1-28';
+import { loadSchoolDays, dayMapOf, isHoliday, KIND_SHORT } from '../holidays.js?v=2569.11.1-28';
 
-// เช็กชื่อประจำวัน: เดือนของภาคเรียนปัจจุบัน · นักเรียนที่ยังเรียนอยู่
+// เช็กชื่อประจำวัน: เดือนของภาคเรียนปัจจุบัน · รายชื่อตามนักเรียนที่อยู่ในห้องวันนั้น (ย้ายเข้า/ออกกลางปี)
 const DAILY = {
   title: 'เช็กชื่อประจำวัน', pref: { room: null, mode: null, ym: null, date: null },
   intro: (canEdit) => `บันทึกการมาเรียนประจำวัน ดูได้ทั้งรายวันและทั้งเดือน · ${canEdit ? '<span class="live">อัปเดตทันทีเมื่อครูคนอื่นบันทึก</span>' : 'ดูอย่างเดียว (ไม่ใช่ครูประจำชั้นห้องนี้)'}`,
   months: (ctx) => termMonths(ctx.term),
-  roster: (ctx, room) => getRoster(ctx.db, room.id),
-  inClass: () => true, noFuture: false,
+  roster: (ctx, room, { from, to, date, mode }) => (mode === 'month' ? getRoster(ctx.db, room.id, { from, to }) : getRoster(ctx.db, room.id, { asOf: date })),
+  inClass: (s, date) => enrolledOn(s, date), noFuture: false,
 };
 export const render = (el, ctx) => renderAttendance(el, ctx, DAILY);
 

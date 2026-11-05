@@ -1,9 +1,9 @@
 import { esc, $, toast, options, roomName, fullName, iso, fromIso, todayIso, thaiDate, daysInMonth,
-  THAI_MONTHS, THAI_DOW } from '../util.js?v=2569.11.1-27';
-import { attachSheet } from '../sheet.js?v=2569.11.1-27';
-import { attachBulk } from '../bulk.js?v=2569.11.1-27';
-import { onSwipe } from '../swipe.js?v=2569.11.1-27';
-import { getRoster, termMonths } from '../data.js?v=2569.11.1-27';
+  THAI_MONTHS, THAI_DOW } from '../util.js?v=2569.11.1-28';
+import { attachSheet } from '../sheet.js?v=2569.11.1-28';
+import { attachBulk } from '../bulk.js?v=2569.11.1-28';
+import { onSwipe } from '../swipe.js?v=2569.11.1-28';
+import { getRoster, termMonths, enrolledOn } from '../data.js?v=2569.11.1-28';
 
 // สถานะการทานอาหาร (ใช้สีเดียวกับเช็กชื่อ)
 const MEAL = {
@@ -35,13 +35,13 @@ export async function render(el, ctx) {
   const room = ctx.classroomById[pref.room];
   const canEdit = ctx.isAdmin
     || ctx.classroomTeacherRows.some((x) => x.classroom_id === room.id && x.teacher_id === ctx.me.id);
-  const roster = await getRoster(ctx.db, room.id);
-
   let from; let to;
   if (pref.mode === 'month') {
     const [y, m0] = pref.ym.split('-').map(Number);
     from = iso(new Date(y, m0, 1)); to = iso(new Date(y, m0, daysInMonth(y, m0)));
   } else { from = to = pref.date; }
+  // รายชื่อตามวันที่/เดือนที่ดู: คนย้ายเข้ากลางปีไม่อยู่ในเดือนก่อนเข้า · ช่องก่อนเข้า/หลังออกแก้ไม่ได้
+  const roster = await getRoster(ctx.db, room.id, pref.mode === 'month' ? { from, to } : { asOf: pref.date });
   const rows = await ctx.db.select('meal_checks', { eq: { classroom_id: room.id }, gte: { date: from }, lte: { date: to } });
   const marks = new Map(rows.map((r) => [`${r.student_id}|${r.date}`, r]));
 
@@ -162,7 +162,8 @@ export async function render(el, ctx) {
         <th>ทาน</th><th>ไม่ทาน</th><th>ไม่มา</th></tr></thead>
       <tbody>${students.map((s, ri) => `<tr data-sid="${esc(s.id)}"><td class="no">${s.number ?? ''}</td><td class="name">${esc(fullName(s))}</td>
         ${days.map((d, ci) => { const k = `${s.id}|${iso(d)}`; const st = m.get(k)?.status;
-          return `<td class="${wk(d) ? 'wk' : ''}"><button class="cell ${st ? MEAL[st].cls : ''}" data-k="${k}" data-r="${ri}" data-c="${ci}" ${edit ? '' : 'disabled'} aria-label="${esc(fullName(s))} ${d.getDate()}">${st ? MEAL[st].mark : ''}</button></td>`; }).join('')}
+          const off = !enrolledOn(s, iso(d));
+          return `<td class="${wk(d) ? 'wk' : ''}${off ? ' off' : ''}"><button class="cell ${st ? MEAL[st].cls : ''}" data-k="${k}" data-r="${ri}" data-c="${ci}" ${edit && !off ? '' : 'disabled'} aria-label="${esc(fullName(s))} ${d.getDate()}">${st ? MEAL[st].mark : ''}</button></td>`; }).join('')}
         <td class="tot t-ate st-present"></td><td class="tot t-skip"></td><td class="tot t-absent"></td></tr>`).join('')}
       </tbody></table></div>`;
     students.forEach((s) => updateTotals(s.id));
@@ -233,7 +234,7 @@ export async function render(el, ctx) {
 
   async function fillDay(date) {
     try {
-      const n = await fillMany(roster.map((s) => ({ student_id: s.id, date, status: 'ate' })));
+      const n = await fillMany(roster.filter((s) => enrolledOn(s, date)).map((s) => ({ student_id: s.id, date, status: 'ate' })));
       toast(n ? `บันทึก "ทาน" ${n} คน (${thaiDate(date, true)})` : 'ทุกคนมีสถานะแล้ว');
     } catch (err) { toast(err.message, 'err'); }
   }
