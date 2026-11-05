@@ -5,10 +5,10 @@
 //  - ผสานเซลล์ · เส้นขอบ · สีพื้น · ฟอนต์ · การจัดแนว/ตัดบรรทัด/ข้อความล้นเซลล์ · หมุนข้อความ
 //  - รูปแบบตัวเลข · การจัดรูปแบบตามเงื่อนไข · รูปภาพ/รูปร่าง/กล่องข้อความ
 // =====================================================================
-import { MAXCOL, XErr, Mat } from './xl-formula.js?v=2569.11.1-35';
-import { formatValue, isDateFormat } from './xl-numfmt.js?v=2569.11.1-35';
-import { parseDrawing, key } from './xl-model.js?v=2569.11.1-35';
-import { shiftFormula } from './xlsx-template.js?v=2569.11.1-35';
+import { MAXCOL, XErr, Mat } from './xl-formula.js?v=2569.11.1-36';
+import { formatValue, isDateFormat } from './xl-numfmt.js?v=2569.11.1-36';
+import { parseDrawing, key } from './xl-model.js?v=2569.11.1-36';
+import { shiftFormula } from './xlsx-template.js?v=2569.11.1-36';
 
 export const PAPER = { 9: [595.28, 841.89], 1: [612, 792], 5: [612, 1008], 8: [841.89, 1190.55], 11: [419.53, 595.28] };
 const PT_PER_PX = 0.75; const EMU_PER_PT = 12700;
@@ -101,8 +101,10 @@ export class Renderer {
 
   // ---- เรขาคณิตของแผ่น ----
   // rowK / colK = สัดส่วนความสูงแถว (ระยะบรรทัด) / ความกว้างคอลัมน์ที่ผู้ใช้ปรับ (1 = ตามต้นฉบับ)
-  geometry(sh, rowK = 1, colK = 1) {
-    const gk = `${sh.name}|${rowK}|${colK}`;
+  // ov = { cw: {คอลัมน์: ความกว้าง pt}, rh: {แถว: ความสูง pt} } ที่ผู้ใช้ลากปรับเป็นรายคอลัมน์/รายแถว (ไม่ทับคอลัมน์/แถวที่ซ่อนอยู่)
+  geometry(sh, rowK = 1, colK = 1, ov = null) {
+    const ovc = ov?.cw || {}; const ovr = ov?.rh || {};
+    const gk = `${sh.name}|${rowK}|${colK}|${Object.keys(ovc).length || Object.keys(ovr).length ? JSON.stringify([ovc, ovr]) : ''}`;
     let g = this.geo.get(gk); if (g) return g;
     const mdw = this.mdw;
     const pxOfWidth = (w) => Math.trunc(((256 * w + Math.trunc(128 / mdw)) / 256) * mdw);
@@ -113,8 +115,8 @@ export class Renderer {
     const defRowPt = sh.zeroHeight ? 0 : sh.defaultRowHeight;
     const colStyle = new Map(); for (const c of sh.cols) if (c.style) for (let i = c.min; i <= Math.min(c.max, 16384); i++) colStyle.set(i, c.style);
     g = {
-      cw: (c) => (colW.has(c) ? colW.get(c) : defColPt),
-      rh: (r) => { const x = sh.rows.get(r); if (x) { if (x.hidden) return 0; if (x.ht !== null) return x.ht * rowK; } return defRowPt * rowK; },
+      cw: (c) => { const w = colW.has(c) ? colW.get(c) : defColPt; return w > 0 && Number.isFinite(ovc[c]) && ovc[c] >= 1 ? ovc[c] : w; },
+      rh: (r) => { const x = sh.rows.get(r); let h = defRowPt * rowK; if (x) { if (x.hidden) return 0; if (x.ht !== null) h = x.ht * rowK; } return h > 0 && Number.isFinite(ovr[r]) && ovr[r] >= 1 ? ovr[r] : h; },
       colStyle,
     };
     // ตำแหน่งสะสม (ใช้วางรูปวาด)
@@ -127,7 +129,7 @@ export class Renderer {
       g.mergeAt.set(key(m.r1, m.c1), m);
       for (let r = m.r1; r <= m.r2; r++) for (let c = m.c1; c <= m.c2; c++) g.inMerge.set(key(r, c), m);
     }
-    this.geo.set(gk, g);
+    if (!ovc || (!Object.keys(ovc).length && !Object.keys(ovr).length)) this.geo.set(gk, g);     // ค่าที่กำลังลากปรับไม่เก็บแคช (เปลี่ยนทุกครั้งที่ขยับ)
     return g;
   }
 
@@ -159,7 +161,7 @@ export class Renderer {
     const sh = this.wb.sheet(name); if (!sh) return null;
     const a = adj || {};
     const pct = (x) => (Number.isFinite(+x) && +x > 0 ? Math.max(0.3, Math.min(3, +x / 100)) : 1);
-    const g = this.geometry(sh, pct(a.row), pct(a.col));
+    const g = this.geometry(sh, pct(a.row), pct(a.col), { cw: a.cw, rh: a.rh });
     const info = this.wb.printInfo(name);
     const areas = info.areas.length ? info.areas.map((a) => ({ ...a, r2: Math.min(a.r2, Math.max(sh.maxRow, a.r1)), c2: Math.min(a.c2, Math.max(sh.maxCol, a.c1)) })) : [this.usedRange(sh)];
     const orient = orientation || sh.page.orientation || 'portrait';
@@ -247,7 +249,7 @@ export class Renderer {
       }
       scale = p / 100;
     } else if (!autoDone) pages = run(scale, true);
-    return { pages, scale, paper, orient, availW, availH, top, left: m.left * 72, hasHF, sh, g, overlays, hCenter: a.autoFit ? true : a.hCenter === undefined || a.hCenter === null ? sh.page.hCenter : !!a.hCenter, vCenter: a.autoFit ? true : a.vCenter === undefined || a.vCenter === null ? !!sh.page.vCenter : !!a.vCenter };
+    return { pages, scale, paper, orient, availW, availH, top, left: m.left * 72, hasHF, sh, g, overlays, dx: Number.isFinite(+a.ox) ? +a.ox : 0, dy: Number.isFinite(+a.oy) ? +a.oy : 0, margins: m, hCenter: a.autoFit ? true : a.hCenter === undefined || a.hCenter === null ? sh.page.hCenter : !!a.hCenter, vCenter: a.autoFit ? true : a.vCenter === undefined || a.vCenter === null ? !!sh.page.vCenter : !!a.vCenter };
   }
 
   // ---- วาดทุกหน้าของแผ่น ----
@@ -258,11 +260,12 @@ export class Renderer {
   }
   renderSheetNow(name, opts) {
     const pg = this.paginate(name, opts); if (!pg) return [];
-    return pg.pages.map((p, i) => ({ sheet: name, index: i, count: pg.pages.length, orient: pg.orient, w: pg.paper.w, h: pg.paper.h, scale: pg.scale, html: this.renderPage(pg, p, i, pg.pages.length) }));
+    return pg.pages.map((p, i) => ({ sheet: name, index: i, count: pg.pages.length, orient: pg.orient, w: pg.paper.w, h: pg.paper.h, scale: pg.scale, html: this.renderPage(pg, p, i, pg.pages.length), info: this.pageInfo(pg, p) }));
   }
 
-  renderPage(pg, p, pageNo, pageCount) {
-    const { sh, g, scale } = pg;
+  // ตำแหน่งของหน้าหนึ่ง: บล็อกแถว/คอลัมน์ ขนาดเนื้อหา และจุดวางบนกระดาษ (pt)
+  pageGeom(pg, p) {
+    const { g, scale } = pg;
     // แบ่งบล็อก: (หัวแถวซ้ำ?) × (หัวคอลัมน์ซ้ำ?)
     const rowBlocks = []; const colBlocks = [];
     if (p.rs.title) rowBlocks.push({ a: p.rs.title[0], b: p.rs.title[1] });
@@ -275,6 +278,20 @@ export class Renderer {
     let ox = pg.left; let oy = pg.top;
     if (pg.hCenter) ox = pg.left + Math.max(0, (pg.availW - contentW * scale) / 2);
     if (pg.vCenter) oy = pg.top + Math.max(0, (pg.availH - contentH * scale) / 2);
+    ox += pg.dx || 0; oy += pg.dy || 0;      // ผู้ใช้ลากย้ายตำแหน่งตาราง
+    return { rowBlocks, colBlocks, contentW, contentH, ox, oy };
+  }
+  // ข้อมูลตำแหน่งสำหรับตัวลากปรับ (หน่วย pt บนกระดาษ): ขอบ · จุดวางเนื้อหา · คอลัมน์/แถวที่เห็นในหน้านี้
+  pageInfo(pg, p) {
+    const { g, scale } = pg; const q = this.pageGeom(pg, p);
+    const cols = []; for (const b of q.colBlocks) { let x = b.off; for (let c = b.a; c <= b.b; c++) { const w = g.cw(c); if (w > 0) cols.push({ c, x, w }); x += w; } }
+    const rows = []; for (const b of q.rowBlocks) { let y = b.off; for (let r = b.a; r <= b.b; r++) { const h = g.rh(r); if (h > 0) rows.push({ r, y, h }); y += h; } }
+    return { paper: pg.paper, scale, ox: q.ox, oy: q.oy, contentW: q.contentW, contentH: q.contentH, cols, rows,
+      margins: { top: pg.top, left: pg.left, right: pg.paper.w - pg.left - pg.availW, bottom: pg.paper.h - pg.top - pg.availH } };
+  }
+  renderPage(pg, p, pageNo, pageCount) {
+    const { sh, g, scale } = pg;
+    const { rowBlocks, colBlocks, contentW, contentH, ox, oy } = this.pageGeom(pg, p);
     const parts = [];
     for (const rb of rowBlocks) for (const cb of colBlocks) parts.push(this.renderBlock(sh, g, rb, cb, p.area));
     for (const ov of pg.overlays || []) { const h = this.overlayHtml(g, rowBlocks, colBlocks, ov); if (h) parts.push(h); }

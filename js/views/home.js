@@ -1,8 +1,8 @@
-import { esc, roomName, thaiDate, todayIso, fullName, iso, fromIso, THAI_DOW, levelName } from '../util.js?v=2569.11.1-35';
-import { getRoster, termRange } from '../data.js?v=2569.11.1-35';
-import { icon } from '../icons.js?v=2569.11.1-35';
-import { MENU_ORDER, plain, hasNoDuties } from '../menus.js?v=2569.11.1-35';
-import { loadSchoolDays, KIND_SHORT } from '../holidays.js?v=2569.11.1-35';
+import { esc, roomName, thaiDate, todayIso, fullName, iso, fromIso, THAI_DOW, levelName } from '../util.js?v=2569.11.1-36';
+import { getRoster, termRange } from '../data.js?v=2569.11.1-36';
+import { icon } from '../icons.js?v=2569.11.1-36';
+import { MENU_ORDER, plain, hasNoDuties } from '../menus.js?v=2569.11.1-36';
+import { loadSchoolDays, KIND_SHORT } from '../holidays.js?v=2569.11.1-36';
 
 export async function render(el, ctx) {
   const { db } = ctx;

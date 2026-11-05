@@ -310,6 +310,30 @@ console.log('pp-forms: ผ่านทั้งหมด');
   }
 }
 
+// ---------- ปรับหน้าแบบลาก: ความกว้างคอลัมน์/ความสูงแถวรายตัว · ย้ายตำแหน่ง · ข้อมูลตำแหน่งสำหรับตัวลาก ----------
+{
+  const { Renderer } = await import('../js/xl-render.js');
+  const { adjOpt } = await import('../js/page-adjust.js');
+  const N = 4;
+  const st = (i) => ({ no: i + 1, s: { id: 'x' + i, prefix: 'เด็กชาย', first_name: 'ก' + i, last_name: 'ข', student_code: String(i), gender: 'ช' }, citizen: null, birth: '2013-01-01', occ: [], fam: {}, att: {}, nut: [0, 0, 0, 0], trait8: [], rtw: [], values12: [], comp5: [], acts: [], health: [null, null, null, null] });
+  const d = { level: 'มัธยมศึกษาปีที่ 1', term: 1, year: 2569, room: 1, approveDate: null, homeroom: [], rounds: [null, null, null, null], school: {}, counts: {}, students: Array.from({ length: N }, (_, i) => st(i)), subjects: [], warnings: [] };
+  const FF = await Forms.open(new Uint8Array(fs.readFileSync(new URL('../pp/forms.xlsx', import.meta.url)))); const mm = classModel(d);
+  assert.ok(FF.fill('ชื่อนักเรียน', mm)); const R = new Renderer(FF.wb, FF.eng, { dpi: 120 });
+  const base = R.renderSheet('ชื่อนักเรียน', {}); const i0 = base[0].info;
+  assert.ok(i0.cols.length > 3 && i0.rows.length > 3 && i0.paper.w > 0 && i0.margins.top > 0, 'info ครบ');
+  const c = i0.cols[2]; const r = i0.rows[3];
+  const wide = R.renderSheet('ชื่อนักเรียน', { adj: { cw: { [c.c]: c.w + 20 }, rh: { [r.r]: r.h + 10 } } })[0].info;
+  assert.ok(Math.abs(wide.cols.find((x) => x.c === c.c).w - (c.w + 20)) < 0.01, 'ความกว้างคอลัมน์ที่ลากมีผล');
+  assert.ok(Math.abs(wide.cols.find((x) => x.c === i0.cols[3].c).x - (i0.cols[3].x + 20)) < 0.01, 'คอลัมน์ถัดไปเลื่อนตาม');
+  assert.ok(Math.abs(wide.rows.find((x) => x.r === r.r).h - (r.h + 10)) < 0.01, 'ความสูงแถวที่ลากมีผล');
+  const moved = R.renderSheet('ชื่อนักเรียน', { adj: adjOpt({ ox: 10, oy: 5 }) })[0].info;
+  assert.ok(Math.abs(moved.ox - i0.ox - 10 * 72 / 25.4) < 0.01 && Math.abs(moved.oy - i0.oy - 5 * 72 / 25.4) < 0.01, 'ย้ายตำแหน่ง 10,5 มม.');
+  const mar = R.renderSheet('ชื่อนักเรียน', { adj: adjOpt({ mt: 30, ml: 25 }) })[0].info.margins;
+  assert.ok(Math.abs(mar.top - 30 * 72 / 25.4) < 0.01 && Math.abs(mar.left - 25 * 72 / 25.4) < 0.01, 'ขอบที่ลากมีผล');
+  // ซ่อนคอลัมน์ไม่ถูกปลุกคืนด้วยค่าที่ลาก
+  assert.equal(R.geometry(FF.wb.sheet('ชื่อนักเรียน'), 1, 1, { cw: { 1: 50 } }).cw(1) > 0, true);
+}
+
 // ---------- เส้นทแยง "ปิดภาคเรียน" ในแผ่นเวลาเรียนรายเดือน ----------
 {
   const { monthClosures, pp5Overlays } = await import('../js/pp-forms.js');

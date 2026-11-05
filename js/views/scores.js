@@ -1,10 +1,10 @@
-import { attachSheet } from '../sheet.js?v=2569.11.1-35';
-import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.11.1-35';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-35';
-import { courseRoster } from '../data.js?v=2569.11.1-35';
-import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.11.1-35';
-import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.11.1-35';
-import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.11.1-35';
+import { attachSheet } from '../sheet.js?v=2569.11.1-36';
+import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.11.1-36';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-36';
+import { courseRoster } from '../data.js?v=2569.11.1-36';
+import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.11.1-36';
+import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.11.1-36';
+import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.11.1-36';
 
 const pref = { course: null, tab: 'scores', termId: null, level: '', subject: '' };
 const KIND = { score: 'คะแนนเก็บระหว่างภาค', final: 'สอบปลายภาค', indicator: 'ตัวชี้วัด (ผ/มผ)' };
