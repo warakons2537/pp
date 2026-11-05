@@ -6,13 +6,13 @@
 //  เฟส 3: ผลประเมินตัวชี้วัดและคะแนนรายวิชา (วิชาที่ 1–n)
 //  เฟส 4: คุณลักษณะ · สมรรถนะ · กิจกรรม · คะแนนรายชั้น · เกรดรายชั้น · สรุปเกรดร้อยละ
 // =====================================================================
-import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-22';
-import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-22';
-import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays } from '../pp-forms.js?v=2569.11.1-22';
-import { Renderer } from '../xl-render.js?v=2569.11.1-22';
-import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-22';
-import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-22';
-import { adjOpt, adjText, adjustDialog } from '../page-adjust.js?v=2569.11.1-22';
+import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-23';
+import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-23';
+import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays } from '../pp-forms.js?v=2569.11.1-23';
+import { Renderer } from '../xl-render.js?v=2569.11.1-23';
+import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-23';
+import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-23';
+import { adjOpt, adjText, adjustDialog } from '../page-adjust.js?v=2569.11.1-23';
 
 // ค่าปรับหน้าที่ผู้ใช้ตั้งไว้ (จำในเบราว์เซอร์ ใช้กับทุกห้อง/ภาคเรียน) · ชื่อแผ่น → { mt, mb, ml, mr, font, row, col, scale, hCenter }
 const ADJ_KEY = 'pp5-page-adjust';

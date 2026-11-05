@@ -1,7 +1,8 @@
-import { esc, roomName, thaiDate, todayIso, fullName, iso, fromIso, THAI_DOW, levelName } from '../util.js?v=2569.11.1-22';
-import { getRoster, termRange } from '../data.js?v=2569.11.1-22';
-import { icon } from '../icons.js?v=2569.11.1-22';
-import { MENU_ORDER, plain, hasNoDuties } from '../menus.js?v=2569.11.1-22';
+import { esc, roomName, thaiDate, todayIso, fullName, iso, fromIso, THAI_DOW, levelName } from '../util.js?v=2569.11.1-23';
+import { getRoster, termRange } from '../data.js?v=2569.11.1-23';
+import { icon } from '../icons.js?v=2569.11.1-23';
+import { MENU_ORDER, plain, hasNoDuties } from '../menus.js?v=2569.11.1-23';
+import { loadSchoolDays, KIND_SHORT } from '../holidays.js?v=2569.11.1-23';
 
 export async function render(el, ctx) {
   const { db } = ctx;
@@ -37,7 +38,10 @@ export async function render(el, ctx) {
   }));
 
   const pendingRem = ctx.isAdmin && ctx.menus.has('remedial') ? await db.select('remedial_cases', { eq: { status: 'submitted' } }).then((r) => r.length).catch(() => 0) : 0;
-  const notChecked = cards.filter((x) => x.roster.length && x.todayRows.length < x.roster.length);
+  // วันนี้เป็นวันหยุด/วันสำคัญที่ผู้ดูแลระบบแจ้งไว้หรือไม่ (วันหยุด = ไม่ต้องเตือนให้เช็กชื่อ/อาหาร)
+  const todayDay = (await loadSchoolDays(db, today, today)).rows[0] || null;
+  const holidayToday = todayDay?.kind === 'holiday';
+  const notChecked = holidayToday ? [] : cards.filter((x) => x.roster.length && x.todayRows.length < x.roster.length);
   const riskAll = cards.flatMap((x) => x.risk.map((r) => ({ ...r, room: x.c })));
   const d = fromIso(today);
   const greet = ctx.me.full_name ? `สวัสดี ${esc(ctx.me.full_name)}` : 'สวัสดี';
@@ -45,7 +49,7 @@ export async function render(el, ctx) {
   const todo = [
     ...notChecked.map((x) => `<a href="#daily"><span class="dot" style="background:var(--amber)"></span>
       <span>ยังเช็กชื่อห้อง ${esc(roomName(x.c))} ไม่ครบ (${x.todayRows.length}/${x.roster.length} คน)</span></a>`),
-    ...(ctx.menus.has('meals') ? cards.filter((x) => x.roster.length && x.mealMarked < x.roster.length).map((x) => `<a href="#meals"><span class="dot" style="background:var(--amber)"></span>
+    ...(ctx.menus.has('meals') && !holidayToday ? cards.filter((x) => x.roster.length && x.mealMarked < x.roster.length).map((x) => `<a href="#meals"><span class="dot" style="background:var(--amber)"></span>
       <span>ยังเช็กอาหารกลางวันห้อง ${esc(roomName(x.c))} ไม่ครบ (${x.mealMarked}/${x.roster.length} คน)</span></a>`) : []),
     ...(pendingRem ? [`<a href="#remedial"><span class="dot" style="background:var(--amber)"></span><span>ติดตาม 0 ร มส: มี ${pendingRem} รายการรอยืนยัน</span></a>`] : []),
     ...(riskAll.length ? [`<a href="#reports"><span class="dot" style="background:var(--red)"></span>
@@ -63,6 +67,7 @@ export async function render(el, ctx) {
         <p>${['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'][d.getDay()]}ที่ ${esc(thaiDate(today))} · ภาคเรียนที่ ${ctx.term.term} ปีการศึกษา ${ctx.term.academic_year}</p></div>
       ${rooms.length && can('daily') ? '<a class="btn" href="#daily">เช็กชื่อวันนี้</a>' : ''}
     </section>
+    ${todayDay ? `<div class="day-note ${todayDay.kind}" role="status" style="margin-bottom:12px"><b>วันนี้ ${KIND_SHORT[todayDay.kind] ?? ''}</b> · ${esc(todayDay.name)}${holidayToday ? ' — ไม่ต้องเช็กชื่อ' : ''}</div>` : ''}
     ${hasNoDuties(ctx) ? '<div class="notice">คุณยังไม่ได้รับมอบหมายเป็นครูประจำชั้นหรือครูผู้สอน — กรุณาแจ้งผู้ดูแลระบบให้กำหนดห้องและวิชา หรือเปิดเมนูที่ต้องการให้</div>' : ''}
     <div class="card"><div class="card-title">${icon('home')}เมนูลัด</div>
       <nav class="apps">${APPS.map(([v, label]) => `<a href="#${v}" data-v="${v}"><span class="tile">${icon(v)}</span><span>${label}</span></a>`).join('')}</nav></div>
