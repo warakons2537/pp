@@ -1,10 +1,10 @@
 import { esc, $, toast, options, roomName, fullName, iso, fromIso, todayIso, thaiDate, daysInMonth,
-  THAI_MONTHS, THAI_DOW, STATUS, nextStatus } from '../util.js?v=2569.11.1-32';
-import { attachSheet } from '../sheet.js?v=2569.11.1-32';
-import { attachBulk } from '../bulk.js?v=2569.11.1-32';
-import { onSwipe } from '../swipe.js?v=2569.11.1-32';
-import { getRoster, termMonths, enrolledOn } from '../data.js?v=2569.11.1-32';
-import { loadSchoolDays, dayMapOf, isHoliday, KIND_SHORT } from '../holidays.js?v=2569.11.1-32';
+  THAI_MONTHS, THAI_DOW, STATUS, nextStatus } from '../util.js?v=2569.11.1-34';
+import { attachSheet } from '../sheet.js?v=2569.11.1-34';
+import { attachBulk } from '../bulk.js?v=2569.11.1-34';
+import { onSwipe } from '../swipe.js?v=2569.11.1-34';
+import { getRoster, termMonths, enrolledOn } from '../data.js?v=2569.11.1-34';
+import { loadSchoolDays, dayMapOf, isHoliday, KIND_SHORT } from '../holidays.js?v=2569.11.1-34';
 
 // เช็กชื่อประจำวัน: เดือนของภาคเรียนปัจจุบัน · รายชื่อตามนักเรียนที่อยู่ในห้องวันนั้น (ย้ายเข้า/ออกกลางปี)
 const DAILY = {

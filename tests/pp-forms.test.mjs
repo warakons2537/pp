@@ -263,6 +263,53 @@ console.log('pp-forms: ผ่านทั้งหมด');
   assert.equal((await pages([subj([], 13)], 'วิชาที่ 1')).length, 5, 'ช่องคะแนนเกิน 12 ใช้แผ่นเต็ม');
 }
 
+// ---------- ตัวชี้วัดเกิน 36 ช่อง: พิมพ์หน้าตัวชี้วัดต่อ ----------
+{
+  const { Renderer } = await import('../js/xl-render.js');
+  const { indicatorContinuations, continuationModel, pp5Layout } = await import('../js/pp-forms.js');
+  const N = 4; const codes = Array.from({ length: 80 }, (_, k) => `ต${k + 1}.ตช`);
+  const st = (i) => ({ no: i + 1, s: { id: 'x' + i, prefix: 'เด็กชาย', first_name: 'ก' + i, last_name: 'ข', student_code: String(i), gender: 'ช' }, citizen: null, birth: '2013-01-01', occ: [], fam: {}, att: {}, nut: [0, 0, 0, 0], trait8: [], rtw: [], values12: [], comp5: [], acts: [], health: [null, null, null, null] });
+  const sub = { code: 'ท1', name: 'ไทย', credits: 1, mid: 70, fin: 30, indicators: codes, items: [{ title: 'งาน', max: 10 }],
+    rows: Array.from({ length: N }, () => ({ ind: codes.map((_, k) => (k === 70 ? 'มผ' : 'ผ')), scores: [7], final: 20, special: null, calc: { mid: 49, final: 20, total: 69, grade: 3, indPass: 79, indFail: 1, indicator: 'มผ' } })) };
+  const d = { level: 'มัธยมศึกษาปีที่ 1', term: 1, year: 2569, room: 1, approveDate: null, homeroom: [], rounds: [null, null, null, null], school: {}, counts: {}, students: Array.from({ length: N }, (_, i) => st(i)), subjects: [sub], warnings: [] };
+  const conts = indicatorContinuations(d);
+  assert.deepEqual(conts.map((c) => c.name), ['วิชาที่ 1 · ตัวชี้วัด 37–72', 'วิชาที่ 1 · ตัวชี้วัด 73–80']);
+  const bytes = new Uint8Array(fs.readFileSync(new URL('../pp/forms.xlsx', import.meta.url)));
+  const render = async (mm) => { const FF = await Forms.open(bytes); assert.ok(FF.fill('วิชาที่ 1', mm)); const { dpi, opt } = pp5Layout('วิชาที่ 1', mm); return new Renderer(FF.wb, FF.eng, { dpi }).renderSheet('วิชาที่ 1', opt); };
+  const first = (await render(classModel(d))).slice(0, 2).map((p) => p.html).join('');
+  assert.match(first, /ต36\.ตช/); assert.doesNotMatch(first, /ต37\.ตช/, 'แผ่นแรกมี 36 ช่อง');
+  const c1 = (await render(continuationModel(d, 1, 36))).slice(0, 2).map((p) => p.html).join('');
+  assert.match(c1, /ต37\.ตช/); assert.match(c1, /ต72\.ตช/); assert.doesNotMatch(c1, /ต73\.ตช|ต36\.ตช/); assert.match(c1, /ต่อ ตัวชี้วัดที่ 37–72/); assert.match(c1, /มผ/, 'ตัวชี้วัดที่ 71 = มผ ขึ้นในหน้าต่อ');
+  const c2 = (await render(continuationModel(d, 1, 72))).slice(0, 2).map((p) => p.html).join('');
+  assert.match(c2, /ต73\.ตช/); assert.match(c2, /ต80\.ตช/);
+}
+
+// ---------- จัดหน้าอัตโนมัติ (autoFit): ทุกหน้าขนาดเท่ากัน จัดกึ่งกลาง ขอบเท่ากัน ----------
+{
+  const { Renderer } = await import('../js/xl-render.js');
+  const { AUTO_ADJ } = await import('../js/page-adjust.js'); const { pp5Layout: lay } = await import('../js/pp-forms.js');
+  const N = 6; const dd0 = fs.readFileSync(new URL('../pp/forms.xlsx', import.meta.url));
+  const st = (i) => ({ no: i + 1, s: { id: 'x' + i, prefix: 'เด็กชาย', first_name: 'ก' + i, last_name: 'ข', student_code: String(i), gender: 'ช' }, citizen: null, birth: '2013-01-01', occ: [], fam: {}, att: {}, nut: [0, 0, 0, 0], trait8: [], rtw: [], values12: [], comp5: [], acts: [], health: [null, null, null, null] });
+  const sub = { code: 'ท1', name: 'ไทย', credits: 1, mid: 70, fin: 30, indicators: ['ก'], items: [{ title: 'งาน', max: 10 }], rows: Array.from({ length: N }, () => ({ ind: ['ผ'], scores: [7], final: 20, special: null, calc: { mid: 49, final: 20, total: 69, grade: 3, indPass: 1, indFail: 0, indicator: 'ผ' } })) };
+  const d = { level: 'มัธยมศึกษาปีที่ 1', term: 1, year: 2569, room: 1, approveDate: null, homeroom: [], rounds: [null, null, null, null], school: {}, counts: {}, students: Array.from({ length: N }, (_, i) => st(i)), subjects: [sub], warnings: [] };
+  const FF = await Forms.open(new Uint8Array(dd0)); const mm = classModel(d);
+  for (const name of ['วิชาที่ 1', 'ชื่อนักเรียน', 'เกรดร้อยละ']) {
+    assert.ok(FF.fill(name, mm));
+    const R = new Renderer(FF.wb, FF.eng, { dpi: 100 });
+    const pg = R.paginate(name, { adj: { ...AUTO_ADJ } }); const base = R.paginate(name, lay(name, mm).opt);
+    assert.equal(pg.pages.length, base.pages.length, name + ': จำนวนหน้าเท่าเดิม');
+    assert.ok(pg.hCenter && pg.vCenter, name + ': กึ่งกลางทั้งสองแนว');
+    const out = R.renderSheet(name, { adj: { ...AUTO_ADJ } });
+    for (const o of out) {
+      const [l, t, cw, ch] = /class="xl-content" style="left:([\d.]+)pt;top:([\d.]+)pt;width:([\d.]+)pt;height:([\d.]+)pt/.exec(o.html).slice(1, 5).map(Number);
+      assert.ok(l >= 28 - 0.5 && t >= 28 - 0.5, name + ': ขอบซ้าย/บนไม่น้อยกว่า 10 มม.');
+      assert.ok(l + cw * pg.scale <= o.w - 28 + 1 && t + ch * pg.scale <= o.h - 28 + 1, name + ': ไม่ล้นขอบ');
+    }
+    // ผู้ใช้ตั้งย่อ/ขยายเองทับค่าอัตโนมัติได้
+    assert.equal(R.paginate(name, { adj: { ...AUTO_ADJ, scale: 77 } }).scale, 0.77);
+  }
+}
+
 // ---------- เส้นทแยง "ปิดภาคเรียน" ในแผ่นเวลาเรียนรายเดือน ----------
 {
   const { monthClosures, pp5Overlays } = await import('../js/pp-forms.js');

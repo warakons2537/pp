@@ -2,7 +2,10 @@
 //  ปรับหน้ากระดาษรายแผ่น (แบบ Word): ขอบ · ขนาดตัวอักษร · ระยะบรรทัด · ความกว้างคอลัมน์ · ย่อ/ขยาย · จัดกึ่งกลาง
 //  ใช้ร่วมกันในแท็บ "เล่ม ปพ." และ "ปพ.5 ครบชุด" · ตัวแสดงผล (xl-render.js) รับค่าผ่าน adj
 // =====================================================================
-import { esc, modal } from './util.js?v=2569.11.1-32';
+import { esc, modal } from './util.js?v=2569.11.1-34';
+
+// จัดหน้าอัตโนมัติทั้งชุด: ทุกหน้าของแต่ละแผ่นขนาดเท่ากัน จัดกึ่งกลาง ขอบ 10 มม. เท่ากัน (หน่วยนิ้ว ใช้กับตัวแสดงผลโดยตรง)
+export const AUTO_ADJ = { autoFit: true, mt: 10 / 25.4, mb: 10 / 25.4, ml: 10 / 25.4, mr: 10 / 25.4 };
 
 // ค่าปรับหน้า (ขอบเป็นมม.) → ค่าที่ตัวแสดงผลใช้ (ขอบเป็นนิ้ว)
 export function adjOpt(a) {
@@ -19,6 +22,7 @@ export function adjText(a) {
   if (['mt', 'mb', 'ml', 'mr'].some((k) => Number.isFinite(a[k]))) p.push(`ขอบ บน${a.mt ?? '-'} ล่าง${a.mb ?? '-'} ซ้าย${a.ml ?? '-'} ขวา${a.mr ?? '-'} มม.`);
   if (a.font) p.push(`ตัวอักษร ${a.font}%`); if (a.row) p.push(`ระยะบรรทัด ${a.row}%`); if (a.col) p.push(`คอลัมน์ ${a.col}%`); if (a.scale) p.push(`ย่อ/ขยาย ${a.scale}%`);
   if (typeof a.hCenter === 'boolean') p.push(a.hCenter ? 'กึ่งกลาง' : 'ชิดซ้าย');
+  if (a.autoFit) p.push('อัตโนมัติ (กึ่งกลาง ขนาดเท่ากันทุกหน้า)');
   return p.join(' · ');
 }
 
@@ -49,12 +53,13 @@ export async function adjustDialog(n, cur, hint = {}, what = 'การดูต
       </div></fieldset>
     <label class="small" style="display:block;margin:0 0 8px">จัดตารางกึ่งกลางหน้าแนวนอน
       <select name="hc"><option value="">ตามแบบพิมพ์เดิม</option><option value="1" ${cur.hCenter === true ? 'selected' : ''}>จัดกึ่งกลาง</option><option value="0" ${cur.hCenter === false ? 'selected' : ''}>ชิดซ้ายตามขอบ</option></select></label>
+    <label class="small" style="display:block;margin:0 0 8px"><input type="checkbox" name="auto" value="1" ${cur.autoFit ? 'checked' : ''}> จัดหน้าอัตโนมัติ: ทุกหน้าของแผ่นขนาดเท่ากัน จัดกึ่งกลางทั้งแนวนอนและแนวตั้ง ขอบเท่ากัน <span class="muted">(ถ้าใส่ "ย่อ/ขยายทั้งหน้า" เอง จะใช้ค่านั้นแทน)</span></label>
     ${hint.noAll ? '' : '<label class="small" style="display:block"><input type="checkbox" name="all" value="1"> ใช้ค่าเดียวกันกับทุกแผ่นที่เลือกพิมพ์</label>'}
     <label class="small" style="display:block"><input type="checkbox" name="reset" value="1"> ล้างค่าที่ปรับ กลับเป็นตามแบบพิมพ์เดิม</label>`;
   const r = await modal(`ปรับหน้ากระดาษ — ${n}`, html, { okText: 'ใช้ค่านี้', wide: false });
   if (!r) return null;
   const v = (k) => (r[k] === '' || r[k] === undefined ? undefined : Number(r[k]));
-  const a = { mt: v('mt'), mb: v('mb'), ml: v('ml'), mr: v('mr'), font: v('font'), row: v('row'), col: v('col'), scale: v('scale'), hCenter: r.hc === '' ? undefined : r.hc === '1' };
+  const a = { mt: v('mt'), mb: v('mb'), ml: v('ml'), mr: v('mr'), font: v('font'), row: v('row'), col: v('col'), scale: v('scale'), hCenter: r.hc === '' ? undefined : r.hc === '1', autoFit: r.auto ? true : undefined };
   for (const k of Object.keys(a)) if (a[k] === undefined || (typeof a[k] === 'number' && !Number.isFinite(a[k]))) delete a[k];
   return { adj: r.reset || !Object.keys(a).length ? null : a, all: !!r.all };
 }

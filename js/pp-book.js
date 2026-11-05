@@ -4,14 +4,14 @@
 //  → หน้าตา สูตร และการแบ่งหน้าเหมือนต้นฉบับทุกหน้า
 //  ไม่แตะเซลล์ที่ไฟล์ต้นฉบับล็อกไว้ (เช่น ชื่อโรงเรียนที่ผู้พัฒนาโปรแกรมล็อก)
 // =====================================================================
-import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-32';
-import { levelName } from './util.js?v=2569.11.1-32';
-import { getRoster, loadGrowthRef, termRange, inTermList } from './data.js?v=2569.11.1-32';
-import { ageMonths, classify } from './assess.js?v=2569.11.1-32';
-import { scoreColIndex } from './score-columns.js?v=2569.11.1-32';
-import { occupationOf, personName, addressShort } from './student-family.js?v=2569.11.1-32';
-import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-32';
-import { enrollmentCounts } from './yeardata.js?v=2569.11.1-32';
+import { Template, colNum, colName, excelSerialBE } from './xlsx-template.js?v=2569.11.1-34';
+import { levelName } from './util.js?v=2569.11.1-34';
+import { getRoster, loadGrowthRef, termRange, inTermList } from './data.js?v=2569.11.1-34';
+import { ageMonths, classify } from './assess.js?v=2569.11.1-34';
+import { scoreColIndex } from './score-columns.js?v=2569.11.1-34';
+import { occupationOf, personName, addressShort } from './student-family.js?v=2569.11.1-34';
+import { loadCourse, computeCourse } from './grading.js?v=2569.11.1-34';
+import { enrollmentCounts } from './yeardata.js?v=2569.11.1-34';
 
 export const MONTHS = [['พ.ค.', 5], ['มิ.ย.', 6], ['ก.ค.', 7], ['ส.ค.', 8], ['ก.ย.', 9], ['ต.ค.', 10], ['พ.ย.', 11], ['ธ.ค.', 12], ['ม.ค.', 1], ['ก.พ.', 2], ['มี.ค.', 3], ['เม.ย.', 4]];
 export const SUBJECT_ROWS = [6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26];   // แถวในแผ่น "รายวิชา" ของวิชาที่ 1–20
@@ -151,7 +151,7 @@ export async function buildBookData(ctx, room, { term: termArg = null } = {}) {
     const inds = data.items.filter((i) => i.kind === 'indicator');
     const sc = data.items.filter((i) => i.kind === 'score');
     const fin = data.items.filter((i) => i.kind === 'final');
-    if (inds.length > 36) warnings.push(`${k.subject?.name}: ตัวชี้วัดเกิน 36 ช่อง ใส่ได้เฉพาะ 36 ช่องแรก`);
+    if (inds.length > 36) warnings.push(`${k.subject?.name}: ตัวชี้วัดเกิน 36 ช่อง เล่ม ปพ. (ไฟล์ต้นฉบับ) ใส่ได้เฉพาะ 36 ช่องแรก · "ปพ.5 ครบชุด" พิมพ์ต่อให้ครบทุกตัว`);
     if (sc.length > 48) warnings.push(`${k.subject?.name}: ช่องคะแนนเกิน 48 ช่อง ใส่ได้เฉพาะ 48 ช่องแรก`);
     else if (sc.length > 12 && subjects.length >= 10) warnings.push(`${k.subject?.name}: วิชาลำดับที่ 11 ขึ้นไปในใบ ปพ.5 แสดงช่องคะแนนได้ 12 ช่อง (มี ${sc.length} ช่อง) ช่องที่เกินจะไม่ขึ้นในใบ`);
     subjects.push({
@@ -159,12 +159,12 @@ export async function buildBookData(ctx, room, { term: termArg = null } = {}) {
       code: k.subject?.code ?? '', name: k.subject?.name ?? '', credits: k.subject?.credits ?? (k.subject?.hours_per_year ? k.subject.hours_per_year / 40 : null),
       group: k.subject?.subject_group ?? '', teachers: k.teachers.map((t) => t.full_name).filter(Boolean),
       mid: k.midterm_ratio, fin: k.final_ratio,
-      indicators: inds.slice(0, 36).map((i) => i.code || i.title || ''),
+      indicators: inds.map((i) => i.code || i.title || ''),      // ทั้งหมด (ปพ.5 ครบชุดพิมพ์ต่อเป็นหน้าต่อ ๆ ไป · เล่ม ปพ. ตัดที่ 36)
       items: sc.slice(0, 48).map((i) => ({ title: i.title || '', max: Number(i.max_score) })),
       rows: roster.map((s) => {
         const x = calc[s.id] || {}; const res = data.results[s.id] || {};
         return {
-          ind: inds.slice(0, 36).map((i) => { const p = data.scoreMap.get(`${i.id}|${s.id}`)?.passed; return p === true ? 'ผ' : p === false ? 'มผ' : null; }),
+          ind: inds.map((i) => { const p = data.scoreMap.get(`${i.id}|${s.id}`)?.passed; return p === true ? 'ผ' : p === false ? 'มผ' : null; }),
           scores: sc.slice(0, 48).map((i) => { const v = data.scoreMap.get(`${i.id}|${s.id}`)?.score; return v === null || v === undefined ? null : Number(v); }),
           final: fin.some((i) => data.scoreMap.get(`${i.id}|${s.id}`)?.score != null) ? x.final : null,
           special: res.special || (x.grade === 'มส' ? 'มส' : null),
@@ -336,11 +336,11 @@ export function fillBook(t, d) {
     }
     if (s) {
       m.set('CI3', v(s.mid)); m.set('CK3', v(s.fin));
-      s.indicators.forEach((code, k) => m.set(`${colName(3 + k)}5`, v(code)));
+      s.indicators.slice(0, 36).forEach((code, k) => m.set(`${colName(3 + k)}5`, v(code)));
       s.items.forEach((it, k) => { m.set(`${colName(scoreColIndex(k))}5`, v(it.title)); m.set(`${colName(scoreColIndex(k))}6`, v(it.max)); });
       s.rows.forEach((row, i) => {
         const r = 7 + i;
-        row.ind.forEach((x, k) => { if (x) m.set(`${colName(3 + k)}${r}`, v(x)); });
+        row.ind.slice(0, 36).forEach((x, k) => { if (x) m.set(`${colName(3 + k)}${r}`, v(x)); });
         row.scores.forEach((x, k) => { if (x !== null) m.set(`${colName(scoreColIndex(k))}${r}`, v(x)); });
         if (row.final !== null && row.final !== undefined) m.set(`CM${r}`, v(row.final));
         if (row.special) m.set(`CO${r}`, v(row.special));

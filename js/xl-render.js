@@ -5,10 +5,10 @@
 //  - ผสานเซลล์ · เส้นขอบ · สีพื้น · ฟอนต์ · การจัดแนว/ตัดบรรทัด/ข้อความล้นเซลล์ · หมุนข้อความ
 //  - รูปแบบตัวเลข · การจัดรูปแบบตามเงื่อนไข · รูปภาพ/รูปร่าง/กล่องข้อความ
 // =====================================================================
-import { MAXCOL, XErr, Mat } from './xl-formula.js?v=2569.11.1-32';
-import { formatValue, isDateFormat } from './xl-numfmt.js?v=2569.11.1-32';
-import { parseDrawing, key } from './xl-model.js?v=2569.11.1-32';
-import { shiftFormula } from './xlsx-template.js?v=2569.11.1-32';
+import { MAXCOL, XErr, Mat } from './xl-formula.js?v=2569.11.1-34';
+import { formatValue, isDateFormat } from './xl-numfmt.js?v=2569.11.1-34';
+import { parseDrawing, key } from './xl-model.js?v=2569.11.1-34';
+import { shiftFormula } from './xlsx-template.js?v=2569.11.1-34';
 
 export const PAPER = { 9: [595.28, 841.89], 1: [612, 792], 5: [612, 1008], 8: [841.89, 1190.55], 11: [419.53, 595.28] };
 const PT_PER_PX = 0.75; const EMU_PER_PT = 12700;
@@ -213,7 +213,19 @@ export class Renderer {
     const manualScale = Number.isFinite(+a.scale) && +a.scale >= 10 && +a.scale <= 400;
     let scale = manualScale ? +a.scale / 100 : fit === 'none' ? 1 : Math.max(0.1, Math.min(4, (sh.page.scale || 100) / 100));
     let pages;
-    const doFit = !manualScale && (fit === 'page' || fit === 'width' || (fit === null && sh.page.fitToPage));
+    // autoFit (จัดหน้าอัตโนมัติ): ทุกหน้าของแผ่นใช้ขนาดย่อ/ขยายเท่ากัน (พอดีหน้าที่ใหญ่ที่สุดของแผ่น) และจัดกึ่งกลางทั้งแนวนอน/แนวตั้ง ขอบเท่ากันทุกหน้า
+    let autoDone = false;
+    if (a.autoFit && !manualScale) {
+      const probe = run(0.1, true);                       // ย่อมากจนไม่มีการตัดหน้าเพิ่ม → ได้เฉพาะหน้าตามตัวแบ่งเดิม
+      const sizeOf = (p) => { const cw = (p.cs.title ? sumW(p.cs.title[0], p.cs.title[1]) : 0) + sumW(p.cs.a, p.cs.b); const ch = (p.rs.title ? sumH(p.rs.title[0], p.rs.title[1]) : 0) + sumH(p.rs.a, p.rs.b); return [cw, ch]; };
+      let mw = 0; let mh = 0; for (const p of probe) { const [cw, ch] = sizeOf(p); mw = Math.max(mw, cw); mh = Math.max(mh, ch); }
+      if (mw > 0 && mh > 0) {
+        let s = Math.min((availW - 2 * BLEED) / mw, (availH - 2 * BLEED) / mh, 1.5); s = Math.max(0.1, Math.floor(s * 1000) / 1000);
+        for (;;) { pages = run(s, true); if (pages.length <= probe.length || s <= 0.1) break; s = Math.max(0.1, s - 0.005); }
+        scale = s; autoDone = true;
+      }
+    }
+    const doFit = !autoDone && !manualScale && (fit === 'page' || fit === 'width' || (fit === null && sh.page.fitToPage));
     if (doFit) {
       const fw = fit === 'page' || fit === 'width' ? 1 : sh.page.fitToWidth; const fh = fit === 'page' ? 1 : fit === 'width' ? 0 : sh.page.fitToHeight;
       // เริ่มจากค่าประมาณแล้วลดทีละ 1%
@@ -234,8 +246,8 @@ export class Renderer {
         p--;
       }
       scale = p / 100;
-    } else pages = run(scale, true);
-    return { pages, scale, paper, orient, availW, availH, top, left: m.left * 72, hasHF, sh, g, overlays, hCenter: a.hCenter === undefined || a.hCenter === null ? sh.page.hCenter : !!a.hCenter };
+    } else if (!autoDone) pages = run(scale, true);
+    return { pages, scale, paper, orient, availW, availH, top, left: m.left * 72, hasHF, sh, g, overlays, hCenter: a.autoFit ? true : a.hCenter === undefined || a.hCenter === null ? sh.page.hCenter : !!a.hCenter, vCenter: a.autoFit ? true : a.vCenter === undefined || a.vCenter === null ? !!sh.page.vCenter : !!a.vCenter };
   }
 
   // ---- วาดทุกหน้าของแผ่น ----
@@ -262,7 +274,7 @@ export class Renderer {
     const contentW = x; const contentH = y;
     let ox = pg.left; let oy = pg.top;
     if (pg.hCenter) ox = pg.left + Math.max(0, (pg.availW - contentW * scale) / 2);
-    if (sh.page.vCenter) oy = pg.top + Math.max(0, (pg.availH - contentH * scale) / 2);
+    if (pg.vCenter) oy = pg.top + Math.max(0, (pg.availH - contentH * scale) / 2);
     const parts = [];
     for (const rb of rowBlocks) for (const cb of colBlocks) parts.push(this.renderBlock(sh, g, rb, cb, p.area));
     for (const ov of pg.overlays || []) { const h = this.overlayHtml(g, rowBlocks, colBlocks, ov); if (h) parts.push(h); }
