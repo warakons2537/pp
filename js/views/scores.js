@@ -1,20 +1,42 @@
-import { attachSheet } from '../sheet.js?v=2569.11.1-25';
-import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.11.1-25';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-25';
-import { getRoster } from '../data.js?v=2569.11.1-25';
-import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.11.1-25';
-import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.11.1-25';
-import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.11.1-25';
+import { attachSheet } from '../sheet.js?v=2569.11.1-26';
+import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.11.1-26';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-26';
+import { getRoster } from '../data.js?v=2569.11.1-26';
+import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.11.1-26';
+import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.11.1-26';
+import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.11.1-26';
 
-const pref = { course: null, tab: 'scores' };
+const pref = { course: null, tab: 'scores', termId: null };
 const KIND = { score: 'คะแนนเก็บระหว่างภาค', final: 'สอบปลายภาค', indicator: 'ตัวชี้วัด (ผ/มผ)' };
 
-export async function render(el, ctx) {
+// มุมมองของภาคเรียนที่เลือก: ภาคปัจจุบันใช้ข้อมูลกลางของแอป ภาคอื่น/ปีอื่นอ่านห้องและรายวิชาจากฐานข้อมูล
+// คืน ctx สำเนาที่ term / classrooms / courses / myCourses เป็นของภาคนั้น (หน้าอื่นที่รับ ctx ไปใช้ต่อได้เหมือนเดิม)
+async function viewCtx(real, termObj) {
+  if (termObj.id === real.term?.id) return real;
+  const rooms = termObj.academic_year === real.term?.academic_year ? real.classrooms : await real.db.select('classrooms', { eq: { academic_year: termObj.academic_year } });
+  const byRoom = Object.fromEntries(rooms.map((c) => [c.id, c]));
+  const order = (c) => ['อ', 'ป', 'ม'].indexOf(c.level[0]) * 100 + Number(c.level.split('.')[1]) * 10 + c.room;
+  const rows = await real.db.select('courses', { eq: { term_id: termObj.id } });
+  const courses = rows.filter((k) => byRoom[k.classroom_id]).map((k) => ({ ...k, subject: real.subjectById[k.subject_id], classroom: byRoom[k.classroom_id],
+    teachers: real.courseTeacherRows.filter((x) => x.course_id === k.id).map((x) => real.profileById[x.teacher_id]).filter(Boolean) }))
+    .sort((a, b) => order(a.classroom) - order(b.classroom) || (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  return { ...real, term: termObj, classrooms: rooms, courses, courseById: Object.fromEntries(courses.map((k) => [k.id, k])),
+    myCourses: real.isAdmin ? courses : courses.filter((k) => k.teachers.some((t) => t.id === real.me.id)) };
+}
+const termPicker = (real, termObj) => `<label class="field">ภาคเรียน<select id="sc-term">${[...real.terms].sort((a, b) => b.academic_year - a.academic_year || b.term - a.term)
+  .map((t) => `<option value="${esc(t.id)}" ${t.id === termObj.id ? 'selected' : ''}>ภาคเรียนที่ ${t.term}/${t.academic_year}${t.id === real.term?.id ? ' (ปัจจุบัน)' : ''}</option>`).join('')}</select></label>`;
+
+export async function render(el, real) {
+  if (real.params?.course) { pref.course = real.params.course; if (real.params.tab) pref.tab = real.params.tab; real.params = {}; }
+  const termObj = real.terms.find((t) => t.id === pref.termId) || real.term;
+  if (termObj.id !== pref.termId) pref.termId = termObj.id;
+  const ctx = await viewCtx(real, termObj);
   const list = ctx.myCourses;
-  if (ctx.params?.course) { pref.course = ctx.params.course; if (ctx.params.tab) pref.tab = ctx.params.tab; ctx.params = {}; }
+  const wireTerm = () => $('#sc-term', el)?.addEventListener('change', (e) => { pref.termId = e.target.value; pref.course = null; render(el, real); });
   if (!list.length) {
-    el.innerHTML = `<div class="page-head"><div><h1>คะแนนรายวิชา</h1></div></div>
-      <div class="empty">ยังไม่มีวิชาที่คุณสอนในภาคเรียนนี้ ${ctx.isAdmin ? '— เปิดสอนวิชาได้ที่ "ตั้งค่าระบบ → รายวิชา"' : '— กรุณาแจ้งผู้ดูแลระบบ'}</div>`;
+    el.innerHTML = `<div class="page-head"><div><h1>คะแนนรายวิชา</h1></div><div class="row">${termPicker(real, termObj)}</div></div>
+      <div class="empty">ยังไม่มีวิชาที่คุณสอนในภาคเรียนที่ ${termObj.term}/${termObj.academic_year} ${ctx.isAdmin ? '— เปิดสอนวิชาได้ที่ "ตั้งค่าระบบ → รายวิชา" หรือเลือกภาคเรียนอื่นด้านบน' : '— เลือกภาคเรียนอื่นด้านบน หรือแจ้งผู้ดูแลระบบ'}</div>`;
+    wireTerm();
     return;
   }
   if (!list.some((k) => k.id === pref.course)) pref.course = list[0].id;
@@ -34,18 +56,18 @@ export async function render(el, ctx) {
       <div><h1>คะแนนรายวิชา</h1>
         <p>กรอกคะแนน ตัดเกรด และประเมินตัวชี้วัดรายวิชา · ${esc(course.subject?.credits ? `${course.subject.credits} หน่วยกิต` : course.subject?.hours_per_year ? `${course.subject.hours_per_year} ชม./ปี` : '')}
           · ระหว่างภาค:ปลายภาค ${course.midterm_ratio}:${course.final_ratio} · <span class="live">อัปเดตทันที</span></p></div>
-      <div class="row"><label class="field">วิชา<select id="course">${options(list, course.id, ctx.courseLabel)}</select></label>
+      <div class="row">${termPicker(real, termObj)}<label class="field">วิชา<select id="course">${options(list, course.id, ctx.courseLabel)}</select></label>
         <button class="btn" id="xls" ${items.length ? '' : 'disabled'} title="ไฟล์ Excel แบบบันทึกผลสัมฤทธิ์ (แผ่นงานผลสัมฤทธิ์) มีสูตรคำนวณ แก้ต่อใน Excel ได้">ส่งออก Excel</button></div>
     </div>
     ${tabGroups([
       { label: 'บันทึกผล', icon: 'scores', tabs: [{ key: 'scores', label: 'คะแนนและเกรด', disabled: !items.length }, { key: 'indicators', label: 'ตัวชี้วัด (ผ/มผ)' }] },
       { label: 'ตั้งค่า', icon: 'setup', tabs: [{ key: 'items', label: 'ตั้งค่าช่องคะแนน' }] }], pref.tab)}
     <div id="pane"></div>`;
-  el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { pref.tab = b.dataset.tab; render(el, ctx); }));
-  wireTabGroups(el);
-  $('#course', el).addEventListener('change', (e) => { pref.course = e.target.value; render(el, ctx); });
+  el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { pref.tab = b.dataset.tab; render(el, real); }));
+  wireTabGroups(el); wireTerm();
+  $('#course', el).addEventListener('change', (e) => { pref.course = e.target.value; render(el, real); });
   const pane = $('#pane', el);
-  const again = () => render(el, ctx);
+  const again = () => render(el, real);
   $('#xls', el).addEventListener('click', () => exportDialog(ctx, course));
 
   if (pref.tab === 'items') return itemsTab(pane, ctx, course, data.items, canEdit, again, master);
@@ -53,7 +75,7 @@ export async function render(el, ctx) {
   if (pref.tab === 'indicators' && !byKind('indicator').length) {
     pane.innerHTML = `<div class="card"><h3>วิชานี้ยังไม่มีตัวชี้วัด</h3><p class="small">เพิ่มรหัสตัวชี้วัดก่อน (เช่น ท 1.1 ม.1/1) แล้วจึงบันทึกผ่าน/ไม่ผ่านรายคนได้</p>
       ${canEdit ? '<button class="btn btn-primary" id="to-items">ไปเพิ่มตัวชี้วัด</button>' : '<p class="small muted">ให้ครูผู้สอนหรือผู้ดูแลระบบเพิ่มตัวชี้วัด</p>'}</div>`;
-    $('#to-items', pane)?.addEventListener('click', () => { pref.tab = 'items'; render(el, ctx); });
+    $('#to-items', pane)?.addEventListener('click', () => { pref.tab = 'items'; render(el, real); });
     return;
   }
   return pref.tab === 'indicators'
