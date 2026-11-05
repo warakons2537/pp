@@ -1,16 +1,16 @@
-import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.11.1-26';
-import { GRANTABLE, MENU_GROUPS, plain } from '../menus.js?v=2569.11.1-26';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-26';
-import { ROUNDING } from '../grading.js?v=2569.11.1-26';
-import { excelRefToRows } from '../assess.js?v=2569.11.1-26';
-import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.11.1-26';
-import { subjectImportFlow } from './subject-import-view.js?v=2569.11.1-26';
-import { teacherImportFlow } from './teacher-import-view.js?v=2569.11.1-26';
-import { indicatorImportFlow } from './indicator-import-view.js?v=2569.11.1-26';
-import { clearGrowthRef } from '../data.js?v=2569.11.1-26';
-import { KINDS, KIND_SHORT, loadSchoolDays, expandRange, fixedHolidayRows } from '../holidays.js?v=2569.11.1-26';
-import { teacherKey, displayName } from '../teacher-import.js?v=2569.11.1-26';
-import { applyCourseOrder, inheritedOrder } from '../course-order.js?v=2569.11.1-26';
+import { esc, $, modal, toast, options, roomName, LEVELS, confirmBox, thaiDate } from '../util.js?v=2569.11.1-27';
+import { GRANTABLE, MENU_GROUPS, plain } from '../menus.js?v=2569.11.1-27';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-27';
+import { ROUNDING } from '../grading.js?v=2569.11.1-27';
+import { excelRefToRows } from '../assess.js?v=2569.11.1-27';
+import { ITEMS, notifyConfig, badge } from '../notify.js?v=2569.11.1-27';
+import { subjectImportFlow } from './subject-import-view.js?v=2569.11.1-27';
+import { teacherImportFlow } from './teacher-import-view.js?v=2569.11.1-27';
+import { indicatorImportFlow } from './indicator-import-view.js?v=2569.11.1-27';
+import { clearGrowthRef } from '../data.js?v=2569.11.1-27';
+import { KINDS, KIND_SHORT, loadSchoolDays, expandRange, fixedHolidayRows } from '../holidays.js?v=2569.11.1-27';
+import { teacherKey, displayName } from '../teacher-import.js?v=2569.11.1-27';
+import { applyCourseOrder, inheritedOrder } from '../course-order.js?v=2569.11.1-27';
 
 let tab = 'school';
 const TABS = { school: 'โรงเรียน', terms: 'ภาคเรียน', holidays: 'วันหยุด/วันสำคัญ', rooms: 'ห้องเรียน', subjects: 'รายวิชา', roomsubj: 'รายวิชาตามชั้น', users: 'ผู้ใช้', growth: 'ตารางโภชนาการ', notify: 'การแจ้งเตือน', backup: 'สำรองข้อมูล' };
@@ -453,7 +453,7 @@ async function growth(pane, ctx, run) {
   $('#g-tpl', pane).href = URL.createObjectURL(new Blob(['\ufeff' + tpl], { type: 'text/csv' }));
   const upsertRows = async (rows) => { for (let i = 0; i < rows.length; i += 500) await ctx.db.upsert('growth_reference', rows.slice(i, i + 500), 'ref_set,sex,basis,key,measure'); clearGrowthRef(); };
   $('#load-excel', pane).addEventListener('click', () => run(async () => {
-    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.11.1-26');
+    const { EXCEL_AGE, EXCEL_HT } = await import('../data/growth-excel.js?v=2569.11.1-27');
     await upsertRows(excelRefToRows(EXCEL_AGE, EXCEL_HT));
   }, 'โหลดตารางจาก Excel เดิมแล้ว'));
   pane.querySelectorAll('[data-use]').forEach((b) => b.addEventListener('click', () =>

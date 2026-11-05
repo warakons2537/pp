@@ -1,13 +1,29 @@
-import { attachSheet } from '../sheet.js?v=2569.11.1-26';
-import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.11.1-26';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-26';
-import { getRoster } from '../data.js?v=2569.11.1-26';
-import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.11.1-26';
-import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.11.1-26';
-import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.11.1-26';
+import { attachSheet } from '../sheet.js?v=2569.11.1-27';
+import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.11.1-27';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-27';
+import { getRoster } from '../data.js?v=2569.11.1-27';
+import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.11.1-27';
+import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.11.1-27';
+import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.11.1-27';
 
 const pref = { course: null, tab: 'scores', termId: null };
 const KIND = { score: 'คะแนนเก็บระหว่างภาค', final: 'สอบปลายภาค', indicator: 'ตัวชี้วัด (ผ/มผ)' };
+
+// เลือกหลายแถวแล้วลบพร้อมกัน: ช่องติ๊กแถว [data-sel=<กลุ่ม>] + ช่องเลือกทั้งหมด [data-selall=<กลุ่ม>] + ปุ่ม [data-delsel=<กลุ่ม>]
+const selTh = (grp, can) => (can ? `<th style="width:34px"><input type="checkbox" data-selall="${grp}" aria-label="เลือกทั้งหมด"></th>` : '');
+const selTd = (grp, id, can) => (can ? `<td data-l="เลือก"><input type="checkbox" data-sel="${grp}" value="${id}" aria-label="เลือกแถวนี้"></td>` : '');
+const selBar = (grp, can, n) => (can && n ? `<button class="btn btn-sm btn-danger" data-delsel="${grp}" disabled>ลบที่เลือก</button>` : '');
+function wireSelect(pane, grp, onDelete) {
+  const rows = () => [...pane.querySelectorAll(`[data-sel="${grp}"]`)];
+  const all = pane.querySelector(`[data-selall="${grp}"]`); const btn = pane.querySelector(`[data-delsel="${grp}"]`);
+  if (!btn) return;
+  const picked = () => rows().filter((c) => c.checked).map((c) => c.value);
+  const sync = () => { const n = picked().length; btn.disabled = !n; btn.textContent = n ? `ลบที่เลือก (${n})` : 'ลบที่เลือก';
+    if (all) { all.checked = n > 0 && n === rows().length; all.indeterminate = n > 0 && n < rows().length; } };
+  rows().forEach((c) => c.addEventListener('change', sync));
+  all?.addEventListener('change', () => { rows().forEach((c) => { c.checked = all.checked; }); sync(); });
+  btn.addEventListener('click', () => onDelete(picked()));
+}
 
 // มุมมองของภาคเรียนที่เลือก: ภาคปัจจุบันใช้ข้อมูลกลางของแอป ภาคอื่น/ปีอื่นอ่านห้องและรายวิชาจากฐานข้อมูล
 // คืน ctx สำเนาที่ term / classrooms / courses / myCourses เป็นของภาคนั้น (หน้าอื่นที่รับ ctx ไปใช้ต่อได้เหมือนเดิม)
@@ -343,9 +359,9 @@ function itemsTab(pane, ctx, course, items, canEdit, again, master = []) {
   const others = ctx.myCourses.filter((k) => k.id !== course.id);
   const table = (k) => `
     <div class="card"><div class="row" style="justify-content:space-between;align-items:center">
-      <h3>${KIND[k]}</h3>${k !== 'indicator' ? `<span class="small muted">คะแนนเต็มรวม ${sum(k)}${k === 'final' && g(k).length && sum(k) !== course.final_ratio ? ` (จะถูกแปลงเป็น ${course.final_ratio})` : ''}</span>` : ''}</div>
-      ${g(k).length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>${k === 'indicator' ? 'รหัสตัวชี้วัด' : 'ชื่อช่องคะแนน'}</th>${k === 'indicator' ? '<th>คำอธิบาย</th>' : '<th class="n">คะแนนเต็ม</th>'}<th></th></tr></thead><tbody>
-        ${g(k).map((it, i, arr) => `<tr><td class="tc-ttl">${esc(k === 'indicator' ? it.code : it.title)}</td><td class="${k === 'indicator' ? 'small' : 'n'}" data-l="${k === 'indicator' ? 'คำอธิบาย' : 'คะแนนเต็ม'}">${esc(k === 'indicator' ? it.title ?? '' : Number(it.max_score))}</td>
+      <h3>${KIND[k]}</h3><span class="row">${selBar(k, canEdit, g(k).length)}</span>${k !== 'indicator' ? `<span class="small muted">คะแนนเต็มรวม ${sum(k)}${k === 'final' && g(k).length && sum(k) !== course.final_ratio ? ` (จะถูกแปลงเป็น ${course.final_ratio})` : ''}</span>` : ''}</div>
+      ${g(k).length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr>${selTh(k, canEdit)}<th>${k === 'indicator' ? 'รหัสตัวชี้วัด' : 'ชื่อช่องคะแนน'}</th>${k === 'indicator' ? '<th>คำอธิบาย</th>' : '<th class="n">คะแนนเต็ม</th>'}<th></th></tr></thead><tbody>
+        ${g(k).map((it, i, arr) => `<tr>${selTd(k, it.id, canEdit)}<td class="tc-ttl">${esc(k === 'indicator' ? it.code : it.title)}</td><td class="${k === 'indicator' ? 'small' : 'n'}" data-l="${k === 'indicator' ? 'คำอธิบาย' : 'คะแนนเต็ม'}">${esc(k === 'indicator' ? it.title ?? '' : Number(it.max_score))}</td>
           <td class="n tc-act" style="white-space:nowrap">${canEdit ? `<button class="btn btn-sm btn-ghost" data-up="${it.id}" ${i ? '' : 'disabled'} aria-label="เลื่อนขึ้น">↑</button><button class="btn btn-sm btn-ghost" data-down="${it.id}" ${i < arr.length - 1 ? '' : 'disabled'} aria-label="เลื่อนลง">↓</button>
             <button class="btn btn-sm" data-edit="${it.id}">แก้ไข</button> <button class="btn btn-sm btn-danger" data-del="${it.id}">ลบ</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`
         : `<div class="empty">ยังไม่มี${KIND[k]}</div>`}
@@ -407,6 +423,11 @@ function itemsTab(pane, ctx, course, items, canEdit, again, master = []) {
     if (!await confirmBox(`ลบช่อง "${it.title || it.code}"?${n ? ` คะแนนที่กรอกไว้ ${n} คนจะหายไปด้วย` : ''}`, 'ลบ')) return;
     run(() => ctx.db.remove('assessment_items', { id: it.id }), 'ลบแล้ว');
   }));
+  for (const k of ['score', 'final', 'indicator']) wireSelect(pane, k, async (ids) => {
+    const n = (await Promise.all(ids.map((id) => ctx.db.select('item_scores', { eq: { item_id: id } })))).flat().filter((x) => x.score !== null || x.passed !== null).length;
+    if (!await confirmBox(`ลบ${KIND[k]} ${ids.length} ช่อง?${n ? ` ผลที่กรอกไว้ ${n} รายการจะหายไปด้วย` : ''}`, 'ลบ')) return;
+    run(async () => { for (const id of ids) await ctx.db.remove('assessment_items', { id }); }, `ลบแล้ว ${ids.length} ช่อง`);
+  });
   const swap = async (id, dir) => {
     const it = items.find((i) => i.id === id); const same = g(it.kind); const j = same.indexOf(it) + dir; const other = same[j];
     if (!other) return;
@@ -502,11 +523,11 @@ function masterCard(course, master, canEdit) {
   const list = [...master].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   return `
     <div class="card"><div class="row" style="justify-content:space-between;align-items:center">
-      <h3>ตัวชี้วัดกลางของรายวิชา ${esc(course.subject?.code ?? '')}</h3><span class="small muted">${list.length} ตัว</span></div>
+      <h3>ตัวชี้วัดกลางของรายวิชา ${esc(course.subject?.code ?? '')}</h3><span class="row">${selBar('master', canEdit, list.length)}<span class="small muted">${list.length} ตัว</span></span></div>
       <p class="small muted">ใช้ร่วมกับทุกห้องที่เปิดสอนรหัสวิชานี้ ระบบเพิ่มตัวที่ห้องยังไม่มีให้เอง ไม่ลบหรือแทนของเดิม · รหัสจัดรูปแบบให้อัตโนมัติ (เช่น ม 3/3 → ม.3/3)
         · ถ้าจะเอาตัวชี้วัดออกจากห้อง ให้ลบจากรายการนี้ก่อน มิฉะนั้นจะถูกเพิ่มกลับเมื่อเปิดหน้านี้</p>
-      ${list.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr><th>รหัสตัวชี้วัด</th><th>คำอธิบาย</th><th></th></tr></thead><tbody>
-        ${list.map((m) => `<tr><td class="tc-ttl">${esc(m.code)}</td><td class="small" data-l="คำอธิบาย">${esc(m.title ?? '')}</td>
+      ${list.length ? `<div class="tbl-wrap"><table class="tbl tbl-card"><thead><tr>${selTh('master', canEdit)}<th>รหัสตัวชี้วัด</th><th>คำอธิบาย</th><th></th></tr></thead><tbody>
+        ${list.map((m) => `<tr>${selTd('master', m.id, canEdit)}<td class="tc-ttl">${esc(m.code)}</td><td class="small" data-l="คำอธิบาย">${esc(m.title ?? '')}</td>
           <td class="n tc-act" style="white-space:nowrap">${canEdit ? `<button class="btn btn-sm" data-medit="${m.id}">แก้ไข</button> <button class="btn btn-sm btn-danger" data-mdel="${m.id}">ลบ</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`
         : '<div class="empty">ยังไม่มีตัวชี้วัดกลาง</div>'}
       ${canEdit ? '<div class="row"><button class="btn btn-sm" data-madd>เพิ่มตัวชี้วัดกลาง (วางจาก Excel ได้)</button></div>' : ''}
@@ -556,6 +577,10 @@ function wireMaster(pane, ctx, course, master, run, again) {
     });
   }));
 
+  wireSelect(pane, 'master', async (ids) => {
+    if (!await confirmBox(`ลบตัวชี้วัดกลาง ${ids.length} ตัว? ลบเฉพาะรายการกลาง ตัวชี้วัดและผล ผ/มผ ในแต่ละห้องยังอยู่ (ลบในห้องได้ที่ตารางตัวชี้วัดด้านล่าง)`, 'ลบ')) return;
+    run(async () => { for (const id of ids) await ctx.db.remove('subject_indicators', { id }); }, `ลบแล้ว ${ids.length} ตัว`);
+  });
   pane.querySelectorAll('[data-mdel]').forEach((b) => b.addEventListener('click', async () => {
     const m = master.find((x) => x.id === b.dataset.mdel);
     if (!await confirmBox(`ลบ "${m.code}" จากตัวชี้วัดกลาง? ลบเฉพาะรายการกลาง ตัวชี้วัดและผล ผ/มผ ในแต่ละห้องยังอยู่ (ลบในห้องได้ที่ตารางตัวชี้วัดด้านล่าง)`, 'ลบ')) return;
