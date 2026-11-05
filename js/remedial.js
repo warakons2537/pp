@@ -1,7 +1,7 @@
 // ติดตามการแก้ 0 ร มส (เฉพาะ ม.1–ม.3): ค่าคงที่ + รวมรายการจากเกรดที่คำนวณได้กับรายการที่ครูบันทึกไว้
 // ไม่แก้เกรดใน ปพ.5: ผลหลังแก้เก็บในตาราง remedial_cases เท่านั้น
-import { courseRoster } from './data.js?v=2569.11.1-28';
-import { loadCourse, computeCourse, fmtGrade } from './grading.js?v=2569.11.1-28';
+import { courseRoster } from './data.js?v=2569.11.1-29';
+import { loadCourse, computeCourse, fmtGrade } from './grading.js?v=2569.11.1-29';
 
 export const CAUSES = { absent: 'ขาดเรียน / เวลาเรียนไม่ถึง', low_score: 'คะแนนไม่ถึงเกณฑ์', missing_work: 'ไม่ส่งงาน',
   missed_exam: 'ขาดสอบ', other: 'อื่น ๆ' };
