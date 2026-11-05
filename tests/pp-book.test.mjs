@@ -46,7 +46,8 @@ assert.equal(bookChecks(d, ['ปก ปพ.5 รายชั้น'], ['ปก �
 {
   const sub = (indicators, ind) => ({ name: 'ภาษาไทย', indicators, items: [], rows: [{ scores: [1], ind: ind[0], final: null }, { scores: [1], ind: ind[1], final: null }] });
   const w = (subs) => bookChecks({ ...d, subjects: subs }, ['วิชาที่ 1'], ['วิชาที่ 1'], 1).map((x) => x.text).join('\n');
-  assert.match(w([sub([], [[], []])]), /ภาษาไทย ยังไม่มีตัวชี้วัด/);
+  assert.doesNotMatch(w([sub([], [[], []])]), /ไม่มีตัวชี้วัด/, 'ไม่มีตัวชี้วัด + ช่องคะแนน ≤ 12 = พิมพ์แบบหน้าเดียว ไม่ต้องเตือน');
+  assert.match(w([{ ...sub([], [[], []]), items: Array.from({ length: 13 }, () => ({ title: 'ง', max: 1 })) }]), /ภาษาไทย ไม่มีตัวชี้วัด แต่มีช่องคะแนนเกิน 12/);
   const r = w([sub(['ท 1.1'], [['ผ'], [null]])]); assert.match(r, /1 คนยังไม่ได้ประเมินตัวชี้วัด ผ\/มผ/); assert.match(r, /แท็บ ตัวชี้วัด/);
   assert.doesNotMatch(w([sub(['ท 1.1'], [['ผ'], ['มผ']])]), /ประเมินตัวชี้วัด|ยังไม่มีตัวชี้วัด/);
 }
