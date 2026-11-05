@@ -1,17 +1,17 @@
-import { attachSheet } from '../sheet.js?v=2569.11.1-24';
-import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.11.1-24';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-24';
-import { getRoster } from '../data.js?v=2569.11.1-24';
-import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.11.1-24';
-import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.11.1-24';
-import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.11.1-24';
+import { attachSheet } from '../sheet.js?v=2569.11.1-25';
+import { esc, $, toast, modal, options, fullName, confirmBox, levelName } from '../util.js?v=2569.11.1-25';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-25';
+import { getRoster } from '../data.js?v=2569.11.1-25';
+import { loadCourse, computeStudent, fmtGrade, ROUNDING } from '../grading.js?v=2569.11.1-25';
+import { exportAchievement, readAchievementFile, planImport, applyImport } from '../achievement-io.js?v=2569.11.1-25';
+import { normIndicatorCode, indKey, levelMismatch, parseIndicatorLines, syncCourse, syncSubject, syncableCourses } from '../indicators.js?v=2569.11.1-25';
 
 const pref = { course: null, tab: 'scores' };
 const KIND = { score: 'คะแนนเก็บระหว่างภาค', final: 'สอบปลายภาค', indicator: 'ตัวชี้วัด (ผ/มผ)' };
 
 export async function render(el, ctx) {
   const list = ctx.myCourses;
-  if (ctx.params?.course) { pref.course = ctx.params.course; ctx.params = {}; }
+  if (ctx.params?.course) { pref.course = ctx.params.course; if (ctx.params.tab) pref.tab = ctx.params.tab; ctx.params = {}; }
   if (!list.length) {
     el.innerHTML = `<div class="page-head"><div><h1>คะแนนรายวิชา</h1></div></div>
       <div class="empty">ยังไม่มีวิชาที่คุณสอนในภาคเรียนนี้ ${ctx.isAdmin ? '— เปิดสอนวิชาได้ที่ "ตั้งค่าระบบ → รายวิชา"' : '— กรุณาแจ้งผู้ดูแลระบบ'}</div>`;
@@ -38,7 +38,7 @@ export async function render(el, ctx) {
         <button class="btn" id="xls" ${items.length ? '' : 'disabled'} title="ไฟล์ Excel แบบบันทึกผลสัมฤทธิ์ (แผ่นงานผลสัมฤทธิ์) มีสูตรคำนวณ แก้ต่อใน Excel ได้">ส่งออก Excel</button></div>
     </div>
     ${tabGroups([
-      { label: 'บันทึกผล', icon: 'scores', tabs: [{ key: 'scores', label: 'คะแนนและเกรด', disabled: !items.length }, { key: 'indicators', label: 'ตัวชี้วัด (ผ/มผ)', disabled: !byKind('indicator').length }] },
+      { label: 'บันทึกผล', icon: 'scores', tabs: [{ key: 'scores', label: 'คะแนนและเกรด', disabled: !items.length }, { key: 'indicators', label: 'ตัวชี้วัด (ผ/มผ)' }] },
       { label: 'ตั้งค่า', icon: 'setup', tabs: [{ key: 'items', label: 'ตั้งค่าช่องคะแนน' }] }], pref.tab)}
     <div id="pane"></div>`;
   el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { pref.tab = b.dataset.tab; render(el, ctx); }));
@@ -50,6 +50,12 @@ export async function render(el, ctx) {
 
   if (pref.tab === 'items') return itemsTab(pane, ctx, course, data.items, canEdit, again, master);
   if (!roster.length) { pane.innerHTML = '<div class="empty">ห้องนี้ยังไม่มีนักเรียน</div>'; return; }
+  if (pref.tab === 'indicators' && !byKind('indicator').length) {
+    pane.innerHTML = `<div class="card"><h3>วิชานี้ยังไม่มีตัวชี้วัด</h3><p class="small">เพิ่มรหัสตัวชี้วัดก่อน (เช่น ท 1.1 ม.1/1) แล้วจึงบันทึกผ่าน/ไม่ผ่านรายคนได้</p>
+      ${canEdit ? '<button class="btn btn-primary" id="to-items">ไปเพิ่มตัวชี้วัด</button>' : '<p class="small muted">ให้ครูผู้สอนหรือผู้ดูแลระบบเพิ่มตัวชี้วัด</p>'}</div>`;
+    $('#to-items', pane)?.addEventListener('click', () => { pref.tab = 'items'; render(el, ctx); });
+    return;
+  }
   return pref.tab === 'indicators'
     ? indicatorsTab(pane, ctx, course, roster, data, canEdit)
     : scoresTab(pane, ctx, course, roster, data, canEdit, rounding, again);
@@ -253,12 +259,13 @@ function indicatorsTab(pane, ctx, course, roster, data, canEdit) {
     return { p, f, res: p + f === 0 ? '' : f ? 'มผ' : 'ผ' };
   };
   pane.innerHTML = `
-    <div class="small muted">แตะช่องเพื่อสลับ ผ → มผ → ว่าง · แตะหัวคอลัมน์เพื่อให้ทุกคนที่ยังว่าง "ผ" · ถ้ามี มผ แม้ตัวเดียว ผลรวมจะเป็น มผ</div>
+    <div class="small muted">แตะช่องเพื่อสลับ ผ → มผ → ว่าง · แตะหัวคอลัมน์ = ทุกคนที่ยังว่างเป็น "ผ" · แตะชื่อนักเรียน = ทุกตัวชี้วัดที่ยังว่างของคนนั้นเป็น "ผ" · ถ้ามี มผ แม้ตัวเดียว ผลรวมจะเป็น มผ</div>
+    ${canEdit ? '<div class="row" style="margin:6px 0"><button class="btn btn-sm" id="ind-allpass">ทุกช่องที่ว่าง = ผ ทั้งห้อง</button><button class="btn btn-sm btn-danger" id="ind-clear">ล้างผลตัวชี้วัดทั้งห้อง</button></div>' : ''}
     <div class="tbl-wrap"><table class="reg" id="ind">
       <thead><tr><th class="no">ที่</th><th class="name">ชื่อ-สกุล</th>
         ${inds.map((it) => `<th class="ih" title="${esc(it.title || '')}">${canEdit ? `<button class="day" data-all="${it.id}">` : ''}${esc(it.code || it.title)}${canEdit ? '</button>' : ''}</th>`).join('')}
         <th>ผ</th><th>มผ</th><th>ผล</th></tr></thead>
-      <tbody>${roster.map((s) => { const m = summary(s.id); return `<tr data-sid="${s.id}"><td class="no">${s.number ?? ''}</td><td class="name">${esc(fullName(s))}</td>
+      <tbody>${roster.map((s) => { const m = summary(s.id); return `<tr data-sid="${s.id}"><td class="no">${s.number ?? ''}</td><td class="name">${canEdit ? `<button class="day" data-row="${s.id}" title="ให้ทุกตัวชี้วัดที่ยังว่างของคนนี้เป็น ผ">${esc(fullName(s))}</button>` : esc(fullName(s))}</td>
         ${inds.map((it) => { const p = val(it, s.id); return `<td><button class="cell ${p === false ? 'st-absent' : p ? 'st-present' : ''}" data-item="${it.id}" data-sid="${s.id}" ${canEdit ? '' : 'disabled'}>${mark(p)}</button></td>`; }).join('')}
         <td class="tot s-p">${m.p}</td><td class="tot s-f" style="color:var(--red)">${m.f || ''}</td><td class="tot s-r">${m.res}</td></tr>`; }).join('')}</tbody>
     </table></div>`;
@@ -278,10 +285,24 @@ function indicatorsTab(pane, ctx, course, roster, data, canEdit) {
   if (canEdit) grid.addEventListener('click', (e) => {
     const b = e.target.closest('button.cell');
     if (b) { const p = val({ id: b.dataset.item }, b.dataset.sid); save([{ item_id: b.dataset.item, student_id: b.dataset.sid, passed: p === undefined || p === null ? true : p === true ? false : null }]); return; }
+    const rw = e.target.closest('[data-row]');
+    if (rw) { const rows = inds.filter((it) => val(it, rw.dataset.row) == null).map((it) => ({ item_id: it.id, student_id: rw.dataset.row, passed: true }));
+      if (rows.length) save(rows); return; }
     const h = e.target.closest('[data-all]');
     if (h) { const rows = roster.filter((s) => val({ id: h.dataset.all }, s.id) == null).map((s) => ({ item_id: h.dataset.all, student_id: s.id, passed: true }));
       if (rows.length) { save(rows); toast(`ผ ${rows.length} คน`); } }
   });
+  if (canEdit) {
+    $('#ind-allpass', pane).addEventListener('click', () => {
+      const rows = roster.flatMap((s) => inds.filter((it) => val(it, s.id) == null).map((it) => ({ item_id: it.id, student_id: s.id, passed: true })));
+      if (rows.length) { save(rows); toast(`ผ ${rows.length} ช่อง`); } else toast('ไม่มีช่องว่าง');
+    });
+    $('#ind-clear', pane).addEventListener('click', async () => {
+      if (!await confirmBox('ล้างผลตัวชี้วัด (ผ/มผ) ของทุกคนในวิชานี้?')) return;
+      const rows = roster.flatMap((s) => inds.filter((it) => val(it, s.id) != null).map((it) => ({ item_id: it.id, student_id: s.id, passed: null })));
+      if (rows.length) { save(rows); toast(`ล้าง ${rows.length} ช่อง`); }
+    });
+  }
   const ids = new Set(inds.map((i) => i.id));
   return ctx.db.subscribe('item_scores', null, (ev) => {
     const s = ev.type === 'DELETE' ? ev.old : ev.new; if (!ids.has(s.item_id)) return;

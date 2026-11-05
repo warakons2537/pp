@@ -6,13 +6,13 @@
 //  เฟส 3: ผลประเมินตัวชี้วัดและคะแนนรายวิชา (วิชาที่ 1–n)
 //  เฟส 4: คุณลักษณะ · สมรรถนะ · กิจกรรม · คะแนนรายชั้น · เกรดรายชั้น · สรุปเกรดร้อยละ
 // =====================================================================
-import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-24';
-import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-24';
-import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays } from '../pp-forms.js?v=2569.11.1-24';
-import { Renderer } from '../xl-render.js?v=2569.11.1-24';
-import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-24';
-import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-24';
-import { adjOpt, adjText, adjustDialog } from '../page-adjust.js?v=2569.11.1-24';
+import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-25';
+import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-25';
+import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays } from '../pp-forms.js?v=2569.11.1-25';
+import { Renderer } from '../xl-render.js?v=2569.11.1-25';
+import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-25';
+import { ensureCss, printPages } from './pp-book-view.js?v=2569.11.1-25';
+import { adjOpt, adjText, adjustDialog } from '../page-adjust.js?v=2569.11.1-25';
 
 // ค่าปรับหน้าที่ผู้ใช้ตั้งไว้ (จำในเบราว์เซอร์ ใช้กับทุกห้อง/ภาคเรียน) · ชื่อแผ่น → { mt, mb, ml, mr, font, row, col, scale, hCenter }
 const ADJ_KEY = 'pp5-page-adjust';
@@ -107,12 +107,14 @@ export async function pp5FormsView(host, ctx, room0) {
       <div class="no-print"><p class="small muted" style="margin:0">ปุ่ม "ปรับหน้า…" ที่หน้าแรกของแต่ละแผ่น = ปรับขอบ ขนาดตัวอักษร ระยะบรรทัด ย่อ/ขยาย (จำไว้ในเครื่องนี้) · หน้าตาตามชุด ปพ.5 ที่โรงเรียนพิมพ์ (ปก ทะเบียน เวลาเรียน น้ำหนัก-ส่วนสูง โภชนาการ ผลรายวิชา คุณลักษณะ กิจกรรม สรุปคะแนน เกรด) · ติ๊กออกเพื่อไม่พิมพ์แผ่นนั้น · กระดาษ A4</p>
         <div class="row" style="flex-wrap:wrap;gap:4px 14px;margin:4px 0">${groups.map((g) => `<label class="small" style="display:flex;gap:4px;align-items:center"><input type="checkbox" data-n="${esc(g.n)}" ${pref.off.has(g.n) ? '' : 'checked'}>${esc(g.n)}</label>`).join('')}</div>
         <div class="row small" style="flex-wrap:wrap;gap:4px 8px;margin:4px 0;align-items:center"><span class="muted">แก้ข้อมูลที่ใช้ในใบ:</span>
-          ${EDIT_LINKS.filter(([v]) => ctx.menus?.has(v)).map(([v, l]) => `<button type="button" class="btn btn-sm" data-go="${v}">${l}</button>`).join('')}</div>
+          ${EDIT_LINKS.filter(([v]) => ctx.menus?.has(v)).map(([v, l]) => `<button type="button" class="btn btn-sm" data-go="${v}">${l}</button>`).join('')}
+          ${ctx.menus?.has('scores') ? data.subjects.filter((x) => x.courseId && ctx.courseById?.[x.courseId]).map((x) => `<button type="button" class="btn btn-sm" data-ind="${x.courseId}" title="บันทึกตัวชี้วัด ผ/มผ รายคน">ตัวชี้วัด ผ/มผ: ${esc(x.name)}</button>`).join('') : ''}</div>
         <div>${warnHtml(issuesNow())}</div></div>
       <div class="pv-grid" style="justify-content:flex-start">${list.map((g) => g.pages.map((p, i) => `
         <div class="pv-card"><span class="pv-cap">${esc(g.n)}${g.pages.length > 1 ? ` · ${i + 1}/${g.pages.length}` : ''}${g.err ? ` · ${esc(g.err)}` : ''}${i === 0 ? ` <button type="button" class="btn btn-sm ${adjAll[g.n] ? 'btn-primary' : ''}" data-adj-n="${esc(g.n)}" title="${esc(adjText(adjAll[g.n]) || 'ขอบกระดาษ ขนาดตัวอักษร ระยะบรรทัด ขนาดย่อ/ขยาย')}">ปรับหน้า…</button>` : ''}</span>
           <span class="pv-box" style="width:${Math.round(p.w * z * 4 / 3)}px;height:${Math.round(p.h * z * 4 / 3)}px"><span class="pv-inner" style="transform:scale(${z})">${p.html}</span></span></div>`).join('')).join('')}</div>`;
     $$('input[data-n]', paper).forEach((cb) => cb.addEventListener('change', () => { if (cb.checked) pref.off.delete(cb.dataset.n); else pref.off.add(cb.dataset.n); draw(); }));
+    $$('[data-ind]', paper).forEach((b) => b.addEventListener('click', () => ctx.go('scores', { course: b.dataset.ind, tab: 'indicators' })));
     $$('[data-go]', paper).forEach((b) => b.addEventListener('click', () => ctx.go(b.dataset.go)));
     $$('[data-adj-n]', paper).forEach((b) => b.addEventListener('click', async () => {
       const n = b.dataset.adjN; const { opt } = pp5Layout(n);

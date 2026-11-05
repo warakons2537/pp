@@ -1,7 +1,7 @@
 // รายงานการรับประทานอาหารกลางวันประจำเดือน (ตารางเดียวกับเวลาเรียนประจำเดือน)
-import { esc, fullName, levelName, iso, fromIso, daysInMonth, THAI_MONTHS } from '../util.js?v=2569.11.1-24';
-import { getRoster } from '../data.js?v=2569.11.1-24';
-import { head, signs, termText } from './report-common.js?v=2569.11.1-24';
+import { esc, fullName, levelName, iso, fromIso, daysInMonth, THAI_MONTHS } from '../util.js?v=2569.11.1-25';
+import { getRoster } from '../data.js?v=2569.11.1-25';
+import { head, signs, termText } from './report-common.js?v=2569.11.1-25';
 
 const MARK = { ate: '/', skip: '×', absent: '–' };
 

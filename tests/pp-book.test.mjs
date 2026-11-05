@@ -42,6 +42,14 @@ assert.equal(bookChecks(d, ['ปก ปพ.5 รายชั้น'], ['ปก �
   const r2 = w({ ...dd, school: { school_name: 'ร.ร.' }, homeroom: [], approveDate: null }, ['ปก ปพ.5 รายชั้น']);
   assert.match(r2, /ชื่อผู้อำนวยการ/); assert.match(r2, /ครูประจำชั้น/); assert.match(r2, /วันที่อนุมัติผลการเรียน/);
 }
+// ตัวชี้วัด ผ/มผ: เตือนเมื่อวิชาไม่มีตัวชี้วัด หรือยังไม่ได้ประเมินรายคน พร้อมบอกที่แก้
+{
+  const sub = (indicators, ind) => ({ name: 'ภาษาไทย', indicators, items: [], rows: [{ scores: [1], ind: ind[0], final: null }, { scores: [1], ind: ind[1], final: null }] });
+  const w = (subs) => bookChecks({ ...d, subjects: subs }, ['วิชาที่ 1'], ['วิชาที่ 1'], 1).map((x) => x.text).join('\n');
+  assert.match(w([sub([], [[], []])]), /ภาษาไทย ยังไม่มีตัวชี้วัด/);
+  const r = w([sub(['ท 1.1'], [['ผ'], [null]])]); assert.match(r, /1 คนยังไม่ได้ประเมินตัวชี้วัด ผ\/มผ/); assert.match(r, /แท็บ ตัวชี้วัด/);
+  assert.doesNotMatch(w([sub(['ท 1.1'], [['ผ'], ['มผ']])]), /ประเมินตัวชี้วัด|ยังไม่มีตัวชี้วัด/);
+}
 // เล่ม ปพ.: ช่องคะแนนเริ่มที่ BZ (คอลัมน์ 78) เหมือนใบที่โรงเรียนพิมพ์ · ชิ้นที่ 13+ ต่อไปที่ AP
 {
   assert.equal(scoreColIndex(0), 78); assert.equal(scoreColIndex(11), 89); assert.equal(scoreColIndex(12), 42); assert.equal(scoreColIndex(13), 43);
