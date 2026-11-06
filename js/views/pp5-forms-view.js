@@ -6,14 +6,14 @@
 //  เฟส 3: ผลประเมินตัวชี้วัดและคะแนนรายวิชา (วิชาที่ 1–n)
 //  เฟส 4: คุณลักษณะ · สมรรถนะ · กิจกรรม · คะแนนรายชั้น · เกรดรายชั้น · สรุปเกรดร้อยละ
 // =====================================================================
-import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-37';
-import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-37';
-import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays, ATT_MONTHS, indicatorContinuations, continuationModel, IND_PER_SHEET } from '../pp-forms.js?v=2569.11.1-37';
-import { Renderer } from '../xl-render.js?v=2569.11.1-37';
-import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-37';
-import { ensureCss, printWithStatus } from './pp-book-view.js?v=2569.11.1-37';
-import { adjOpt, adjText, adjustDialog, pickSheetsDialog, AUTO_ADJ } from '../page-adjust.js?v=2569.11.1-37';
-import { openPageEditor } from '../page-editor.js?v=2569.11.1-37';
+import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-38';
+import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-38';
+import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays, ATT_MONTHS, indicatorContinuations, continuationModel, IND_PER_SHEET } from '../pp-forms.js?v=2569.11.1-38';
+import { Renderer } from '../xl-render.js?v=2569.11.1-38';
+import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-38';
+import { ensureCss, printWithStatus } from './pp-book-view.js?v=2569.11.1-38';
+import { adjOpt, adjText, adjustDialog, pickSheetsDialog, AUTO_ADJ } from '../page-adjust.js?v=2569.11.1-38';
+import { openPageEditor } from '../page-editor.js?v=2569.11.1-38';
 
 // ค่าปรับหน้าที่ผู้ใช้ตั้งไว้ (จำในเบราว์เซอร์ ใช้กับทุกห้อง/ภาคเรียน) · ชื่อแผ่น → { mt, mb, ml, mr, font, row, col, scale, hCenter }
 const ADJ_KEY = 'pp5-page-adjust';
@@ -22,6 +22,9 @@ const loadAdj = () => { try { return JSON.parse(localStorage.getItem(ADJ_KEY) ||
 const AUTO_KEY = 'pp5-auto-layout';
 const loadAuto = () => { try { return localStorage.getItem(AUTO_KEY) === '1'; } catch { return false; } };
 const saveAuto = (v) => { try { localStorage.setItem(AUTO_KEY, v ? '1' : '0'); } catch { /* */ } };
+const ORI_KEY = 'pp5-orient';      // แผ่น → 'portrait' | 'landscape' (ไม่มี = ตามแบบพิมพ์)
+const loadOri = () => { try { return JSON.parse(localStorage.getItem(ORI_KEY) || '{}') || {}; } catch { return {}; } };
+const saveOri = (o) => { try { localStorage.setItem(ORI_KEY, JSON.stringify(o)); } catch { /* */ } };
 const saveAdj = (a) => { try { localStorage.setItem(ADJ_KEY, JSON.stringify(a)); } catch { /* */ } };
 
 const ZOOM = { 0.32: 'เล็ก', 0.5: 'กลาง', 0.8: 'ใหญ่' };
@@ -68,7 +71,7 @@ export async function pp5FormsView(host, ctx, room0) {
   const term = termObj.term;
   let sheets = []; const groups = []; let data; let F; let m;
   const renderers = new Map();      // ตามฐาน dpi ของแต่ละแผ่น (ดู pp5Layout)
-  const adjAll = loadAdj(); let auto = loadAuto();
+  const adjAll = loadAdj(); let auto = loadAuto(); const oriAll = loadOri();
   // วาดแผ่นเดียว: ค่าตั้งต้นของใบตัวอย่าง (pp5Layout) + ค่าที่ผู้ใช้ปรับ (ทับค่าตั้งต้น)
   const conts = new Map();
   const baseOf = (n) => conts.get(n)?.base || n;          // ชื่อแผ่น "วิชาที่ n · ตัวชี้วัด 37–72" → หน้าตัวชี้วัดต่อของวิชานั้น
@@ -80,7 +83,7 @@ export async function pp5FormsView(host, ctx, room0) {
       if (!renderers.has(dpi)) renderers.set(dpi, new Renderer(F.wb, F.eng, { dpi }));
       const bopt = { ...(opt.adj || {}) }; if (auto) { delete bopt.scale; Object.assign(bopt, AUTO_ADJ); }       // อัตโนมัติ: ไม่ใช้ค่าย่อ/ขยายตั้งต้นของแผ่น
       const adj = { ...bopt, ...(adjOpt(ovr !== undefined ? ovr : adjAll[n]) || {}) };
-      const pages = renderers.get(dpi).renderSheet(base, { ...opt, adj: Object.keys(adj).length ? adj : undefined, overlays: pp5Overlays(base, mm) });
+      const pages = renderers.get(dpi).renderSheet(base, { ...opt, orientation: oriAll[n] || undefined, adj: Object.keys(adj).length ? adj : undefined, overlays: pp5Overlays(base, mm) });
       return { n, pages: ct ? pages.slice(0, 2) : pages };      // หน้าตัวชี้วัดต่อ = 2 หน้าแรกของแผ่น (หน้าคะแนนไม่ต้องพิมพ์ซ้ำ)
     } catch (err) { return { n, pages: [], err: err.message }; }
   };
@@ -131,6 +134,7 @@ export async function pp5FormsView(host, ctx, room0) {
         <div class="row" style="flex-wrap:wrap;align-items:flex-end">${fontSelectHtml('p5-font')}
           <label class="field" title="อัตโนมัติ: ทุกหน้าของแต่ละแผ่นขนาดเท่ากัน จัดกึ่งกลางทั้งแนวนอนและแนวตั้ง ขอบ 10 มม. เท่ากันทุกหน้า">การจัดหน้า<select id="p5-auto"><option value="0" ${auto ? '' : 'selected'}>ตามแบบพิมพ์โรงเรียน</option><option value="1" ${auto ? 'selected' : ''}>อัตโนมัติ: กึ่งกลาง ขนาดเท่ากัน</option></select></label>
           <label class="field">ขนาด<select id="p5-zoom">${Object.entries(ZOOM).map(([v, l]) => `<option value="${v}" ${+v === z ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+          <label class="field" title="เปลี่ยนแนวกระดาษของทุกแผ่นที่ติ๊กไว้ (ปรับรายแผ่นได้ที่หัวการ์ดแต่ละหน้า)">แนวกระดาษทั้งชุด<select id="p5-ori-all"><option value="">เลือก…</option><option value="portrait">แนวตั้งทุกแผ่น</option><option value="landscape">แนวนอนทุกแผ่น</option><option value="-">ตามแบบพิมพ์ทุกแผ่น</option></select></label>
           <button class="btn" id="p5-adj-multi" title="เลือกหลายแผ่นแล้วปรับขอบ/ขนาดตัวอักษร/ย่อขยายด้วยค่าเดียวกัน">ปรับหน้าหลายแผ่น…</button>
           <button class="btn btn-primary" id="p5-print" ${total ? '' : 'disabled'}>พิมพ์ / บันทึกเป็น PDF (${total} หน้า)</button></div>
       </div>
@@ -141,12 +145,15 @@ export async function pp5FormsView(host, ctx, room0) {
           ${ctx.menus?.has('scores') ? data.subjects.filter((x) => x.courseId && ctx.courseById?.[x.courseId]).map((x) => `<button type="button" class="btn btn-sm" data-ind="${x.courseId}" title="บันทึกตัวชี้วัด ผ/มผ รายคน">ตัวชี้วัด ผ/มผ: ${esc(x.name)}</button>`).join('') : ''}</div>
         <div>${warnHtml(issuesNow())}</div></div>
       <div class="pv-grid" style="justify-content:flex-start">${list.map((g) => g.pages.map((p, i) => `
-        <div class="pv-card" style="${pgOn(g, i) ? '' : 'opacity:.4'}"><span class="pv-cap"><label title="ติ๊กออก = ไม่พิมพ์หน้านี้" style="margin-right:4px"><input type="checkbox" data-pg="${esc(g.n)}#${i}" ${pgOn(g, i) ? 'checked' : ''}></label>${esc(g.n)}${g.pages.length > 1 ? ` · ${i + 1}/${g.pages.length}` : ''}${g.err ? ` · ${esc(g.err)}` : ''}${i === 0 ? ` <button type="button" class="btn btn-sm" data-drag-n="${esc(g.n)}" title="ลากปรับขอบ คอลัมน์ แถว ตำแหน่ง และขนาดบนหน้ากระดาษจริง (แบบ Word)">ลากปรับ…</button><button type="button" class="btn btn-sm ${adjAll[g.n] ? 'btn-primary' : ''}" data-adj-n="${esc(g.n)}" title="${esc(adjText(adjAll[g.n]) || 'ขอบกระดาษ ขนาดตัวอักษร ระยะบรรทัด ขนาดย่อ/ขยาย')}">ปรับหน้า…</button>` : ''}</span>
+        <div class="pv-card" style="${pgOn(g, i) ? '' : 'opacity:.4'}"><span class="pv-cap"><label title="ติ๊กออก = ไม่พิมพ์หน้านี้" style="margin-right:4px"><input type="checkbox" data-pg="${esc(g.n)}#${i}" ${pgOn(g, i) ? 'checked' : ''}></label>${esc(g.n)}${g.pages.length > 1 ? ` · ${i + 1}/${g.pages.length}` : ''}${g.err ? ` · ${esc(g.err)}` : ''}${i === 0 ? ` <select class="btn btn-sm" data-ori-n="${esc(g.n)}" title="แนวกระดาษของแผ่นนี้"><option value="">แนว: ตามแบบ</option><option value="portrait" ${oriAll[g.n] === 'portrait' ? 'selected' : ''}>แนวตั้ง</option><option value="landscape" ${oriAll[g.n] === 'landscape' ? 'selected' : ''}>แนวนอน</option></select> <button type="button" class="btn btn-sm" data-drag-n="${esc(g.n)}" title="ลากปรับขอบ คอลัมน์ แถว ตำแหน่ง และขนาดบนหน้ากระดาษจริง (แบบ Word)">ลากปรับ…</button><button type="button" class="btn btn-sm ${adjAll[g.n] ? 'btn-primary' : ''}" data-adj-n="${esc(g.n)}" title="${esc(adjText(adjAll[g.n]) || 'ขอบกระดาษ ขนาดตัวอักษร ระยะบรรทัด ขนาดย่อ/ขยาย')}">ปรับหน้า…</button>` : ''}</span>
           <span class="pv-box" style="width:${Math.round(p.w * z * 4 / 3)}px;height:${Math.round(p.h * z * 4 / 3)}px"><span class="pv-inner" style="transform:scale(${z})">${p.html}</span></span></div>`).join('')).join('')}</div>`;
     $$('input[data-pg]', paper).forEach((cb) => cb.addEventListener('change', () => { pref.manualPg.add(cb.dataset.pg); if (cb.checked) pref.offPg.delete(cb.dataset.pg); else pref.offPg.add(cb.dataset.pg); draw(); }));
     $$('input[data-n]', paper).forEach((cb) => cb.addEventListener('change', () => { pref.manual.add(cb.dataset.n); if (cb.checked) pref.off.delete(cb.dataset.n); else pref.off.add(cb.dataset.n); draw(); }));
     $$('[data-ind]', paper).forEach((b) => b.addEventListener('click', () => ctx.go('scores', { course: b.dataset.ind, tab: 'indicators' })));
     $$('[data-go]', paper).forEach((b) => b.addEventListener('click', () => ctx.go(b.dataset.go)));
+    const setOri = (names, v) => { for (const t of names) { if (v) oriAll[t] = v; else delete oriAll[t]; const i = groups.findIndex((g) => g.n === t); if (i >= 0) groups[i] = renderGroup(t); } saveOri(oriAll); draw(); };
+    $$('[data-ori-n]', paper).forEach((sl) => sl.addEventListener('change', () => setOri([sl.dataset.oriN], sl.value)));
+    $('#p5-ori-all', paper).addEventListener('change', (e) => { const v = e.target.value; if (!v) return; setOri(on().map((g) => g.n), v === '-' ? '' : v); toast(v === '-' ? 'กลับเป็นแนวตามแบบพิมพ์' : v === 'portrait' ? 'ตั้งเป็นแนวตั้งทุกแผ่นแล้ว' : 'ตั้งเป็นแนวนอนทุกแผ่นแล้ว'); });
     $$('[data-drag-n]', paper).forEach((b) => b.addEventListener('click', async () => {
       const n = b.dataset.dragN;
       const res = await openPageEditor({ title: n, adj: adjAll[n], canApplyOthers: on().length > 1, render: (a) => renderGroup(n, a || null).pages });
