@@ -1,12 +1,12 @@
-import { esc, $, toast, modal, options, roomName, fullName } from '../util.js?v=2569.11.1-36';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-36';
-import { termRoster } from '../data.js?v=2569.11.1-36';
-import { attachSheet } from '../sheet.js?v=2569.11.1-36';
-import { attachGrid } from '../grid.js?v=2569.11.1-36';
-import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.11.1-36';
-import { detailPane } from './assess-detail.js?v=2569.11.1-36';
-import { FORMS } from '../assess-forms.js?v=2569.11.1-36';
-import { assessImportFlow } from './assess-import-view.js?v=2569.11.1-36';
+import { esc, $, toast, modal, options, roomName, fullName } from '../util.js?v=2569.11.1-37';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-37';
+import { termRoster } from '../data.js?v=2569.11.1-37';
+import { attachSheet } from '../sheet.js?v=2569.11.1-37';
+import { attachGrid } from '../grid.js?v=2569.11.1-37';
+import { TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.11.1-37';
+import { detailPane } from './assess-detail.js?v=2569.11.1-37';
+import { FORMS } from '../assess-forms.js?v=2569.11.1-37';
+import { assessImportFlow } from './assess-import-view.js?v=2569.11.1-37';
 
 const pref = { room: null, tab: 'trait8' };
 const TABS = { ...Object.fromEntries(Object.entries(TRAIT_KINDS).map(([k, v]) => [k, v.short])),
