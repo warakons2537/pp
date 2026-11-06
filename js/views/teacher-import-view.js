@@ -2,8 +2,8 @@
 //  ตั้งค่าระบบ → รายวิชา → นำเข้าครูจาก WL Scheduler (.csv)
 //  ตารางตรวจ (ครู · ชื่อวิชา) → สร้างครูที่ยังไม่มีบัญชี + ผูกครูกับการเปิดสอนของภาคเรียนปัจจุบัน
 // =====================================================================
-import { esc } from '../util.js?v=2569.11.1-37';
-import { readSchedulerCsv, teacherChoices, subjectChoices, subjectOptions, planLinks, displayName } from '../teacher-import.js?v=2569.11.1-37';
+import { esc } from '../util.js?v=2569.11.1-38';
+import { readSchedulerCsv, teacherChoices, subjectChoices, subjectOptions, planLinks, displayName } from '../teacher-import.js?v=2569.11.1-38';
 
 const overlay = (html) => {
   const wrap = document.createElement('div');

@@ -2,7 +2,7 @@
 //  - root: ส่วนที่สร้างใหม่ทุกครั้งที่วาดหน้า (มีช่องติ๊กแถว + ช่องติ๊กทั้งหมด) · host: ที่วางแถบ (ปกติคือ #view)
 //  - state: Set ของ id ที่เลือก (ส่งมาเองถ้าต้องการให้จำข้ามการวาดใหม่) · เลือกได้เฉพาะแถวที่ยังแสดงอยู่
 //  - actions: [{ label, cta?, run(ids, { clear }) }] เรียกเมื่อกดปุ่มในแถบ (ปุ่ม cta เป็นสีทอง)
-import { esc } from './util.js?v=2569.11.1-37';
+import { esc } from './util.js?v=2569.11.1-38';
 
 export function attachBulk({ root, host = document.getElementById('view'), boxSel = 'input.g-chk[data-id]', allSel = 'input.g-all', unit = 'คน',
   actions = [], rowSel = 'tr, .roll-row', state = new Set() }) {
