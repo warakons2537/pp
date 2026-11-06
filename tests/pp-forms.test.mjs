@@ -330,6 +330,14 @@ console.log('pp-forms: ผ่านทั้งหมด');
   assert.ok(Math.abs(moved.ox - i0.ox - 10 * 72 / 25.4) < 0.01 && Math.abs(moved.oy - i0.oy - 5 * 72 / 25.4) < 0.01, 'ย้ายตำแหน่ง 10,5 มม.');
   const mar = R.renderSheet('ชื่อนักเรียน', { adj: adjOpt({ mt: 30, ml: 25 }) })[0].info.margins;
   assert.ok(Math.abs(mar.top - 30 * 72 / 25.4) < 0.01 && Math.abs(mar.left - 25 * 72 / 25.4) < 0.01, 'ขอบที่ลากมีผล');
+  // จัดรูปแบบรายช่วงเซลล์: จัดกึ่งกลาง ตัวหนา ขนาด สี พื้น ต้องเปลี่ยน html และไม่กระทบเมื่อไม่ตั้ง
+  const plain = base.map((x) => x.html).join('');
+  const fm = R.renderSheet('ชื่อนักเรียน', { adj: { fmt: [{ r1: 1, c1: 1, r2: 60, c2: 12, h: 'right', b: true, sz: 20, color: 'FF0000', fill: '00FF00', wrap: true }] } });
+  const fh = fm.map((x) => x.html).join('');
+  assert.notEqual(fh, plain, 'จัดรูปแบบเซลล์แล้ว html ต้องต่าง');
+  assert.ok(/#00FF00/i.test(fh) && /#FF0000/i.test(fh) && /font-weight:bold/.test(fh), 'พื้น/สี/ตัวหนาออกใน html');
+  assert.equal(R.renderSheet('ชื่อนักเรียน', {}).map((x) => x.html).join(''), plain, 'ไม่ตั้ง fmt = เหมือนเดิม (ไม่ค้างสถานะ)');
+  assert.ok(Array.isArray(i0.merges), 'info มี merges');
   // ซ่อนคอลัมน์ไม่ถูกปลุกคืนด้วยค่าที่ลาก
   assert.equal(R.geometry(FF.wb.sheet('ชื่อนักเรียน'), 1, 1, { cw: { 1: 50 } }).cw(1) > 0, true);
 }

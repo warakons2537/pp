@@ -5,10 +5,10 @@
 //  - ผสานเซลล์ · เส้นขอบ · สีพื้น · ฟอนต์ · การจัดแนว/ตัดบรรทัด/ข้อความล้นเซลล์ · หมุนข้อความ
 //  - รูปแบบตัวเลข · การจัดรูปแบบตามเงื่อนไข · รูปภาพ/รูปร่าง/กล่องข้อความ
 // =====================================================================
-import { MAXCOL, XErr, Mat } from './xl-formula.js?v=2569.11.1-38';
-import { formatValue, isDateFormat } from './xl-numfmt.js?v=2569.11.1-38';
-import { parseDrawing, key } from './xl-model.js?v=2569.11.1-38';
-import { shiftFormula } from './xlsx-template.js?v=2569.11.1-38';
+import { MAXCOL, XErr, Mat } from './xl-formula.js?v=2569.11.1-39';
+import { formatValue, isDateFormat } from './xl-numfmt.js?v=2569.11.1-39';
+import { parseDrawing, key } from './xl-model.js?v=2569.11.1-39';
+import { shiftFormula } from './xlsx-template.js?v=2569.11.1-39';
 
 export const PAPER = { 9: [595.28, 841.89], 1: [612, 792], 5: [612, 1008], 8: [841.89, 1190.55], 11: [419.53, 595.28] };
 const PT_PER_PX = 0.75; const EMU_PER_PT = 12700;
@@ -255,8 +255,14 @@ export class Renderer {
   // ---- วาดทุกหน้าของแผ่น ----
   renderSheet(name, opts = {}) {
     const k = Number.isFinite(+opts.adj?.font) && +opts.adj.font > 0 ? Math.max(0.3, Math.min(3, +opts.adj.font / 100)) : 1;
-    this.fontK = k;
-    try { return this.renderSheetNow(name, opts); } finally { this.fontK = 1; }
+    this.fontK = k; this.fmtRules = Array.isArray(opts.adj?.fmt) && opts.adj.fmt.length ? opts.adj.fmt : null;
+    try { return this.renderSheetNow(name, opts); } finally { this.fontK = 1; this.fmtRules = null; }
+  }
+  // จัดรูปแบบรายช่วงเซลล์ที่ผู้ใช้ตั้ง (adj.fmt = [{r1,c1,r2,c2,h,v,wrap,shrink,b,i,sz,color,fill}]) — กฎหลังทับกฎก่อน
+  fmtFor(r, c) {
+    if (!this.fmtRules) return null; let o = null;
+    for (const f of this.fmtRules) if (r >= f.r1 && r <= f.r2 && c >= f.c1 && c <= f.c2) o = { ...(o || {}), ...f };
+    return o;
   }
   renderSheetNow(name, opts) {
     const pg = this.paginate(name, opts); if (!pg) return [];
@@ -286,7 +292,7 @@ export class Renderer {
     const { g, scale } = pg; const q = this.pageGeom(pg, p);
     const cols = []; for (const b of q.colBlocks) { let x = b.off; for (let c = b.a; c <= b.b; c++) { const w = g.cw(c); if (w > 0) cols.push({ c, x, w }); x += w; } }
     const rows = []; for (const b of q.rowBlocks) { let y = b.off; for (let r = b.a; r <= b.b; r++) { const h = g.rh(r); if (h > 0) rows.push({ r, y, h }); y += h; } }
-    return { paper: pg.paper, scale, ox: q.ox, oy: q.oy, contentW: q.contentW, contentH: q.contentH, cols, rows,
+    return { paper: pg.paper, scale, ox: q.ox, oy: q.oy, contentW: q.contentW, contentH: q.contentH, cols, rows, merges: pg.sh.merges,
       margins: { top: pg.top, left: pg.left, right: pg.paper.w - pg.left - pg.availW, bottom: pg.paper.h - pg.top - pg.availH } };
   }
   renderPage(pg, p, pageNo, pageCount) {
@@ -377,7 +383,12 @@ export class Renderer {
       const k = key(r, c); const cell = sh.cells.get(k);
       const mm = g.mergeAt.get(k);
       if (!outside) this.collectBorders(sh, g, r, c, mm, hEdges, vEdges);
-      const si = this.styleIndex(sh, g, r, c, cell); const xf = st.cellXfs[si] || st.cellXfs[0] || {};
+      const si = this.styleIndex(sh, g, r, c, cell); let xf = st.cellXfs[si] || st.cellXfs[0] || {};
+      const fo = this.fmtFor(r, c);
+      if (fo && (fo.h || fo.v || fo.wrap !== undefined || fo.shrink !== undefined || fo.rot !== undefined)) {
+        const al = { ...(xf.align || {}) }; if (fo.h) al.h = fo.h; if (fo.v) al.v = fo.v; if (fo.wrap !== undefined) al.wrap = fo.wrap; if (fo.shrink !== undefined) al.shrink = fo.shrink; if (fo.rot !== undefined) al.rot = fo.rot;
+        xf = { ...xf, align: al };
+      }
       let v = cell ? (cell.f || cell.master !== undefined ? valueOf(r, c) : cell.v) : null;
       if (v instanceof Mat) v = v.at(0, 0);
       // การจัดรูปแบบตามเงื่อนไข
@@ -385,7 +396,7 @@ export class Renderer {
       const x0 = X(c); const y0 = Y(r);
       const w = mm ? X(mm.c2 + 1) - x0 : g.cw(c); const h = mm ? Y(mm.r2 + 1) - y0 : g.rh(r);
       // พื้น
-      const fill = cf?.fill && cf.fill.type !== 'none' ? cf.fill : st.fills[xf.fillId];
+      const fill = fo?.fill ? { type: 'solid', fg: { hex: fo.fill } } : cf?.fill && cf.fill.type !== 'none' ? cf.fill : st.fills[xf.fillId];
       const bg = fillCss(fill);
       if (bg) {
         const last = fills[fills.length - 1];
@@ -400,6 +411,7 @@ export class Renderer {
       if (typeof v === 'number' && v === 0 && !sh.showZeros) continue;
       if (xf.hidden && sh.protected && false) continue;
       const font = { ...(st.fonts[xf.fontId] || {}), ...(cf?.font || {}) };
+      if (fo) { if (fo.b !== undefined) font.b = fo.b; if (fo.i !== undefined) font.i = fo.i; if (fo.u !== undefined) font.u = fo.u ? 'single' : undefined; if (fo.sz) font.sz = fo.sz; if (fo.color) font.color = { hex: fo.color }; }
       if (this.fontK !== 1) font.sz = (font.sz || 11) * this.fontK;
       const code = cf?.numFmt || st.numFmts[xf.numFmtId] || 'General';
       const fmt = formatValue(v, code);

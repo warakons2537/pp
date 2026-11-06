@@ -6,14 +6,14 @@
 //  เฟส 3: ผลประเมินตัวชี้วัดและคะแนนรายวิชา (วิชาที่ 1–n)
 //  เฟส 4: คุณลักษณะ · สมรรถนะ · กิจกรรม · คะแนนรายชั้น · เกรดรายชั้น · สรุปเกรดร้อยละ
 // =====================================================================
-import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-38';
-import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-38';
-import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays, ATT_MONTHS, indicatorContinuations, continuationModel, IND_PER_SHEET } from '../pp-forms.js?v=2569.11.1-38';
-import { Renderer } from '../xl-render.js?v=2569.11.1-38';
-import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-38';
-import { ensureCss, printWithStatus } from './pp-book-view.js?v=2569.11.1-38';
-import { adjOpt, adjText, adjustDialog, pickSheetsDialog, AUTO_ADJ } from '../page-adjust.js?v=2569.11.1-38';
-import { openPageEditor } from '../page-editor.js?v=2569.11.1-38';
+import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-39';
+import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-39';
+import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays, ATT_MONTHS, indicatorContinuations, continuationModel, IND_PER_SHEET } from '../pp-forms.js?v=2569.11.1-39';
+import { Renderer } from '../xl-render.js?v=2569.11.1-39';
+import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-39';
+import { ensureCss, printWithStatus } from './pp-book-view.js?v=2569.11.1-39';
+import { adjOpt, adjText, adjustDialog, pickSheetsDialog, AUTO_ADJ } from '../page-adjust.js?v=2569.11.1-39';
+import { openPageEditor } from '../page-editor.js?v=2569.11.1-39';
 
 // ค่าปรับหน้าที่ผู้ใช้ตั้งไว้ (จำในเบราว์เซอร์ ใช้กับทุกห้อง/ภาคเรียน) · ชื่อแผ่น → { mt, mb, ml, mr, font, row, col, scale, hCenter }
 const ADJ_KEY = 'pp5-page-adjust';
@@ -75,7 +75,7 @@ export async function pp5FormsView(host, ctx, room0) {
   // วาดแผ่นเดียว: ค่าตั้งต้นของใบตัวอย่าง (pp5Layout) + ค่าที่ผู้ใช้ปรับ (ทับค่าตั้งต้น)
   const conts = new Map();
   const baseOf = (n) => conts.get(n)?.base || n;          // ชื่อแผ่น "วิชาที่ n · ตัวชี้วัด 37–72" → หน้าตัวชี้วัดต่อของวิชานั้น
-  const renderGroup = (n, ovr) => {       // ovr = ค่าปรับที่ใช้ทดลอง (ตัวลากปรับ) · ไม่ระบุ = ค่าที่จำไว้
+  const renderGroup = (n, ovr, oriOvr) => {       // ovr = ค่าปรับที่ใช้ทดลอง (ตัวลากปรับ) · ไม่ระบุ = ค่าที่จำไว้
     const ct = conts.get(n); const base = ct ? ct.base : n; const mm = ct ? continuationModel(data, ct.n, ct.off) : m;
     if (!F.fill(base, mm)) return { n, pages: [], err: 'ยังไม่มีแบบพิมพ์' };
     try {
@@ -83,7 +83,7 @@ export async function pp5FormsView(host, ctx, room0) {
       if (!renderers.has(dpi)) renderers.set(dpi, new Renderer(F.wb, F.eng, { dpi }));
       const bopt = { ...(opt.adj || {}) }; if (auto) { delete bopt.scale; Object.assign(bopt, AUTO_ADJ); }       // อัตโนมัติ: ไม่ใช้ค่าย่อ/ขยายตั้งต้นของแผ่น
       const adj = { ...bopt, ...(adjOpt(ovr !== undefined ? ovr : adjAll[n]) || {}) };
-      const pages = renderers.get(dpi).renderSheet(base, { ...opt, orientation: oriAll[n] || undefined, adj: Object.keys(adj).length ? adj : undefined, overlays: pp5Overlays(base, mm) });
+      const pages = renderers.get(dpi).renderSheet(base, { ...opt, orientation: (oriOvr !== undefined ? oriOvr : oriAll[n]) || undefined, adj: Object.keys(adj).length ? adj : undefined, overlays: pp5Overlays(base, mm) });
       return { n, pages: ct ? pages.slice(0, 2) : pages };      // หน้าตัวชี้วัดต่อ = 2 หน้าแรกของแผ่น (หน้าคะแนนไม่ต้องพิมพ์ซ้ำ)
     } catch (err) { return { n, pages: [], err: err.message }; }
   };
@@ -156,17 +156,18 @@ export async function pp5FormsView(host, ctx, room0) {
     $('#p5-ori-all', paper).addEventListener('change', (e) => { const v = e.target.value; if (!v) return; setOri(on().map((g) => g.n), v === '-' ? '' : v); toast(v === '-' ? 'กลับเป็นแนวตามแบบพิมพ์' : v === 'portrait' ? 'ตั้งเป็นแนวตั้งทุกแผ่นแล้ว' : 'ตั้งเป็นแนวนอนทุกแผ่นแล้ว'); });
     $$('[data-drag-n]', paper).forEach((b) => b.addEventListener('click', async () => {
       const n = b.dataset.dragN;
-      const res = await openPageEditor({ title: n, adj: adjAll[n], canApplyOthers: on().length > 1, render: (a) => renderGroup(n, a || null).pages });
+      const res = await openPageEditor({ title: n, adj: adjAll[n], orient: oriAll[n] || null, canApplyOthers: on().length > 1, render: (a, o) => renderGroup(n, a || null, o || null).pages });
       if (!res) return;
       const set = (t, a) => { if (a) adjAll[t] = a; else delete adjAll[t]; const i = groups.findIndex((g) => g.n === t); if (i >= 0) groups[i] = renderGroup(t); };
+      if (res.orient) oriAll[n] = res.orient; else delete oriAll[n];
       set(n, res.adj);
       if (res.others && res.adj) {
         const KEYS = ['mt', 'mb', 'ml', 'mr', 'scale', 'ox', 'oy', 'hCenter', 'vCenter', 'autoFit'];
         const names = await pickSheetsDialog(on().map((g) => g.n).filter((x) => x !== n), [], new Set(Object.keys(adjAll)));
-        for (const t of names || []) { const next = { ...(adjAll[t] || {}) }; for (const k of KEYS) { if (res.adj[k] !== undefined) next[k] = res.adj[k]; else delete next[k]; } set(t, next); }
+        for (const t of names || []) { if (res.orient) oriAll[t] = res.orient; else delete oriAll[t]; const next = { ...(adjAll[t] || {}) }; for (const k of KEYS) { if (res.adj[k] !== undefined) next[k] = res.adj[k]; else delete next[k]; } set(t, next); }
         if (names) toast(`ใช้ขอบ/ขนาด/ตำแหน่งกับ ${names.length} แผ่นแล้ว`);
       }
-      saveAdj(adjAll); draw();
+      saveAdj(adjAll); saveOri(oriAll); draw();
     }));
     $$('[data-adj-n]', paper).forEach((b) => b.addEventListener('click', async () => {
       const n = b.dataset.adjN; const { opt } = pp5Layout(baseOf(n), m);

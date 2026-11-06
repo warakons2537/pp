@@ -4,16 +4,16 @@
 //  - ดูตัวอย่างทุกหน้า เลือกพิมพ์รายหน้า → พิมพ์ / บันทึกเป็น PDF ได้ในแอป (ไม่ต้องมี Excel)
 //  - หรือสร้างไฟล์ Excel ที่หน้าตาเหมือนต้นฉบับ
 // =====================================================================
-import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-38';
-import { Template } from '../xlsx-template.js?v=2569.11.1-38';
-import { buildBookData, makeBook, prepareBook, defaultBook, bookChecks } from '../pp-book.js?v=2569.11.1-38';
-import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-38';
-import { Workbook } from '../xl-model.js?v=2569.11.1-38';
-import { Engine } from '../xl-formula.js?v=2569.11.1-38';
-import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-38';
-import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-38';
-import { adjOpt, adjText, adjustDialog, pickSheetsDialog, AUTO_ADJ } from '../page-adjust.js?v=2569.11.1-38';
-import { openPageEditor } from '../page-editor.js?v=2569.11.1-38';
+import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-39';
+import { Template } from '../xlsx-template.js?v=2569.11.1-39';
+import { buildBookData, makeBook, prepareBook, defaultBook, bookChecks } from '../pp-book.js?v=2569.11.1-39';
+import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-39';
+import { Workbook } from '../xl-model.js?v=2569.11.1-39';
+import { Engine } from '../xl-formula.js?v=2569.11.1-39';
+import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-39';
+import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-39';
+import { adjOpt, adjText, adjustDialog, pickSheetsDialog, AUTO_ADJ } from '../page-adjust.js?v=2569.11.1-39';
+import { openPageEditor } from '../page-editor.js?v=2569.11.1-39';
 
 const PATH = 'pp/template';
 let cache = { at: null, bytes: null, t: null };          // ไฟล์ต้นฉบับที่โหลดแล้ว (อยู่ในหน่วยความจำ)
@@ -230,15 +230,16 @@ export async function bookView(paper, ctx, room) {
   // ปรับหน้าแบบลากบนหน้ากระดาษจริง (ขอบ คอลัมน์ แถว ตำแหน่ง ขนาด) — ใช้ได้เมื่อเปิดตัวอย่างแล้ว · แผ่นรายคนใช้ปุ่ม "ปรับหน้า…" เดิม
   async function openDrag(n) {
     if (!book || per.get(n)) { toast('แผ่นรายคนใช้ปุ่ม "ปรับหน้า…" (ค่าเดียวกันทุกคน)', 'err'); return; }
-    const res = await openPageEditor({ title: n, adj: layout.adj[n], canApplyOthers: on.size > 1,
-      render: (a) => renderer().renderSheet(n, { orientation: layout.orient[n] || null, fit: layout.fit[n] || null, adj: { ...(layout.auto ? AUTO_ADJ : {}), ...(adjOpt(a) || {}) } }) });
+    const res = await openPageEditor({ title: n, adj: layout.adj[n], orient: layout.orient[n] || null, canApplyOthers: on.size > 1,
+      render: (a, o) => renderer().renderSheet(n, { orientation: o || null, fit: layout.fit[n] || null, adj: { ...(layout.auto ? AUTO_ADJ : {}), ...(adjOpt(a) || {}) } }) });
     if (!res) return;
     const KEYS = ['mt', 'mb', 'ml', 'mr', 'scale', 'ox', 'oy', 'hCenter', 'vCenter', 'autoFit'];
     const apply = (t, a) => { if (a) layout.adj[t] = a; else delete layout.adj[t]; delete layout.skip[t]; };
+    if (res.orient) layout.orient[n] = res.orient; else delete layout.orient[n];
     apply(n, res.adj);
     if (res.others && res.adj) {
       const names = await pickSheetsDialog(layout.order.filter((x) => on.has(x) && x !== n && !per.get(x)), [], new Set(Object.keys(layout.adj)));
-      for (const t of names || []) { const next = { ...(layout.adj[t] || {}) }; for (const k of KEYS) { if (res.adj[k] !== undefined) next[k] = res.adj[k]; else delete next[k]; } apply(t, next); }
+      for (const t of names || []) { if (res.orient) layout.orient[t] = res.orient; else delete layout.orient[t]; const next = { ...(layout.adj[t] || {}) }; for (const k of KEYS) { if (res.adj[k] !== undefined) next[k] = res.adj[k]; else delete next[k]; } apply(t, next); }
       if (names) toast(`ใช้ขอบ/ขนาด/ตำแหน่งกับ ${names.length} แผ่นแล้ว`);
     }
     changed();

@@ -2,7 +2,7 @@
 //  ปรับหน้ากระดาษรายแผ่น (แบบ Word): ขอบ · ขนาดตัวอักษร · ระยะบรรทัด · ความกว้างคอลัมน์ · ย่อ/ขยาย · จัดกึ่งกลาง
 //  ใช้ร่วมกันในแท็บ "เล่ม ปพ." และ "ปพ.5 ครบชุด" · ตัวแสดงผล (xl-render.js) รับค่าผ่าน adj
 // =====================================================================
-import { esc, modal } from './util.js?v=2569.11.1-38';
+import { esc, modal } from './util.js?v=2569.11.1-39';
 
 // จัดหน้าอัตโนมัติทั้งชุด: ทุกหน้าของแต่ละแผ่นขนาดเท่ากัน จัดกึ่งกลาง ขอบ 10 มม. เท่ากัน (หน่วยนิ้ว ใช้กับตัวแสดงผลโดยตรง)
 export const AUTO_ADJ = { autoFit: true, mt: 10 / 25.4, mb: 10 / 25.4, ml: 10 / 25.4, mr: 10 / 25.4 };
@@ -26,6 +26,7 @@ export function adjText(a) {
   if (a.autoFit) p.push('อัตโนมัติ (กึ่งกลาง ขนาดเท่ากันทุกหน้า)');
   if (Number.isFinite(a.ox) || Number.isFinite(a.oy)) p.push(`ย้ายตำแหน่ง ${a.ox ?? 0},${a.oy ?? 0} มม.`);
   if (a.cw && Object.keys(a.cw).length) p.push(`ปรับ ${Object.keys(a.cw).length} คอลัมน์`); if (a.rh && Object.keys(a.rh).length) p.push(`ปรับ ${Object.keys(a.rh).length} แถว`);
+  if (Array.isArray(a.fmt) && a.fmt.length) p.push(`จัดรูปแบบเซลล์ ${a.fmt.length} ช่วง`);
   return p.join(' · ');
 }
 
