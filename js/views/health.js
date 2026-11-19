@@ -1,8 +1,8 @@
-import { esc, $, toast, options, roomName, fullName, todayIso, thaiDate } from '../util.js?v=2569.11.1-42';
-import { getRoster, enrolledOn, loadGrowthRef, getBirthDates, termRange, roundsOfTerm, termOfRound, roundInTerm, roundLabel } from '../data.js?v=2569.11.1-42';
-import { attachSheet } from '../sheet.js?v=2569.11.1-42';
-import { attachGrid } from '../grid.js?v=2569.11.1-42';
-import { classify, ageMonths, ageText, severity, WH, HA, OUT_OF_TABLE } from '../assess.js?v=2569.11.1-42';
+import { esc, $, toast, options, roomName, fullName, todayIso, thaiDate } from '../util.js?v=2569.11.1-43';
+import { getRoster, enrolledOn, loadGrowthRef, getBirthDates, termRange, roundsOfTerm, termOfRound, roundInTerm, roundLabel } from '../data.js?v=2569.11.1-43';
+import { attachSheet } from '../sheet.js?v=2569.11.1-43';
+import { attachGrid } from '../grid.js?v=2569.11.1-43';
+import { classify, ageMonths, ageText, severity, WH, HA, OUT_OF_TABLE } from '../assess.js?v=2569.11.1-43';
 
 // round = ลำดับในปีการศึกษา 1–8 (ภาคเรียนที่ 1 = 1–4 · ภาคเรียนที่ 2 = 5–8)
 const pref = { room: null, round: null, date: null };
@@ -63,17 +63,17 @@ export async function render(el, ctx) {
     ${roster.some((s) => !births[s.id]) ? `<p class="small muted">นักเรียน ${roster.filter((s) => !births[s.id]).length} คนไม่มีวันเกิดในระบบ (หรือคุณไม่มีสิทธิ์ดู) จึงแปลผลน้ำหนัก/ส่วนสูงตามอายุไม่ได้ · แก้วันเกิดได้ที่หน้า "นักเรียน"</p>` : ''}
     <div class="grid" style="grid-template-columns:minmax(0,1fr) 280px;align-items:start" id="cols">
       <div style="min-width:0;display:flex;flex-direction:column;gap:8px">
-        <div class="small muted">กรอกแล้วบันทึกอัตโนมัติ · ลูกศร/Enter เลื่อนช่อง · วางน้ำหนักและส่วนสูงจาก Excel ได้ทั้ง 2 คอลัมน์ · เกณฑ์: ${esc(refSet === 'excel' ? 'ตารางจากไฟล์ Excel เดิม' : refSet)}</div>
-        ${roster.length ? `<div class="tbl-wrap"><table class="reg sheet" id="hgrid">
+        <div class="small muted hide-sm">กรอกแล้วบันทึกอัตโนมัติ · ลูกศร/Enter เลื่อนช่อง · วางน้ำหนักและส่วนสูงจาก Excel ได้ทั้ง 2 คอลัมน์ · เกณฑ์: ${esc(refSet === 'excel' ? 'ตารางจากไฟล์ Excel เดิม' : refSet)}</div>
+        ${roster.length ? `<div class="tbl-wrap"><table class="reg sheet hgrid" id="hgrid">
           <thead><tr><th class="no">ที่</th><th class="name">ชื่อ-สกุล</th><th>เพศ</th><th>อายุ</th><th>น้ำหนัก<br>(กก.)</th><th>ส่วนสูง<br>(ซม.)</th>
             <th>น้ำหนัก<br>ตามอายุ</th><th>ส่วนสูง<br>ตามอายุ</th><th>น้ำหนัก<br>ตามส่วนสูง</th><th>ครั้งก่อน</th></tr></thead>
           <tbody>${roster.map((s, r) => { const m = cur(s.id); const x = calc(s); const p = prev(s.id);
-            return `<tr data-sid="${s.id}"><td class="no">${s.number ?? ''}</td><td class="name">${esc(fullName(s))}</td><td>${esc(s.gender ?? '')}</td>
+            return `<tr data-sid="${s.id}"><td class="no">${s.number ?? ''}</td><td class="name">${esc(fullName(s))}</td><td class="c-sex">${esc(s.gender ?? '')}</td>
               <td class="small c-age" style="padding:0 6px;white-space:nowrap">${esc(ageText(x.months))}</td>
-              <td><input class="gc sc" data-r="${r}" data-c="0" data-f="weight_kg" data-sid="${s.id}" inputmode="decimal" value="${m?.weight_kg ?? ''}" ${canEdit ? '' : 'readonly'} aria-label="น้ำหนัก ${esc(s.first_name)}"></td>
-              <td><input class="gc sc" data-r="${r}" data-c="1" data-f="height_cm" data-sid="${s.id}" inputmode="decimal" value="${m?.height_cm ?? ''}" ${canEdit ? '' : 'readonly'} aria-label="ส่วนสูง ${esc(s.first_name)}"></td>
+              <td class="c-in" data-label="น้ำหนัก (กก.)"><input class="gc sc" data-r="${r}" data-c="0" enterkeyhint="next" data-f="weight_kg" data-sid="${s.id}" inputmode="decimal" value="${m?.weight_kg ?? ''}" ${canEdit ? '' : 'readonly'} aria-label="น้ำหนัก ${esc(s.first_name)}"></td>
+              <td class="c-in" data-label="ส่วนสูง (ซม.)"><input class="gc sc" data-r="${r}" data-c="1" enterkeyhint="next" data-f="height_cm" data-sid="${s.id}" inputmode="decimal" value="${m?.height_cm ?? ''}" ${canEdit ? '' : 'readonly'} aria-label="ส่วนสูง ${esc(s.first_name)}"></td>
               <td class="c-wa" style="padding:0 4px">${chip(x.wa)}</td><td class="c-ha" style="padding:0 4px">${chip(x.ha)}</td><td class="c-wh" style="padding:0 4px">${chip(x.wh)}</td>
-              <td class="small muted" style="padding:0 6px;white-space:nowrap">${p ? `${p.weight_kg ?? '-'} / ${p.height_cm ?? '-'} (${termOfRound(p.round) === termNo ? '' : `ภ.${termOfRound(p.round)} `}ค.${roundInTerm(p.round)})` : ''}</td></tr>`; }).join('')}</tbody>
+              <td class="small muted c-prev" style="padding:0 6px;white-space:nowrap">${p ? '<span class="m-only">ครั้งก่อน </span>' : ''}${p ? `${p.weight_kg ?? '-'} / ${p.height_cm ?? '-'} (${termOfRound(p.round) === termNo ? '' : `ภ.${termOfRound(p.round)} `}ค.${roundInTerm(p.round)})` : ''}</td></tr>`; }).join('')}</tbody>
         </table></div>` : '<div class="empty">ห้องนี้ยังไม่มีนักเรียน</div>'}
       </div>
       <div class="card" id="summary"></div>
