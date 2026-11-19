@@ -1,14 +1,14 @@
 import { esc, $, options, roomName, fullName, levelName, iso, fromIso, daysInMonth, thaiDate, todayIso,
-  THAI_MONTHS, THAI_MONTHS_SHORT, STATUS } from '../util.js?v=2569.11.1-39';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-39';
-import { getRoster, courseRoster, termRoster, termMonths, termRange } from '../data.js?v=2569.11.1-39';
-import { head, signs, termText } from './report-common.js?v=2569.11.1-39';
-import { p5Report, gradesReport, achieveReport } from './report-grades.js?v=2569.11.1-39';
-import { mealsReport } from './report-meals.js?v=2569.11.1-39';
-import { remedialReport } from './report-remedial.js?v=2569.11.1-39';
-import { nutritionReport, traitReport } from './report-assess.js?v=2569.11.1-39';
+  THAI_MONTHS, THAI_MONTHS_SHORT, STATUS } from '../util.js?v=2569.11.1-42';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-42';
+import { getRoster, courseRoster, termRoster, termMonths, termRange, roundsOfTerm, termOfRound, roundInTerm } from '../data.js?v=2569.11.1-42';
+import { head, signs, termText } from './report-common.js?v=2569.11.1-42';
+import { p5Report, gradesReport, achieveReport } from './report-grades.js?v=2569.11.1-42';
+import { mealsReport } from './report-meals.js?v=2569.11.1-42';
+import { remedialReport } from './report-remedial.js?v=2569.11.1-42';
+import { nutritionReport, traitReport } from './report-assess.js?v=2569.11.1-42';
 
-const pref = { tab: 'month', room: null, ym: null, course: null, round: 1 };
+const pref = { tab: 'month', room: null, ym: null, course: null, round: null };   // round = ลำดับในปีการศึกษา 1–8 (ภาค 1 = 1–4 · ภาค 2 = 5–8)
 const TABS = { month: 'เวลาเรียนประจำเดือน', term: 'สรุปเวลาเรียนภาคเรียน', course: 'เวลาเรียนรายวิชา (มส)', list: 'รายชื่อนักเรียน', meals: 'อาหารกลางวันประจำเดือน',
   p5: 'ปพ.5 รายวิชา', grades: 'ผลการเรียนรายชั้น', remedial: 'ติดตามแก้ 0 ร มส (ม.)', achieve: 'สรุปผลสัมฤทธิ์', nutrition: 'ภาวะโภชนาการ', traitsum: 'คุณลักษณะ/กิจกรรม' };
 const COURSE_TABS = ['course', 'p5'];
@@ -26,6 +26,7 @@ export async function render(el, ctx) {
   const courses = ctx.isAdmin ? ctx.courses : [...new Set([...ctx.myCourses,
     ...ctx.courses.filter((k) => ctx.myClassrooms.some((c) => c.id === k.classroom_id))])];
   if (!courses.some((k) => k.id === pref.course)) pref.course = courses[0]?.id ?? null;
+  if (!pref.round) pref.round = roundsOfTerm(ctx.term?.term || 1)[0];
   const inFrame = window.self !== window.top;
 
   el.innerHTML = `
@@ -35,7 +36,8 @@ export async function render(el, ctx) {
         ? `<label class="field">วิชา<select id="course">${options(courses, pref.course, ctx.courseLabel)}</select></label>`
         : `<label class="field">ห้อง<select id="room">${options(rooms, pref.room, (r) => `ห้อง ${roomName(r)}`)}</select></label>`}
       ${['month', 'meals'].includes(pref.tab) ? `<label class="field">เดือน<select id="ym">${months.map((m) => `<option value="${m.y}-${m.m0}" ${pref.ym === `${m.y}-${m.m0}` ? 'selected' : ''}>${THAI_MONTHS[m.m0]} ${m.y + 543}</option>`).join('')}</select></label>` : ''}
-      ${pref.tab === 'nutrition' ? `<label class="field">ครั้งที่<select id="round">${[1, 2, 3, 4].map((n) => `<option value="${n}" ${pref.round === n ? 'selected' : ''}>ครั้งที่ ${n}</option>`).join('')}</select></label>` : ''}
+      ${pref.tab === 'nutrition' ? `<label class="field">ภาคเรียน<select id="hterm">${[1, 2].map((n) => `<option value="${n}" ${termOfRound(pref.round) === n ? 'selected' : ''}>ภาคเรียนที่ ${n}</option>`).join('')}</select></label>
+        <label class="field">ครั้งที่<select id="round">${roundsOfTerm(termOfRound(pref.round)).map((n) => `<option value="${n}" ${pref.round === n ? 'selected' : ''}>ครั้งที่ ${roundInTerm(n)}</option>`).join('')}</select></label>` : ''}
       <button class="btn btn-primary" id="print">พิมพ์ / บันทึก PDF</button>
       ${inFrame ? '<span class="print-note muted">หน้าทดลองนี้เปิดหน้าต่างพิมพ์ไม่ได้ เมื่อติดตั้งแอปจริงจะพิมพ์ได้ทันที</span>' : ''}
     </div></div>
@@ -48,6 +50,7 @@ export async function render(el, ctx) {
   $('#room', el)?.addEventListener('change', (e) => { pref.room = e.target.value; render(el, ctx); });
   $('#ym', el)?.addEventListener('change', (e) => { pref.ym = e.target.value; render(el, ctx); });
   $('#course', el)?.addEventListener('change', (e) => { pref.course = e.target.value; render(el, ctx); });
+  $('#hterm', el)?.addEventListener('change', (e) => { pref.round = roundsOfTerm(e.target.value)[0]; render(el, ctx); });
   $('#round', el)?.addEventListener('change', (e) => { pref.round = Number(e.target.value); render(el, ctx); });
   $('#print', el).addEventListener('click', () => window.print());
 

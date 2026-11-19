@@ -338,15 +338,15 @@ create table if not exists public.growth_reference (
   primary key (sex, basis, key, measure)
 );
 
--- ระยะที่ 3: น้ำหนัก-ส่วนสูงเก็บตาม "ครั้งที่ชั่งวัด" (1–4 ต่อปีการศึกษา) และตารางอ้างอิงมีได้หลายชุด
+-- ระยะที่ 3: น้ำหนัก-ส่วนสูงเก็บตาม "ครั้งที่ชั่งวัด" (ภาคเรียนละ 4 ครั้ง = 1–8 ต่อปีการศึกษา) และตารางอ้างอิงมีได้หลายชุด
 alter table public.school_settings add column if not exists pp_template_name text;   -- ชื่อไฟล์ต้นฉบับ ปพ.5-6 ที่อัปโหลดไว้
 alter table public.terms add column if not exists approve_date date;                   -- วันที่อนุมัติผลการเรียน (ลงในแบบพิมพ์ ปพ.)
 alter table public.health_measurements add column if not exists academic_year int;
 alter table public.health_measurements add column if not exists round smallint;
 alter table public.health_measurements drop constraint if exists health_measurements_student_id_measured_on_key;
-do $$ begin
-  alter table public.health_measurements add constraint health_round_chk check (round between 1 and 4);
-exception when duplicate_object then null; end $$;
+-- ชั่ง/วัดภาคเรียนละ 4 ครั้ง: round = ลำดับในปีการศึกษา 1–8 (ภาคเรียนที่ 1 = 1–4 · ภาคเรียนที่ 2 = 5–8)
+alter table public.health_measurements drop constraint if exists health_round_chk;
+alter table public.health_measurements add constraint health_round_chk check (round between 1 and 8);
 create unique index if not exists health_student_round_idx on public.health_measurements(student_id, academic_year, round);
 
 alter table public.growth_reference add column if not exists ref_set text not null default 'excel';

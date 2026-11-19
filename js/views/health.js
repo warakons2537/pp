@@ -1,10 +1,11 @@
-import { esc, $, toast, options, roomName, fullName, todayIso, thaiDate } from '../util.js?v=2569.11.1-39';
-import { getRoster, enrolledOn, loadGrowthRef, getBirthDates } from '../data.js?v=2569.11.1-39';
-import { attachSheet } from '../sheet.js?v=2569.11.1-39';
-import { attachGrid } from '../grid.js?v=2569.11.1-39';
-import { classify, ageMonths, ageText, severity, WH, HA, OUT_OF_TABLE } from '../assess.js?v=2569.11.1-39';
+import { esc, $, toast, options, roomName, fullName, todayIso, thaiDate } from '../util.js?v=2569.11.1-42';
+import { getRoster, enrolledOn, loadGrowthRef, getBirthDates, termRange, roundsOfTerm, termOfRound, roundInTerm, roundLabel } from '../data.js?v=2569.11.1-42';
+import { attachSheet } from '../sheet.js?v=2569.11.1-42';
+import { attachGrid } from '../grid.js?v=2569.11.1-42';
+import { classify, ageMonths, ageText, severity, WH, HA, OUT_OF_TABLE } from '../assess.js?v=2569.11.1-42';
 
-const pref = { room: null, round: 1, date: null };
+// round = ลำดับในปีการศึกษา 1–8 (ภาคเรียนที่ 1 = 1–4 · ภาคเรียนที่ 2 = 5–8)
+const pref = { room: null, round: null, date: null };
 const chip = (label) => {
   if (!label) return '<span class="muted">–</span>';
   const s = label === OUT_OF_TABLE ? 1 : severity(label);
@@ -19,6 +20,12 @@ export async function render(el, ctx) {
   const year = room.academic_year;
   const canEdit = ctx.isAdmin || ctx.classroomTeacherRows.some((x) => x.classroom_id === room.id && x.teacher_id === ctx.me.id);
   const refSet = ctx.settings.growth_ref_set || 'excel';
+  // ค่าเริ่มต้น: ครั้งที่ 1 ของภาคเรียนปัจจุบัน
+  if (!pref.round) pref.round = roundsOfTerm(ctx.term?.academic_year === year ? ctx.term.term : 1)[0];
+  const termNo = termOfRound(pref.round);
+  const termRow = ctx.terms?.find((t) => t.academic_year === year && t.term === termNo) || { academic_year: year, term: termNo };
+  const range = termRange(termRow);
+  const inTerm = (d) => d >= range.from && d <= range.to;
   const [everyone, ref] = await Promise.all([getRoster(ctx.db, room.id, { includeLeft: true }), loadGrowthRef(ctx.db, refSet)]);
   const ids = everyone.map((s) => s.id);
   const [births, rows] = await Promise.all([
@@ -29,7 +36,7 @@ export async function render(el, ctx) {
   const cur = (sid) => byKey.get(`${sid}|${pref.round}`);
   const prev = (sid) => { for (let k = pref.round - 1; k >= 1; k--) { const r = byKey.get(`${sid}|${k}`); if (r) return r; } return null; };
   const dates = rows.filter((r) => r.round === pref.round).map((r) => r.measured_on);
-  pref.date = dates.sort().at(-1) || pref.date || todayIso();
+  pref.date = dates.sort().at(-1) || pref.date || (inTerm(todayIso()) ? todayIso() : range.from);
   // รายชื่อ = นักเรียนที่อยู่ในห้องวันที่ชั่ง/วัดครั้งนี้ (คนย้ายเข้าทีหลังไม่อยู่ในครั้งก่อนหน้า · คนที่ออกแล้วไม่อยู่ในครั้งหลัง)
   const roster = everyone.filter((s) => enrolledOn(s, pref.date));
 
@@ -42,13 +49,15 @@ export async function render(el, ctx) {
   el.innerHTML = `
     <div class="page-head">
       <div><h1>น้ำหนัก-ส่วนสูง</h1>
-        <p>บันทึกน้ำหนัก-ส่วนสูงปีละ 4 ครั้ง แปลผลตามเกณฑ์กรมอนามัย · ปีการศึกษา ${year} · ${canEdit ? '<span class="live">อัปเดตทันที</span>' : 'ดูอย่างเดียว'}</p></div>
+        <p>บันทึกน้ำหนัก-ส่วนสูงภาคเรียนละ 4 ครั้ง แปลผลตามเกณฑ์กรมอนามัย · ปีการศึกษา ${year} · ${canEdit ? '<span class="live">อัปเดตทันที</span>' : 'ดูอย่างเดียว'}</p></div>
       <div class="row">
         <label class="field">ห้อง<select id="room">${options(rooms, room.id, (r) => `ห้อง ${roomName(r)}`)}</select></label>
-        <label class="field">ครั้งที่<select id="round">${options([1, 2, 3, 4].map((n) => ({ id: n, label: `ครั้งที่ ${n}` })), pref.round)}</select></label>
+        <label class="field">ภาคเรียน<select id="term">${options([1, 2].map((n) => ({ id: n, label: `ภาคเรียนที่ ${n}` })), termNo)}</select></label>
+        <label class="field">ครั้งที่<select id="round">${options(roundsOfTerm(termNo).map((n) => ({ id: n, label: `ครั้งที่ ${roundInTerm(n)}` })), pref.round)}</select></label>
         <label class="field">วันที่ชั่ง/วัด<input type="date" id="date" value="${pref.date}" ${canEdit ? '' : 'disabled'}></label>
       </div>
     </div>
+    <p class="small" id="dwarn" style="color:var(--amber)"></p>
     ${!ref.size ? `<div class="card" style="border-color:var(--amber)"><b>ยังไม่มีตารางอ้างอิงการเจริญเติบโต</b>
       <p class="small">ระบบจึงยังแปลผลภาวะโภชนาการไม่ได้ ${ctx.isAdmin ? 'โหลดตารางได้ที่ ตั้งค่าระบบ → ตารางโภชนาการ' : 'กรุณาแจ้งผู้ดูแลระบบให้โหลดตารางที่หน้าตั้งค่าระบบ'}</p></div>` : ''}
     ${roster.some((s) => !births[s.id]) ? `<p class="small muted">นักเรียน ${roster.filter((s) => !births[s.id]).length} คนไม่มีวันเกิดในระบบ (หรือคุณไม่มีสิทธิ์ดู) จึงแปลผลน้ำหนัก/ส่วนสูงตามอายุไม่ได้ · แก้วันเกิดได้ที่หน้า "นักเรียน"</p>` : ''}
@@ -64,7 +73,7 @@ export async function render(el, ctx) {
               <td><input class="gc sc" data-r="${r}" data-c="0" data-f="weight_kg" data-sid="${s.id}" inputmode="decimal" value="${m?.weight_kg ?? ''}" ${canEdit ? '' : 'readonly'} aria-label="น้ำหนัก ${esc(s.first_name)}"></td>
               <td><input class="gc sc" data-r="${r}" data-c="1" data-f="height_cm" data-sid="${s.id}" inputmode="decimal" value="${m?.height_cm ?? ''}" ${canEdit ? '' : 'readonly'} aria-label="ส่วนสูง ${esc(s.first_name)}"></td>
               <td class="c-wa" style="padding:0 4px">${chip(x.wa)}</td><td class="c-ha" style="padding:0 4px">${chip(x.ha)}</td><td class="c-wh" style="padding:0 4px">${chip(x.wh)}</td>
-              <td class="small muted" style="padding:0 6px;white-space:nowrap">${p ? `${p.weight_kg ?? '-'} / ${p.height_cm ?? '-'} (ค.${p.round})` : ''}</td></tr>`; }).join('')}</tbody>
+              <td class="small muted" style="padding:0 6px;white-space:nowrap">${p ? `${p.weight_kg ?? '-'} / ${p.height_cm ?? '-'} (${termOfRound(p.round) === termNo ? '' : `ภ.${termOfRound(p.round)} `}ค.${roundInTerm(p.round)})` : ''}</td></tr>`; }).join('')}</tbody>
         </table></div>` : '<div class="empty">ห้องนี้ยังไม่มีนักเรียน</div>'}
       </div>
       <div class="card" id="summary"></div>
@@ -76,7 +85,7 @@ export async function render(el, ctx) {
     const cnt = (k, label) => xs.filter((o) => o.x[k] === label).length;
     const good = xs.filter((o) => o.x.goodShape).length;
     const judged = xs.filter((o) => o.x.goodShape !== null).length;
-    $('#summary', el).innerHTML = `<h3>สรุปครั้งที่ ${pref.round}</h3>
+    $('#summary', el).innerHTML = `<h3>สรุป${roundLabel(pref.round)}</h3>
       <div class="small">ชั่ง/วัดแล้ว ${xs.length}/${roster.length} คน · ${esc(thaiDate(pref.date))}</div>
       <div class="stat"><b>${judged ? Math.round(100 * good / judged) : '–'}${judged ? '%' : ''}</b><span>สูงดีสมส่วน (${good}/${judged} คน)</span></div>
       <div class="small"><b>น้ำหนักตามส่วนสูง</b>${[...WH, OUT_OF_TABLE].map((l) => cnt('wh', l) ? `<div>${chip(l)} ${cnt('wh', l)} คน</div>` : '').join('')}</div>
@@ -84,6 +93,9 @@ export async function render(el, ctx) {
       ${xs.some((o) => o.x.wh === OUT_OF_TABLE || o.x.ha === OUT_OF_TABLE || o.x.wa === OUT_OF_TABLE) ? `<p class="small muted">"${OUT_OF_TABLE}" = ส่วนสูงหรืออายุเกินช่วงของตารางอ้างอิงที่ใช้อยู่ (ตาราง Excel เดิมมีส่วนสูงชายถึง 180 ซม. หญิงถึง 170 ซม. และอายุถึง 18 ปี 11 เดือน)</p>` : ''}`;
   };
   if (roster.length) drawSummary();
+  const drawDateWarn = () => { const w = $('#dwarn', el); w.hidden = inTerm(pref.date);
+    w.textContent = w.hidden ? '' : `วันที่ชั่ง/วัด ${thaiDate(pref.date)} ไม่อยู่ในช่วงภาคเรียนที่ ${termNo} (${thaiDate(range.from)} – ${thaiDate(range.to)}) ตรวจสอบว่าเลือกภาคเรียน/ครั้งที่ถูกต้อง`; };
+  drawDateWarn();
 
   const refreshRow = (sid, flash) => {
     const tr = el.querySelector(`tr[data-sid="${sid}"]`); if (!tr) return;
@@ -121,6 +133,7 @@ export async function render(el, ctx) {
   if (grid) attachSheet(grid, { cell: 'input.gc', canEdit, get: (el) => el.value, set: (el, v) => commit(el, v) });
 
   $('#room', el).addEventListener('change', (e) => { pref.room = e.target.value; render(el, ctx); });
+  $('#term', el).addEventListener('change', (e) => { pref.round = roundsOfTerm(e.target.value)[0]; pref.date = null; render(el, ctx); });
   $('#round', el).addEventListener('change', (e) => { pref.round = Number(e.target.value); pref.date = null; render(el, ctx); });
   $('#date', el).addEventListener('change', async (e) => {
     if (!e.target.value) return;
@@ -128,9 +141,10 @@ export async function render(el, ctx) {
     const mine = roster.map((s) => cur(s.id)).filter((m) => m?.id && m.measured_on !== pref.date);
     try {
       for (const m of mine) { await ctx.db.update('health_measurements', { id: m.id }, { measured_on: pref.date }); m.measured_on = pref.date; }
-      if (mine.length) toast(`เปลี่ยนวันที่ชั่ง/วัดครั้งที่ ${pref.round} แล้ว ${mine.length} คน`);
+      if (mine.length) toast(`เปลี่ยนวันที่ชั่ง/วัด${roundLabel(pref.round)} แล้ว ${mine.length} คน`);
     } catch (err) { toast(err.message, 'err'); }
     roster.forEach((s) => refreshRow(s.id));
+    drawDateWarn();
   });
 
   return ctx.db.subscribe('health_measurements', null, (ev) => {

@@ -4,16 +4,16 @@
 //  - ดูตัวอย่างทุกหน้า เลือกพิมพ์รายหน้า → พิมพ์ / บันทึกเป็น PDF ได้ในแอป (ไม่ต้องมี Excel)
 //  - หรือสร้างไฟล์ Excel ที่หน้าตาเหมือนต้นฉบับ
 // =====================================================================
-import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-39';
-import { Template } from '../xlsx-template.js?v=2569.11.1-39';
-import { buildBookData, makeBook, prepareBook, defaultBook, bookChecks } from '../pp-book.js?v=2569.11.1-39';
-import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-39';
-import { Workbook } from '../xl-model.js?v=2569.11.1-39';
-import { Engine } from '../xl-formula.js?v=2569.11.1-39';
-import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-39';
-import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-39';
-import { adjOpt, adjText, adjustDialog, pickSheetsDialog, AUTO_ADJ } from '../page-adjust.js?v=2569.11.1-39';
-import { openPageEditor } from '../page-editor.js?v=2569.11.1-39';
+import { esc, $, $$, toast, roomName, confirmBox, modal } from '../util.js?v=2569.11.1-42';
+import { Template } from '../xlsx-template.js?v=2569.11.1-42';
+import { buildBookData, makeBook, prepareBook, defaultBook, bookChecks } from '../pp-book.js?v=2569.11.1-42';
+import { downloadBytes } from '../xlsx-write.js?v=2569.11.1-42';
+import { Workbook } from '../xl-model.js?v=2569.11.1-42';
+import { Engine } from '../xl-formula.js?v=2569.11.1-42';
+import { Renderer, XL_CSS, legacyThaiAvailable, hasLocalFont } from '../xl-render.js?v=2569.11.1-42';
+import { useThaiFont, getThaiFont, setThaiFont, fontFaceCss, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-42';
+import { adjOpt, adjText, adjustDialog, pickSheetsDialog, AUTO_ADJ } from '../page-adjust.js?v=2569.11.1-42';
+import { openPageEditor } from '../page-editor.js?v=2569.11.1-42';
 
 const PATH = 'pp/template';
 let cache = { at: null, bytes: null, t: null };          // ไฟล์ต้นฉบับที่โหลดแล้ว (อยู่ในหน่วยความจำ)

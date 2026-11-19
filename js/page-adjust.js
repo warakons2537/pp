@@ -2,7 +2,7 @@
 //  ปรับหน้ากระดาษรายแผ่น (แบบ Word): ขอบ · ขนาดตัวอักษร · ระยะบรรทัด · ความกว้างคอลัมน์ · ย่อ/ขยาย · จัดกึ่งกลาง
 //  ใช้ร่วมกันในแท็บ "เล่ม ปพ." และ "ปพ.5 ครบชุด" · ตัวแสดงผล (xl-render.js) รับค่าผ่าน adj
 // =====================================================================
-import { esc, modal } from './util.js?v=2569.11.1-39';
+import { esc, modal } from './util.js?v=2569.11.1-42';
 
 // จัดหน้าอัตโนมัติทั้งชุด: ทุกหน้าของแต่ละแผ่นขนาดเท่ากัน จัดกึ่งกลาง ขอบ 10 มม. เท่ากัน (หน่วยนิ้ว ใช้กับตัวแสดงผลโดยตรง)
 export const AUTO_ADJ = { autoFit: true, mt: 10 / 25.4, mb: 10 / 25.4, ml: 10 / 25.4, mr: 10 / 25.4 };
@@ -14,6 +14,47 @@ export function adjOpt(a) {
   for (const k of ['mt', 'mb', 'ml', 'mr']) if (Number.isFinite(o[k])) o[k] = o[k] / 25.4; else delete o[k];
   for (const k of ['ox', 'oy']) if (Number.isFinite(o[k])) o[k] = o[k] * 72 / 25.4; else delete o[k];       // ตำแหน่งที่ลากย้าย: มม. → pt
   return o;
+}
+
+// ---------------------------------------------------------------------
+//  ค่าพิมพ์ทั้งชุด (แผงขวาของหน้า ปพ.5): ขอบ (ซม.) · ตัวอักษร (pt) · ขนาดทั้งหน้า (%) หรือพอดีหน้า · ระยะบรรทัด/คอลัมน์ (%)
+//  ใช้เป็นฐานของทุกแผ่น — ค่าที่ปรับรายแผ่น ("ปรับหน้า…"/"ลากปรับ…") ทับค่านี้เสมอ
+// ---------------------------------------------------------------------
+export const MARGIN_PRESETS = { gov: ['ตามราชการ', { mt: 2.5, mb: 2, ml: 3, mr: 2 }], pp5: ['ปพ.5', { mt: 2.54, mb: 2.54, ml: 2.54, mr: 2.54 }] };
+export const BASE_PT = 16;                     // ขนาดตัวอักษร 16 pt = 100% ของแบบพิมพ์
+export const SET_LIMITS = { m: [0, 10], pt: [12, 20], scale: [50, 150], zoom: [70, 140], pct: [50, 200] };
+
+// ค่าทั้งชุด → ค่าปรับหน้า หน่วยเดียวกับ "ปรับหน้า…" (ขอบ มม. · ขนาด %)
+export function globalAdj(s) {
+  const a = {}; if (!s) return a;
+  for (const k of ['mt', 'mb', 'ml', 'mr']) if (Number.isFinite(s[k])) a[k] = Math.round(s[k] * 100) / 10;
+  if (Number.isFinite(s.pt)) a.font = s.pt / BASE_PT * 100;
+  if (s.fit) a.autoFit = true; else if (Number.isFinite(s.scale)) a.scale = s.scale;
+  if (Number.isFinite(s.row)) a.row = s.row;
+  if (Number.isFinite(s.col)) a.col = s.col;
+  return a;
+}
+
+/**
+ * รวมค่าปรับหน้าของแผ่นหนึ่ง (หน่วยของตัวแสดงผล: ขอบเป็นนิ้ว)
+ * @param base  ค่าตั้งต้นของแผ่น (pp5Layout / จัดหน้าอัตโนมัติ) — หน่วยนิ้วแล้ว
+ * @param set   ค่าทั้งชุด (globalAdj)
+ * @param own   ค่าที่ปรับรายแผ่น (มม.) — ชนะค่าทั้งชุด
+ */
+export function mergeAdj(base, set, own) {
+  const b = { ...(base || {}) }; const g = adjOpt(globalAdj(set)) || {}; const o = adjOpt(own) || {};
+  if (o.autoFit === false && o.scale === undefined) { delete g.scale; delete g.autoFit; delete o.autoFit; }   // แผ่นนี้ใช้ขนาดตามแบบพิมพ์ ไม่ตามค่าทั้งชุด
+  else if (g.scale !== undefined || g.autoFit) delete b.scale;                // ขนาดทั้งหน้า/พอดีหน้า แทนค่าย่อตั้งต้นของแผ่น
+  if (o.autoFit && o.scale === undefined) delete g.scale;                     // แผ่นนี้ตั้งจัดหน้าอัตโนมัติเอง → ไม่ใช้ % ทั้งชุด
+  const out = { ...b, ...g, ...o };
+  return Object.keys(out).length ? out : undefined;
+}
+
+// ใส่เลขหน้าที่กึ่งกลางขอบล่างของหน้าที่วาดแล้ว (html ของ xl-render ปิดท้ายด้วย </div> ของ .xl-page)
+export function withPageNo(html, k, bottomPt = 36) {
+  const at = html.lastIndexOf('</div>'); if (at < 0) return html;
+  const y = Math.max(4, bottomPt / 2 - 7).toFixed(1);
+  return `${html.slice(0, at)}<div class="pp-pgno" style="position:absolute;left:0;right:0;bottom:${y}pt;text-align:center;font:14pt/1 'TH SarabunPSK','Sarabun',sans-serif;color:#000">${k}</div>${html.slice(at)}`;
 }
 
 // สรุปค่าที่ปรับไว้เป็นข้อความสั้น ๆ (ว่าง = ตามต้นฉบับ)
