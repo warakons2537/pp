@@ -1,10 +1,10 @@
-import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.11.1-39';
-import { getRoster, termRange, enrolledDuring, inTermList, joinedDuringTerm, leftDuringTerm } from '../data.js?v=2569.11.1-39';
-import { readDmcFile } from '../dmc.js?v=2569.11.1-39';
-import { icon } from '../icons.js?v=2569.11.1-39';
-import { sortableRows } from '../reorder.js?v=2569.11.1-39';
-import { reorderPlan } from '../reorder-core.js?v=2569.11.1-39';
-import { familyHtml, familyPatch } from '../student-family.js?v=2569.11.1-39';
+import { esc, $, modal, toast, options, roomName, fullName, thaiDate, todayIso, LEVELS } from '../util.js?v=2569.11.1-42';
+import { getRoster, termRange, enrolledDuring, inTermList, joinedDuringTerm, leftDuringTerm } from '../data.js?v=2569.11.1-42';
+import { readDmcFile } from '../dmc.js?v=2569.11.1-42';
+import { icon } from '../icons.js?v=2569.11.1-42';
+import { sortableRows } from '../reorder.js?v=2569.11.1-42';
+import { reorderPlan } from '../reorder-core.js?v=2569.11.1-42';
+import { familyHtml, familyPatch } from '../student-family.js?v=2569.11.1-42';
 
 let selected = null;   // ห้องที่เลือกค้างไว้ระหว่างเปลี่ยนหน้า
 let chipFilter = 'all';   // ตัวกรองสถานะ: all | active | left

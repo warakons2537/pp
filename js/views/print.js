@@ -1,14 +1,15 @@
 // พิมพ์เอกสาร ปพ.: ปพ.6 รายบุคคล · ปก ปพ.5 รายชั้น · ปก ปพ.5 รายวิชา · ใบรับรองผลการศึกษา
-import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js?v=2569.11.1-39';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-39';
-import { loadRoomYear, personName } from '../yeardata.js?v=2569.11.1-39';
-import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.11.1-39';
-import { icon } from '../icons.js?v=2569.11.1-39';
-import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js?v=2569.11.1-39';
-import { bookView } from './pp-book-view.js?v=2569.11.1-39';
-import { listView, studentView, missingOf, termsOf } from './pp6-hub.js?v=2569.11.1-39';
-import { pp6FormsView } from './pp6-forms-view.js?v=2569.11.1-39';
-import { pp5FormsView } from './pp5-forms-view.js?v=2569.11.1-39';
+import { esc, $, options, roomName, fullName, levelName, thaiDate, todayIso, toast } from '../util.js?v=2569.11.1-42';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-42';
+import { loadRoomYear, personName } from '../yeardata.js?v=2569.11.1-42';
+import { roundsOfTerm, roundLabel } from '../data.js?v=2569.11.1-42';
+import { fmtGrade, distribution, GRADE_LABELS, weightOf } from '../grading.js?v=2569.11.1-42';
+import { icon } from '../icons.js?v=2569.11.1-42';
+import { TRAIT_KINDS, ACTIVITIES, ageText } from '../assess.js?v=2569.11.1-42';
+import { bookView } from './pp-book-view.js?v=2569.11.1-42';
+import { listView, studentView, missingOf, termsOf } from './pp6-hub.js?v=2569.11.1-42';
+import { pp6FormsView } from './pp6-forms-view.js?v=2569.11.1-42';
+import { pp5FormsView } from './pp5-forms-view.js?v=2569.11.1-42';
 
 const DOCS = { pp5: 'ปพ.5 ครบชุด (แบบพิมพ์ในระบบ)', book: 'เล่ม ปพ. (เหมือนไฟล์ต้นฉบับ)', pp6: 'ปพ.6 รายบุคคล', coverClass: 'ปก ปพ.5 รายชั้น', coverCourse: 'ปก ปพ.5 รายวิชา', cert: 'ใบรับรองผลการศึกษา' };
 const pref = { doc: 'book', room: null, only: null, from: 1, to: 99, scope: 'term', page2: true, course: null, pp6View: 'list', stu: null,
@@ -32,6 +33,14 @@ export async function render(el, ctx) {
   // ปพ.6 รายภาคเรียน: ใช้แบบพิมพ์ในตัว (เหมือนไฟล์ ปพ.5-6 เดิม) · ทั้งปีการศึกษา: แบบที่แอปจัดเอง (ไฟล์เดิมไม่มีแบบรายปี)
   const nativePp6 = pref.doc === 'pp6' && pref.scope === 'term';
   if (pref.doc === 'pp6' && pref.pp6View !== 'paper') return hub(el, ctx, rooms, room);
+  // ปพ.5 ครบชุด: หน้าจอ 3 คอลัมน์ (เลือกเอกสาร/ห้อง · ตัวอย่าง · ตั้งค่า/พิมพ์) — รายการชุดเอกสารอยู่ในแผงซ้ายแทนแถบแท็บ
+  if (pref.doc === 'pp5') {
+    // หัวข้อหน้าอ่านได้ด้วยโปรแกรมอ่านหน้าจอ แต่ไม่กินที่ (ชื่อหน้าแสดงอยู่ที่แถบบนแล้ว) → ปุ่มพิมพ์อยู่ในจอเสมอ
+    el.innerHTML = '<h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap">พิมพ์เอกสาร ปพ. — ปพ.5 ครบชุด</h1><div id="paper"></div>';
+    const keys = ['pp5', 'book', 'pp6', ...(ctx.isAdmin ? ['cert'] : []), 'coverClass', 'coverCourse'];
+    return pp5FormsView($('#paper', el), ctx, room, { docs: keys.map((k) => [k, DOCS[k]]), cur: 'pp5',
+      onDoc: (k) => { if (k === 'pp5') return; if (k === 'pp6') pref.pp6View = 'list'; pref.only = null; pref.doc = k; render(el, ctx); } });
+  }
 
   el.innerHTML = `
     <div class="page-head"><div><h1>พิมพ์เอกสาร ปพ.</h1><p>ดูตัวอย่างทุกหน้าก่อนพิมพ์ แต่ละคนขึ้นหน้าใหม่ให้อัตโนมัติ</p></div>
@@ -71,7 +80,6 @@ export async function render(el, ctx) {
   $('#print', el)?.addEventListener('click', () => window.print());
 
   const paper = $('#paper', el);
-  if (pref.doc === 'pp5') { paper.closest('.card').classList.remove('print-area'); paper.classList.remove('a4-scroll'); paper.closest('.card').style.background = ''; return pp5FormsView(paper, ctx, room); }
   if (pref.doc === 'book') { paper.closest('.card').classList.remove('print-area'); paper.classList.remove('a4-scroll'); paper.closest('.card').style.background = ''; return bookView(paper, ctx, room); }
   try {
     const d = await getData(ctx, room);
@@ -205,7 +213,7 @@ function pp6(ctx, d, s) {
     <h2 style="font-size:17px">${esc(fullName(s))} · ชั้น${room.level}/${room.room} เลขที่ ${s.number ?? ''}</h2>
     <div class="pp6-sec"><b>ภาวะการเจริญเติบโต (เกณฑ์อ้างอิงกรมอนามัย)</b>
       <table style="font-size:12px"><thead><tr><th>ครั้งที่</th><th>วันที่</th><th>อายุ</th><th>น้ำหนัก (กก.)</th><th>ส่วนสูง (ซม.)</th><th>น้ำหนักตามอายุ</th><th>ส่วนสูงตามอายุ</th><th>น้ำหนักตามส่วนสูง</th></tr></thead>
-        <tbody>${[1, 2, 3, 4].map((n) => { const m = h[n]; return `<tr><td>${n}</td><td>${m ? esc(thaiDate(m.measured_on, true)) : ''}</td><td>${m ? esc(ageText(m.months)) : ''}</td>
+        <tbody>${terms.flatMap((t) => roundsOfTerm(t.term)).map((n) => { const m = h[n]; return `<tr><td class="l">${roundLabel(n)}</td><td>${m ? esc(thaiDate(m.measured_on, true)) : ''}</td><td>${m ? esc(ageText(m.months)) : ''}</td>
           <td>${m?.weight_kg ?? ''}</td><td>${m?.height_cm ?? ''}</td><td>${esc(m?.wa ?? '')}</td><td>${esc(m?.ha ?? '')}</td><td>${esc(m?.wh ?? '')}</td></tr>`; }).join('')}</tbody></table></div>
     <div class="pp6-sec"><b>ความคิดเห็นของครูประจำชั้น</b><div class="lines">${comment.length ? esc(comment.join(' ')) : ''}</div></div>
     <div class="pp6-sec"><b>ความคิดเห็นของผู้ปกครอง</b><div class="lines"></div>

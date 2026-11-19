@@ -1,4 +1,4 @@
-import { sortByNumber, iso, fromIso } from './util.js?v=2569.11.1-39';
+import { sortByNumber, iso, fromIso } from './util.js?v=2569.11.1-42';
 
 // ---------------------------------------------------------------------
 //  นักเรียนอยู่ในห้องตามวันที่/ภาคเรียน — รองรับนักเรียนย้ายเข้า/ออกกลางปี
@@ -44,6 +44,14 @@ export const termOfCourse = (ctx, course) => ctx.terms?.find((t) => t.id === cou
 export const courseRoster = (ctx, course) => getRoster(ctx.db, course.classroom_id, { term: termOfCourse(ctx, course) });
 export const termRoster = (ctx, room, term = ctx.term) => getRoster(ctx.db, room.id, { term: term || null });
 
+// น้ำหนัก-ส่วนสูง: ชั่ง/วัดภาคเรียนละ 4 ครั้ง · health_measurements.round เป็นลำดับในปีการศึกษา 1–8
+//   ภาคเรียนที่ 1 = round 1–4 · ภาคเรียนที่ 2 = round 5–8
+export const ROUNDS_PER_TERM = 4;
+export const roundsOfTerm = (term) => Array.from({ length: ROUNDS_PER_TERM }, (_, i) => (Number(term) - 1) * ROUNDS_PER_TERM + i + 1);
+export const termOfRound = (round) => Math.ceil(Number(round) / ROUNDS_PER_TERM);
+export const roundInTerm = (round) => ((Number(round) - 1) % ROUNDS_PER_TERM) + 1;
+export const roundLabel = (round) => `ภาคเรียนที่ ${termOfRound(round)} ครั้งที่ ${roundInTerm(round)}`;
+
 // ช่วงวันที่ของภาคเรียน (ถ้าไม่ได้ตั้งไว้ ใช้ทั้งปีการศึกษาโดยประมาณ)
 export function termRange(term) {
   if (!term) return { from: iso(new Date(new Date().getFullYear(), 0, 1)), to: iso(new Date()) };
@@ -74,7 +82,7 @@ export function termMonths(term) {
 const refCache = {};
 export async function loadGrowthRef(db, set) {
   if (refCache[set]) return refCache[set];
-  const { makeRef } = await import('./assess.js?v=2569.11.1-39');
+  const { makeRef } = await import('./assess.js?v=2569.11.1-42');
   const ref = makeRef(await db.select('growth_reference', { eq: { ref_set: set } }));
   if (ref.size) refCache[set] = ref;            // ตารางว่างไม่เก็บ เผื่อผู้ดูแลระบบเพิ่งโหลดตาราง
   return ref;

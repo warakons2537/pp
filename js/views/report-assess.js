@@ -1,8 +1,8 @@
 // รายงานระยะที่ 3: ภาวะโภชนาการ (รายชื่อ + ความชุก + รายชื่อที่ต้องดูแล) และสรุปคุณลักษณะ/กิจกรรม
-import { esc, fullName, levelName, thaiDate } from '../util.js?v=2569.11.1-39';
-import { getRoster, termRoster, enrolledOn, inTermList, loadGrowthRef, getBirthDates } from '../data.js?v=2569.11.1-39';
-import { classify, ageMonths, WA, HA, WH, OUT_OF_TABLE, TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.11.1-39';
-import { head, signs, termText } from './report-common.js?v=2569.11.1-39';
+import { esc, fullName, levelName, thaiDate } from '../util.js?v=2569.11.1-42';
+import { getRoster, termRoster, enrolledOn, inTermList, loadGrowthRef, getBirthDates, termOfRound, roundLabel } from '../data.js?v=2569.11.1-42';
+import { classify, ageMonths, WA, HA, WH, OUT_OF_TABLE, TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.11.1-42';
+import { head, signs, termText } from './report-common.js?v=2569.11.1-42';
 
 const academic = (ctx) => ({ name: ctx.settings.academic_head_name, role: 'หัวหน้างานวิชาการ' });
 const director = (ctx) => ({ name: ctx.settings.director_name, role: ctx.settings.director_title || 'ผู้อำนวยการโรงเรียน' });
@@ -18,15 +18,16 @@ export async function nutritionReport(ctx, room, round) {
   if (!ref.size) return '<div class="empty">ยังไม่มีตารางอ้างอิงการเจริญเติบโต (ตั้งค่าระบบ → ตารางโภชนาการ)</div>';
   const by = Object.fromEntries(rows.map((r) => [r.student_id, r]));
   const date = rows.map((r) => r.measured_on).sort().at(-1);
-  // รายชื่อ = นักเรียนที่อยู่ในห้องวันที่ชั่ง/วัดครั้งนี้ (ถ้ายังไม่ได้ชั่ง ใช้รายชื่อสิ้นภาคเรียนปัจจุบัน)
-  const roster = date ? everyone.filter((s) => enrolledOn(s, date)) : everyone.filter((s) => inTermList(s, ctx.term));
+  // รายชื่อ = นักเรียนที่อยู่ในห้องวันที่ชั่ง/วัดครั้งนี้ (ถ้ายังไม่ได้ชั่ง ใช้รายชื่อสิ้นภาคเรียนของครั้งนี้)
+  const term = ctx.terms?.find((t) => t.academic_year === room.academic_year && t.term === termOfRound(round)) || ctx.term;
+  const roster = date ? everyone.filter((s) => enrolledOn(s, date)) : everyone.filter((s) => inTermList(s, term));
   const list = roster.map((s) => { const m = by[s.id]; const months = m ? ageMonths(births[s.id], m.measured_on) : null;
     return { s, m, months, ...(m ? classify(ref, { sex: s.gender, months, weight: m.weight_kg, height: m.height_cm }) : {}) }; });
   const measured = list.filter((x) => x.m);
   const age = (mo) => (mo === null || mo === undefined ? '' : `${Math.floor(mo / 12)}`);
   const ageM = (mo) => (mo === null || mo === undefined ? '' : `${mo % 12}`);
   const page1 = `<div class="a4 land" style="font-size:13px">
-    ${head(ctx, `ผลการประเมินภาวะโภชนาการ ชั้น${levelName(room.level)}/${room.room}`, `ครั้งที่ ${round} · วันที่ชั่งน้ำหนัก/วัดส่วนสูง ${date ? thaiDate(date) : '-'} · ปีการศึกษา ${room.academic_year}`)}
+    ${head(ctx, `ผลการประเมินภาวะโภชนาการ ชั้น${levelName(room.level)}/${room.room}`, `${roundLabel(round)} · วันที่ชั่งน้ำหนัก/วัดส่วนสูง ${date ? thaiDate(date) : '-'} · ปีการศึกษา ${room.academic_year}`)}
     <table style="font-size:12.5px"><thead><tr><th rowspan="2">ที่</th><th rowspan="2" class="l">ชื่อ-สกุล</th><th rowspan="2">เพศ</th><th colspan="2">อายุ</th>
       <th rowspan="2">น้ำหนัก<br>(กก.)</th><th rowspan="2">ส่วนสูง<br>(ซม.)</th><th colspan="3">ผลการประเมินตามเกณฑ์อ้างอิงของกรมอนามัย</th></tr>
       <tr><th>ปี</th><th>เดือน</th><th>น้ำหนักตามเกณฑ์อายุ</th><th>ส่วนสูงตามเกณฑ์อายุ</th><th>น้ำหนักตามเกณฑ์ส่วนสูง</th></tr></thead>
@@ -45,7 +46,7 @@ export async function nutritionReport(ctx, room, round) {
   const good = measured.filter((x) => x.goodShape).length; const judged = measured.filter((x) => x.goodShape !== null).length;
   const names = (pred) => list.filter(pred).map((x) => `${x.s.number ?? ''}. ${esc(fullName(x.s))}`).join('<br>') || '-';
   const page2 = `<div class="a4">
-    ${head(ctx, `สรุปภาวะโภชนาการ ชั้น${levelName(room.level)}/${room.room}`, `ครั้งที่ ${round} · ปีการศึกษา ${room.academic_year}`)}
+    ${head(ctx, `สรุปภาวะโภชนาการ ชั้น${levelName(room.level)}/${room.room}`, `${roundLabel(round)} · ปีการศึกษา ${room.academic_year}`)}
     <table><thead><tr><th class="l">ภาวะโภชนาการ</th><th>ชาย</th><th>หญิง</th><th>รวม</th><th>ร้อยละ</th></tr></thead>
       <tbody>${block('น้ำหนักตามเกณฑ์ส่วนสูง', 'wh', [...WH, OUT_OF_TABLE])}${block('ส่วนสูงตามเกณฑ์อายุ', 'ha', [...HA, OUT_OF_TABLE])}${block('น้ำหนักตามเกณฑ์อายุ', 'wa', [...WA, OUT_OF_TABLE])}
       <tr><th class="l">สูงดีสมส่วน</th><td>${measured.filter((x) => x.goodShape && x.s.gender === 'ช').length}</td><td>${measured.filter((x) => x.goodShape && x.s.gender === 'ญ').length}</td>
