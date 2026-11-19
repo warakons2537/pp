@@ -1,16 +1,16 @@
 import { esc, $, options, roomName, fullName, levelName, iso, fromIso, daysInMonth, thaiDate, todayIso,
-  THAI_MONTHS, THAI_MONTHS_SHORT, STATUS } from '../util.js?v=2569.11.1-42';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-42';
-import { getRoster, courseRoster, termRoster, termMonths, termRange, roundsOfTerm, termOfRound, roundInTerm } from '../data.js?v=2569.11.1-42';
-import { head, signs, termText } from './report-common.js?v=2569.11.1-42';
-import { p5Report, gradesReport, achieveReport } from './report-grades.js?v=2569.11.1-42';
-import { mealsReport } from './report-meals.js?v=2569.11.1-42';
-import { remedialReport } from './report-remedial.js?v=2569.11.1-42';
-import { nutritionReport, traitReport } from './report-assess.js?v=2569.11.1-42';
+  THAI_MONTHS, THAI_MONTHS_SHORT, STATUS } from '../util.js?v=2569.11.1-43';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-43';
+import { getRoster, courseRoster, termRoster, termMonths, termRange, roundsOfTerm, termOfRound, roundInTerm } from '../data.js?v=2569.11.1-43';
+import { head, signs, termText } from './report-common.js?v=2569.11.1-43';
+import { p5Report, gradesReport, achieveReport } from './report-grades.js?v=2569.11.1-43';
+import { mealsReport } from './report-meals.js?v=2569.11.1-43';
+import { remedialReport } from './report-remedial.js?v=2569.11.1-43';
+import { nutritionReport, growthReport, traitReport } from './report-assess.js?v=2569.11.1-43';
 
 const pref = { tab: 'month', room: null, ym: null, course: null, round: null };   // round = ลำดับในปีการศึกษา 1–8 (ภาค 1 = 1–4 · ภาค 2 = 5–8)
 const TABS = { month: 'เวลาเรียนประจำเดือน', term: 'สรุปเวลาเรียนภาคเรียน', course: 'เวลาเรียนรายวิชา (มส)', list: 'รายชื่อนักเรียน', meals: 'อาหารกลางวันประจำเดือน',
-  p5: 'ปพ.5 รายวิชา', grades: 'ผลการเรียนรายชั้น', remedial: 'ติดตามแก้ 0 ร มส (ม.)', achieve: 'สรุปผลสัมฤทธิ์', nutrition: 'ภาวะโภชนาการ', traitsum: 'คุณลักษณะ/กิจกรรม' };
+  p5: 'ปพ.5 รายวิชา', grades: 'ผลการเรียนรายชั้น', remedial: 'ติดตามแก้ 0 ร มส (ม.)', achieve: 'สรุปผลสัมฤทธิ์', growth: 'น้ำหนัก-ส่วนสูงรายภาค', nutrition: 'ภาวะโภชนาการ', traitsum: 'คุณลักษณะ/กิจกรรม' };
 const COURSE_TABS = ['course', 'p5'];
 
 export async function render(el, ctx) {
@@ -36,12 +36,12 @@ export async function render(el, ctx) {
         ? `<label class="field">วิชา<select id="course">${options(courses, pref.course, ctx.courseLabel)}</select></label>`
         : `<label class="field">ห้อง<select id="room">${options(rooms, pref.room, (r) => `ห้อง ${roomName(r)}`)}</select></label>`}
       ${['month', 'meals'].includes(pref.tab) ? `<label class="field">เดือน<select id="ym">${months.map((m) => `<option value="${m.y}-${m.m0}" ${pref.ym === `${m.y}-${m.m0}` ? 'selected' : ''}>${THAI_MONTHS[m.m0]} ${m.y + 543}</option>`).join('')}</select></label>` : ''}
-      ${pref.tab === 'nutrition' ? `<label class="field">ภาคเรียน<select id="hterm">${[1, 2].map((n) => `<option value="${n}" ${termOfRound(pref.round) === n ? 'selected' : ''}>ภาคเรียนที่ ${n}</option>`).join('')}</select></label>
-        <label class="field">ครั้งที่<select id="round">${roundsOfTerm(termOfRound(pref.round)).map((n) => `<option value="${n}" ${pref.round === n ? 'selected' : ''}>ครั้งที่ ${roundInTerm(n)}</option>`).join('')}</select></label>` : ''}
+      ${['nutrition', 'growth'].includes(pref.tab) ? `<label class="field">ภาคเรียน<select id="hterm">${[1, 2].map((n) => `<option value="${n}" ${termOfRound(pref.round) === n ? 'selected' : ''}>ภาคเรียนที่ ${n}</option>`).join('')}</select></label>
+        ${pref.tab === 'nutrition' ? `<label class="field">ครั้งที่<select id="round">${roundsOfTerm(termOfRound(pref.round)).map((n) => `<option value="${n}" ${pref.round === n ? 'selected' : ''}>ครั้งที่ ${roundInTerm(n)}</option>`).join('')}</select></label>` : ''}` : ''}
       <button class="btn btn-primary" id="print">พิมพ์ / บันทึก PDF</button>
       ${inFrame ? '<span class="print-note muted">หน้าทดลองนี้เปิดหน้าต่างพิมพ์ไม่ได้ เมื่อติดตั้งแอปจริงจะพิมพ์ได้ทันที</span>' : ''}
     </div></div>
-    ${tabGroups([['ธุรการ', 'daily', ['month', 'term', 'course', 'list', 'meals']], ['ปพ.5', 'scores', ['p5', 'grades', 'achieve', 'remedial']], ['สุขภาพ / คุณลักษณะ', 'health', ['nutrition', 'traitsum']]]
+    ${tabGroups([['ธุรการ', 'daily', ['month', 'term', 'course', 'list', 'meals']], ['ปพ.5', 'scores', ['p5', 'grades', 'achieve', 'remedial']], ['สุขภาพ / คุณลักษณะ', 'health', ['growth', 'nutrition', 'traitsum']]]
     .map(([label, ic, keys]) => ({ label, icon: ic, tabs: keys.map((k) => ({ key: k, label: esc(TABS[k]) })) })), pref.tab, 'tab', 'no-print')}
     <div class="card print-area" style="background:var(--paper)"><div class="a4-scroll" id="paper"><p class="muted">กำลังจัดหน้า…</p></div></div>`;
 
@@ -64,6 +64,7 @@ export async function render(el, ctx) {
   else if (pref.tab === 'grades') paper.innerHTML = await gradesReport(ctx, room);
   else if (pref.tab === 'remedial') paper.innerHTML = await remedialReport(ctx, room);
   else if (pref.tab === 'achieve') paper.innerHTML = await achieveReport(ctx, room);
+  else if (pref.tab === 'growth') paper.innerHTML = await growthReport(ctx, room, termOfRound(pref.round));
   else if (pref.tab === 'nutrition') paper.innerHTML = await nutritionReport(ctx, room, pref.round);
   else if (pref.tab === 'traitsum') paper.innerHTML = await traitReport(ctx, room);
   else paper.innerHTML = await listReport(ctx, room);

@@ -1,8 +1,8 @@
 // รายงานระยะที่ 3: ภาวะโภชนาการ (รายชื่อ + ความชุก + รายชื่อที่ต้องดูแล) และสรุปคุณลักษณะ/กิจกรรม
-import { esc, fullName, levelName, thaiDate } from '../util.js?v=2569.11.1-42';
-import { getRoster, termRoster, enrolledOn, inTermList, loadGrowthRef, getBirthDates, termOfRound, roundLabel } from '../data.js?v=2569.11.1-42';
-import { classify, ageMonths, WA, HA, WH, OUT_OF_TABLE, TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.11.1-42';
-import { head, signs, termText } from './report-common.js?v=2569.11.1-42';
+import { esc, fullName, levelName, thaiDate } from '../util.js?v=2569.11.1-43';
+import { getRoster, termRoster, enrolledOn, inTermList, loadGrowthRef, getBirthDates, termOfRound, roundLabel, roundsOfTerm, roundInTerm } from '../data.js?v=2569.11.1-43';
+import { classify, ageMonths, WA, HA, WH, OUT_OF_TABLE, TRAIT_KINDS, ACTIVITIES, modeSummary } from '../assess.js?v=2569.11.1-43';
+import { head, signs, termText } from './report-common.js?v=2569.11.1-43';
 
 const academic = (ctx) => ({ name: ctx.settings.academic_head_name, role: 'หัวหน้างานวิชาการ' });
 const director = (ctx) => ({ name: ctx.settings.director_name, role: ctx.settings.director_title || 'ผู้อำนวยการโรงเรียน' });
@@ -60,6 +60,63 @@ export async function nutritionReport(ctx, room, round) {
     ${signs(ctx, room, [academic(ctx), director(ctx)])}
   </div>`;
   return page1 + page2;
+}
+
+// ---------- น้ำหนัก-ส่วนสูงรายภาคเรียน: 4 ครั้งของภาค + การเปลี่ยนแปลง + ภาวะโภชนาการครั้งล่าสุด ----------
+export async function growthReport(ctx, room, termNo) {
+  const rounds = roundsOfTerm(termNo);
+  const term = ctx.terms?.find((t) => t.academic_year === room.academic_year && t.term === Number(termNo)) || { ...ctx.term, term: Number(termNo) };
+  const everyone = await getRoster(ctx.db, room.id, { includeLeft: true });
+  const ids = everyone.map((s) => s.id);
+  const [ref, births, rows] = await Promise.all([
+    loadGrowthRef(ctx.db, ctx.settings.growth_ref_set || 'excel'),
+    getBirthDates(ctx.db, ids),
+    ids.length ? ctx.db.select('health_measurements', { in: { student_id: ids }, eq: { academic_year: room.academic_year } }) : [],
+  ]);
+  const mine = rows.filter((r) => rounds.includes(Number(r.round)));
+  const by = new Map(mine.map((r) => [`${r.student_id}|${r.round}`, r]));
+  // วันที่ของแต่ละครั้ง = วันที่ที่ชั่งมากที่สุดในครั้งนั้น
+  const dates = rounds.map((n) => { const cnt = {}; mine.filter((r) => Number(r.round) === n).forEach((r) => { cnt[r.measured_on] = (cnt[r.measured_on] || 0) + 1; });
+    return Object.entries(cnt).sort((a, b) => b[1] - a[1])[0]?.[0] || null; });
+  const roster = everyone.filter((s) => inTermList(s, term) || rounds.some((n) => by.has(`${s.id}|${n}`)));
+  const num = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
+  const f1 = (v) => (v === null ? '' : String(Math.round(v * 10) / 10));
+  const sign = (v) => (v === null ? '' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${f1(Math.abs(v))}`);
+  const list = roster.map((s) => {
+    const ms = rounds.map((n) => by.get(`${s.id}|${n}`) || null);
+    const w = ms.map((m) => num(m?.weight_kg)); const h = ms.map((m) => num(m?.height_cm));
+    const diff = (xs) => { const v = xs.filter((x) => x !== null); return v.length >= 2 ? v.at(-1) - v[0] : null; };
+    const k = ms.map((m, i) => (w[i] !== null && h[i] !== null ? i : -1)).filter((i) => i >= 0).at(-1);
+    const last = k === undefined ? null : classify(ref, { sex: s.gender, months: ageMonths(births[s.id], ms[k].measured_on), weight: w[k], height: h[k] });
+    return { s, w, h, dw: diff(w), dh: diff(h), last };
+  });
+  const mean = (xs) => { const v = xs.filter((x) => x !== null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  const cnt = (i) => list.filter((x) => x.w[i] !== null || x.h[i] !== null).length;
+  const lost = list.filter((x) => x.dw !== null && x.dw < 0);
+  const care = list.filter((x) => x.last && (['ผอม', 'ค่อนข้างผอม', 'อ้วน', 'เริ่มอ้วน'].includes(x.last.wh) || ['เตี้ย', 'ค่อนข้างเตี้ย'].includes(x.last.ha)));
+  const who = (xs) => xs.map((x) => `${x.s.number ?? ''}. ${esc(fullName(x.s))}`).join(' · ') || '-';
+  return `<div class="a4 land" style="font-size:13px">
+    ${head(ctx, `บันทึกน้ำหนัก-ส่วนสูง ชั้น${levelName(room.level)}/${room.room}`, `ภาคเรียนที่ ${termNo} ปีการศึกษา ${room.academic_year} · ชั่งน้ำหนัก/วัดส่วนสูงภาคเรียนละ 4 ครั้ง`)}
+    <table style="font-size:12px"><thead>
+      <tr><th rowspan="3">ที่</th><th rowspan="3" class="l">ชื่อ-สกุล</th><th rowspan="3">เพศ</th>
+        ${rounds.map((n) => `<th colspan="2">ครั้งที่ ${roundInTerm(n)}</th>`).join('')}
+        <th colspan="2">เปลี่ยนแปลงในภาค</th><th colspan="2">ภาวะโภชนาการ (ครั้งล่าสุด)</th></tr>
+      <tr>${dates.map((d) => `<th colspan="2" style="font-weight:400">${d ? esc(thaiDate(d, true)) : '-'}</th>`).join('')}<th rowspan="2">น้ำหนัก<br>(กก.)</th><th rowspan="2">ส่วนสูง<br>(ซม.)</th>
+        <th rowspan="2">น้ำหนักตาม<br>ส่วนสูง</th><th rowspan="2">ส่วนสูงตาม<br>อายุ</th></tr>
+      <tr>${rounds.map(() => '<th>น้ำหนัก<br>(กก.)</th><th>ส่วนสูง<br>(ซม.)</th>').join('')}</tr></thead>
+      <tbody>${list.map((x) => `<tr><td>${x.s.number ?? ''}</td><td class="l" style="white-space:nowrap">${esc(fullName(x.s))}</td><td>${esc(x.s.gender ?? '')}</td>
+        ${rounds.map((_, i) => `<td>${f1(x.w[i])}</td><td>${f1(x.h[i])}</td>`).join('')}
+        <td${x.dw !== null && x.dw < 0 ? ' style="font-weight:700"' : ''}>${sign(x.dw)}</td><td>${sign(x.dh)}</td>
+        <td>${esc(x.last?.wh ?? '')}</td><td>${esc(x.last?.ha ?? '')}</td></tr>`).join('')}
+      <tr><th colspan="3" class="l">เฉลี่ย</th>${rounds.map((_, i) => `<th>${f1(mean(list.map((x) => x.w[i])))}</th><th>${f1(mean(list.map((x) => x.h[i])))}</th>`).join('')}
+        <th>${sign(mean(list.map((x) => x.dw)))}</th><th>${sign(mean(list.map((x) => x.dh)))}</th><th colspan="2"></th></tr>
+      <tr><th colspan="3" class="l">ชั่ง/วัดแล้ว (คน)</th>${rounds.map((_, i) => `<th colspan="2">${cnt(i)} / ${list.length}</th>`).join('')}<th colspan="4"></th></tr></tbody></table>
+    <div class="legend" style="text-align:left">
+      <div><b>น้ำหนักลดลงระหว่างภาคเรียน (${lost.length} คน):</b> ${who(lost)}</div>
+      <div><b>ควรได้รับการดูแล (ผอม/ค่อนข้างผอม/อ้วน/เริ่มอ้วน/เตี้ย/ค่อนข้างเตี้ย ${care.length} คน):</b> ${who(care)}</div>
+      <div>เปลี่ยนแปลงในภาค = ครั้งล่าสุดที่ชั่ง/วัด ลบ ครั้งแรกของภาคเรียน · ภาวะโภชนาการแปลตามเกณฑ์อ้างอิงกรมอนามัย${ref.size ? '' : ' (ยังไม่ได้โหลดตารางอ้างอิง จึงยังไม่มีผลแปล)'}</div></div>
+    ${signs(ctx, room, [academic(ctx)])}
+  </div>`;
 }
 
 export async function traitReport(ctx, room) {

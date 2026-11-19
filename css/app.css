@@ -181,7 +181,7 @@ svg.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none;
   .bnav .on { color: var(--ink); font-weight: 600; }
   .bnav .on svg.i { background: var(--chosen); color: var(--on-chosen); }
   .sheet-wrap:not([hidden]) { display: flex; align-items: flex-end; position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, .4); }
-  .sheet { width: 100%; max-height: 80vh; max-height: 80dvh; overflow-y: auto; background: var(--surface-high); border-radius: 28px 28px 0 0;
+  .sheet-wrap > .sheet { width: 100%; max-height: 80vh; max-height: 80dvh; overflow-y: auto; background: var(--surface-high); border-radius: 28px 28px 0 0;
     padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; }
   .sheet-grip { width: 32px; height: 4px; border-radius: 2px; background: var(--outline); opacity: .5; margin: 0 auto 2px; }
   .sheet-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -758,4 +758,28 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
   .g-bulk-top { flex: 1 1 100%; justify-content: space-between; }
   .g-bulk-actions { flex: 1 1 100%; }
   .g-bulk-actions .g-btn { flex: 1 1 0; padding: 0 12px; }
+}
+
+/* น้ำหนัก-ส่วนสูง: จอมือถือ (ไอโฟน) แถวเป็นการ์ด ช่องกรอกใหญ่ ผลแปลอยู่ใต้ช่องกรอก · จอใหญ่เป็นตารางเดิม */
+.reg.hgrid .m-only { display: none; }
+@media (max-width: 640px) {
+  .tbl-wrap:has(> .hgrid) { overflow: visible; border: 0; background: transparent; border-radius: 0; }
+  table.reg.hgrid, .reg.hgrid tbody { display: block; width: 100%; }
+  .reg.hgrid thead { display: none; }
+  .reg.hgrid tbody { display: flex; flex-direction: column; gap: 10px; }
+  .reg.hgrid tr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: var(--r-lg); background: var(--sheet); }
+  .reg.hgrid td { border: 0 !important; height: auto; padding: 0 !important; text-align: left; position: static; min-width: 0; box-shadow: none; background: none; }
+  .reg.hgrid td.no { width: auto; flex: 0 0 auto; font-weight: 600; color: var(--ink-soft); }
+  .reg.hgrid td.name { flex: 1 1 0; white-space: normal; font-weight: 600; font-size: 1rem; line-height: 1.35; }
+  .reg.hgrid td.c-sex { display: none; }
+  .reg.hgrid td.c-age { flex: 0 0 100%; color: var(--ink-soft); padding-left: 0 !important; }
+  .reg.hgrid td.c-in { flex: 1 1 calc(50% - 4px); display: flex; flex-direction: column; gap: 2px; }
+  .reg.hgrid td.c-in::before { content: attr(data-label); font-size: .78rem; color: var(--ink-soft); }
+  .reg.hgrid input.sc { width: 100%; height: 48px; font-size: 1.2rem; border: 1px solid var(--rule-strong); border-radius: 10px; background: var(--paper); scroll-margin: 96px 0 140px; }
+  .reg.hgrid input.sc:focus { outline-offset: -1px; }
+  .reg.hgrid td.c-wa, .reg.hgrid td.c-ha, .reg.hgrid td.c-wh { flex: 0 0 auto; }
+  .reg.hgrid td.c-wa:has(> .muted), .reg.hgrid td.c-ha:has(> .muted), .reg.hgrid td.c-wh:has(> .muted) { display: none; }
+  .reg.hgrid td.c-prev { flex: 0 0 100%; white-space: normal !important; }
+  .reg.hgrid td.c-prev:empty { display: none; }
+  .reg.hgrid .m-only { display: inline; }
 }
