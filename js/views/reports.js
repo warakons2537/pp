@@ -1,12 +1,13 @@
 import { esc, $, options, roomName, fullName, levelName, iso, fromIso, daysInMonth, thaiDate, todayIso,
-  THAI_MONTHS, THAI_MONTHS_SHORT, STATUS } from '../util.js?v=2569.11.1-43';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-43';
-import { getRoster, courseRoster, termRoster, termMonths, termRange, roundsOfTerm, termOfRound, roundInTerm } from '../data.js?v=2569.11.1-43';
-import { head, signs, termText } from './report-common.js?v=2569.11.1-43';
-import { p5Report, gradesReport, achieveReport } from './report-grades.js?v=2569.11.1-43';
-import { mealsReport } from './report-meals.js?v=2569.11.1-43';
-import { remedialReport } from './report-remedial.js?v=2569.11.1-43';
-import { nutritionReport, growthReport, traitReport } from './report-assess.js?v=2569.11.1-43';
+  THAI_MONTHS, THAI_MONTHS_SHORT, STATUS } from '../util.js?v=2569.11.1-44';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-44';
+import { getRoster, courseRoster, termRoster, termMonths, termRange, roundsOfTerm, termOfRound, roundInTerm } from '../data.js?v=2569.11.1-44';
+import { head, signs, termText } from './report-common.js?v=2569.11.1-44';
+import { p5Report, gradesReport, achieveReport } from './report-grades.js?v=2569.11.1-44';
+import { mealsReport } from './report-meals.js?v=2569.11.1-44';
+import { remedialReport } from './report-remedial.js?v=2569.11.1-44';
+import { nutritionReport, growthReport, traitReport } from './report-assess.js?v=2569.11.1-44';
+import { loadListOpts, listControls, wireListControls, roomsInScope, listGroups, listPages } from './report-list.js?v=2569.11.1-44';
 
 const pref = { tab: 'month', room: null, ym: null, course: null, round: null };   // round = ลำดับในปีการศึกษา 1–8 (ภาค 1 = 1–4 · ภาค 2 = 5–8)
 const TABS = { month: 'เวลาเรียนประจำเดือน', term: 'สรุปเวลาเรียนภาคเรียน', course: 'เวลาเรียนรายวิชา (มส)', list: 'รายชื่อนักเรียน', meals: 'อาหารกลางวันประจำเดือน',
@@ -28,13 +29,15 @@ export async function render(el, ctx) {
   if (!courses.some((k) => k.id === pref.course)) pref.course = courses[0]?.id ?? null;
   if (!pref.round) pref.round = roundsOfTerm(ctx.term?.term || 1)[0];
   const inFrame = window.self !== window.top;
+  const lo = pref.tab === 'list' ? loadListOpts() : null;
+  const roomPicker = !lo || lo.scope === 'room';
 
   el.innerHTML = `
     <div class="page-head"><div><h1>รายงาน A4</h1><p>ดูตัวอย่างหน้ากระดาษ แล้วกดพิมพ์หรือบันทึกเป็น PDF</p></div>
     <div class="row no-print">
       ${COURSE_TABS.includes(pref.tab)
         ? `<label class="field">วิชา<select id="course">${options(courses, pref.course, ctx.courseLabel)}</select></label>`
-        : `<label class="field">ห้อง<select id="room">${options(rooms, pref.room, (r) => `ห้อง ${roomName(r)}`)}</select></label>`}
+        : roomPicker ? `<label class="field">ห้อง<select id="room">${options(rooms, pref.room, (r) => `ห้อง ${roomName(r)}`)}</select></label>` : ''}
       ${['month', 'meals'].includes(pref.tab) ? `<label class="field">เดือน<select id="ym">${months.map((m) => `<option value="${m.y}-${m.m0}" ${pref.ym === `${m.y}-${m.m0}` ? 'selected' : ''}>${THAI_MONTHS[m.m0]} ${m.y + 543}</option>`).join('')}</select></label>` : ''}
       ${['nutrition', 'growth'].includes(pref.tab) ? `<label class="field">ภาคเรียน<select id="hterm">${[1, 2].map((n) => `<option value="${n}" ${termOfRound(pref.round) === n ? 'selected' : ''}>ภาคเรียนที่ ${n}</option>`).join('')}</select></label>
         ${pref.tab === 'nutrition' ? `<label class="field">ครั้งที่<select id="round">${roundsOfTerm(termOfRound(pref.round)).map((n) => `<option value="${n}" ${pref.round === n ? 'selected' : ''}>ครั้งที่ ${roundInTerm(n)}</option>`).join('')}</select></label>` : ''}` : ''}
@@ -43,6 +46,7 @@ export async function render(el, ctx) {
     </div></div>
     ${tabGroups([['ธุรการ', 'daily', ['month', 'term', 'course', 'list', 'meals']], ['ปพ.5', 'scores', ['p5', 'grades', 'achieve', 'remedial']], ['สุขภาพ / คุณลักษณะ', 'health', ['growth', 'nutrition', 'traitsum']]]
     .map(([label, ic, keys]) => ({ label, icon: ic, tabs: keys.map((k) => ({ key: k, label: esc(TABS[k]) })) })), pref.tab, 'tab', 'no-print')}
+    ${lo ? listControls(rooms, lo) : ''}
     <div class="card print-area" style="background:var(--paper)"><div class="a4-scroll" id="paper"><p class="muted">กำลังจัดหน้า…</p></div></div>`;
 
   el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { pref.tab = b.dataset.tab; render(el, ctx); }));
@@ -67,7 +71,11 @@ export async function render(el, ctx) {
   else if (pref.tab === 'growth') paper.innerHTML = await growthReport(ctx, room, termOfRound(pref.round));
   else if (pref.tab === 'nutrition') paper.innerHTML = await nutritionReport(ctx, room, pref.round);
   else if (pref.tab === 'traitsum') paper.innerHTML = await traitReport(ctx, room);
-  else paper.innerHTML = await listReport(ctx, room);
+  else {
+    const draw = async () => { paper.innerHTML = await listReport(ctx, rooms, lo); };
+    wireListControls(el, lo, (_, full) => (full ? render(el, ctx) : draw()));
+    await draw();
+  }
 }
 
 // ---------- 1) เวลาเรียนประจำเดือน ----------
@@ -159,15 +167,9 @@ async function courseReport(ctx, course) {
   </div>`;
 }
 
-// ---------- 4) รายชื่อนักเรียน ----------
-async function listReport(ctx, room) {
-  const roster = await termRoster(ctx, room);
-  const boys = roster.filter((s) => s.gender === 'ช').length;
-  return `<div class="a4">
-    ${head(ctx, `รายชื่อนักเรียน ชั้น${levelName(room.level)}/${room.room}`, termText(ctx))}
-    <table><thead><tr><th style="width:9mm">ที่</th><th style="width:24mm">เลขประจำตัว</th><th class="l">ชื่อ-สกุล</th>${'<th style="width:9mm"></th>'.repeat(8)}</tr></thead>
-      <tbody>${roster.map((s) => `<tr><td>${s.number ?? ''}</td><td>${esc(s.student_code ?? '')}</td><td class="l">${esc(fullName(s))}</td>${'<td></td>'.repeat(8)}</tr>`).join('')}</tbody></table>
-    <div class="legend">ชาย ${boys} คน · หญิง ${roster.length - boys} คน · รวม ${roster.length} คน</div>
-    ${signs(ctx, room)}
-  </div>`;
+// ---------- 4) รายชื่อนักเรียน (ห้องเดียว / ทั้งชั้น / ทุกระดับ + ช่องว่างปรับได้) ----------
+async function listReport(ctx, rooms, o) {
+  const picked = roomsInScope(rooms, o.scope, pref.room);
+  const entries = await Promise.all(picked.map(async (room) => ({ room, roster: await termRoster(ctx, room) })));
+  return listPages(ctx, listGroups(entries, o), o);
 }
