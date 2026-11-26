@@ -481,6 +481,14 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
 .list-opts { display: flex; flex-direction: column; gap: 10px; }
 .list-opts .row { flex-wrap: wrap; align-items: flex-end; }
 .lo-chks { gap: 6px 16px; }
+.lo-pick { border-top: 1px solid var(--rule); padding-top: 10px; display: flex; flex-direction: column; gap: 10px; max-height: 420px; overflow: auto; }
+.lo-pick-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; position: sticky; top: 0; background: var(--sheet); padding-bottom: 4px; z-index: 1; }
+.lo-pick-bar input[type=search] { flex: 1; min-width: 160px; }
+.lo-room { border: 1px solid var(--rule); border-radius: var(--r-lg, 12px); padding: 6px 12px 10px; margin: 0; }
+.lo-room legend { display: flex; align-items: center; gap: 8px; font-weight: 600; padding: 0 4px; }
+.lo-names { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2px 12px; }
+.lo-name { display: flex; align-items: center; gap: 6px; padding: 3px 0; cursor: pointer; font-size: .92rem; }
+.lo-name[hidden] { display: none; }
 .list-opts .row > label.lo-chk { display: inline-flex; flex-direction: row; color: var(--ink); align-items: center; gap: 6px; font-size: .9rem; cursor: pointer; }
 .a4 .info { margin: 2mm 0 3mm; }
 .a4 .info td { border: 0; border-bottom: 1px dotted #777; padding: 1mm 2mm 1mm 0; }
