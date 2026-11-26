@@ -1,13 +1,13 @@
 import { esc, $, options, roomName, fullName, levelName, iso, fromIso, daysInMonth, thaiDate, todayIso,
-  THAI_MONTHS, THAI_MONTHS_SHORT, STATUS } from '../util.js?v=2569.11.1-44';
-import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-44';
-import { getRoster, courseRoster, termRoster, termMonths, termRange, roundsOfTerm, termOfRound, roundInTerm } from '../data.js?v=2569.11.1-44';
-import { head, signs, termText } from './report-common.js?v=2569.11.1-44';
-import { p5Report, gradesReport, achieveReport } from './report-grades.js?v=2569.11.1-44';
-import { mealsReport } from './report-meals.js?v=2569.11.1-44';
-import { remedialReport } from './report-remedial.js?v=2569.11.1-44';
-import { nutritionReport, growthReport, traitReport } from './report-assess.js?v=2569.11.1-44';
-import { loadListOpts, listControls, wireListControls, roomsInScope, listGroups, listPages } from './report-list.js?v=2569.11.1-44';
+  THAI_MONTHS, THAI_MONTHS_SHORT, STATUS } from '../util.js?v=2569.11.1-45';
+import { tabGroups, wireTabGroups } from '../tabs.js?v=2569.11.1-45';
+import { getRoster, courseRoster, termRoster, termMonths, termRange, roundsOfTerm, termOfRound, roundInTerm } from '../data.js?v=2569.11.1-45';
+import { head, signs, termText } from './report-common.js?v=2569.11.1-45';
+import { p5Report, gradesReport, achieveReport } from './report-grades.js?v=2569.11.1-45';
+import { mealsReport } from './report-meals.js?v=2569.11.1-45';
+import { remedialReport } from './report-remedial.js?v=2569.11.1-45';
+import { nutritionReport, growthReport, traitReport } from './report-assess.js?v=2569.11.1-45';
+import { loadListOpts, listControls, wireListControls, roomsInScope, listGroups, listPages, applyPick, pickerHtml, wirePicker } from './report-list.js?v=2569.11.1-45';
 
 const pref = { tab: 'month', room: null, ym: null, course: null, round: null };   // round = ลำดับในปีการศึกษา 1–8 (ภาค 1 = 1–4 · ภาค 2 = 5–8)
 const TABS = { month: 'เวลาเรียนประจำเดือน', term: 'สรุปเวลาเรียนภาคเรียน', course: 'เวลาเรียนรายวิชา (มส)', list: 'รายชื่อนักเรียน', meals: 'อาหารกลางวันประจำเดือน',
@@ -72,9 +72,12 @@ export async function render(el, ctx) {
   else if (pref.tab === 'nutrition') paper.innerHTML = await nutritionReport(ctx, room, pref.round);
   else if (pref.tab === 'traitsum') paper.innerHTML = await traitReport(ctx, room);
   else {
-    const draw = async () => { paper.innerHTML = await listReport(ctx, rooms, lo); };
+    const entries = await listEntries(ctx, rooms, lo);
+    const draw = () => { paper.innerHTML = listPages(ctx, listGroups(applyPick(entries, lo), lo), lo); };
     wireListControls(el, lo, (_, full) => (full ? render(el, ctx) : draw()));
-    await draw();
+    const pick = $('#lo-pick', el);
+    if (pick) { pick.innerHTML = pickerHtml(entries, lo); wirePicker(pick, lo, draw); }
+    draw();
   }
 }
 
@@ -168,8 +171,7 @@ async function courseReport(ctx, course) {
 }
 
 // ---------- 4) รายชื่อนักเรียน (ห้องเดียว / ทั้งชั้น / ทุกระดับ + ช่องว่างปรับได้) ----------
-async function listReport(ctx, rooms, o) {
+async function listEntries(ctx, rooms, o) {
   const picked = roomsInScope(rooms, o.scope, pref.room);
-  const entries = await Promise.all(picked.map(async (room) => ({ room, roster: await termRoster(ctx, room) })));
-  return listPages(ctx, listGroups(entries, o), o);
+  return Promise.all(picked.map(async (room) => ({ room, roster: await termRoster(ctx, room) })));
 }

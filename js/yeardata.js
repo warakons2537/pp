@@ -1,10 +1,10 @@
 // =====================================================================
 //  รวบรวมข้อมูลทั้งปีการศึกษาของห้องหนึ่ง สำหรับพิมพ์ ปพ.6 / ปก ปพ.5 / ใบรับรอง
 // =====================================================================
-import { indexBy, sortByNumber, fullName } from './util.js?v=2569.11.1-44';
-import { termRange, loadGrowthRef } from './data.js?v=2569.11.1-44';
-import { loadCourse, computeCourse, gpa, rank, weightOf } from './grading.js?v=2569.11.1-44';
-import { classify, ageMonths, TRAIT_KINDS, modeSummary } from './assess.js?v=2569.11.1-44';
+import { indexBy, sortByNumber, fullName } from './util.js?v=2569.11.1-45';
+import { termRange, loadGrowthRef } from './data.js?v=2569.11.1-45';
+import { loadCourse, computeCourse, gpa, rank, weightOf } from './grading.js?v=2569.11.1-45';
+import { classify, ageMonths, TRAIT_KINDS, modeSummary } from './assess.js?v=2569.11.1-45';
 
 // จำนวนนักเรียน ต้นภาค / ออกระหว่างภาค / เข้าระหว่างภาค / สิ้นภาค แยกชาย-หญิง
 export function enrollmentCounts(rows, term) {

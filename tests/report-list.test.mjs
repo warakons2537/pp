@@ -1,6 +1,6 @@
 // ทดสอบรายชื่อนักเรียน + ช่องว่าง:  node tests/report-list.test.mjs
 import assert from 'node:assert/strict';
-import { blankHeads, roomsInScope, listGroups, listPages, LIST_DEFAULTS } from '../js/views/report-list.js';
+import { blankHeads, roomsInScope, listGroups, listPages, LIST_DEFAULTS, applyPick, pickerHtml } from '../js/views/report-list.js';
 
 // หัวช่อง: ชื่อที่พิมพ์มาก่อน ที่เหลือว่าง · ชื่อเกินจำนวนช่อง = เพิ่มช่อง
 assert.deepEqual(blankHeads({ cols: 4, labels: 'ก, ข' }), ['ก', 'ข', '', '']);
@@ -44,4 +44,18 @@ const r = listPages(ctx, listGroups(entries.slice(0, 1), { scope: 'room' }), { .
 assert.match(r, /<tr><td>1<\/td><td>01<\/td>/);
 assert.ok(r.includes('ครูเอ'), 'ลงชื่อครูประจำชั้น');
 assert.ok(!listPages(ctx, [], o).includes('a4'));
+
+// เลือกเฉพาะบางคน
+const ids = (e) => e.flatMap((x) => x.roster.map((s) => s.first_name));
+entries[0].roster[0].id = 's1'; entries[0].roster[1].id = 's2'; entries[1].roster[0].id = 's3'; entries[2].roster[0].id = 's4';
+assert.deepEqual(ids(applyPick(entries, { pick: false, picked: ['s2'] })), ['ก', 'ข', 'ค', 'ง'], 'ปิด = ทุกคน');
+assert.deepEqual(ids(applyPick(entries, { pick: true, picked: ['s2', 's4', 'x'] })), ['ข', 'ง']);
+const po = { ...LIST_DEFAULTS, scope: 'all', pick: true, picked: ['s2'] };
+const ph = listPages(ctx, listGroups(applyPick(entries, po), po), po);
+assert.equal((ph.match(/class="a4 /g) || []).length, 1, 'ห้องที่ไม่มีคนถูกเลือกไม่พิมพ์');
+assert.match(ph, /<td>2<\/td><td>02<\/td>/, 'คงเลขที่เดิม');
+assert.match(listPages(ctx, listGroups(applyPick(entries, po), po), { ...po, renum: true }), /<td>1<\/td><td>02<\/td>/, 'เรียงเลขที่ใหม่');
+assert.ok(listPages(ctx, listGroups(applyPick(entries, { ...po, picked: [] }), po), { ...po, picked: [] }).includes('ยังไม่ได้เลือกนักเรียน'));
+const pk = pickerHtml(entries, po);
+assert.ok(pk.includes('เลือกแล้ว 1 จาก 4 คน') && pk.includes('data-sid="s2" data-room="a" checked'));
 console.log('ผ่านทุกข้อ ✓');

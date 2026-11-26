@@ -10,14 +10,14 @@
 //  ขวา = สรุป · ตั้งค่าชุดเดียว [ทั้งชุด | แผ่นนี้] (หน้ากระดาษ · ตัวอักษร · พิมพ์ · ขั้นสูง) · พิมพ์
 //  ปุ่ม "แก้บนหน้ากระดาษ" (กลาง) = ลากขอบ/คอลัมน์/แถว/ย้าย/เลือกเซลล์ของแผ่นที่ดูอยู่ · จัดรูปแบบเซลล์ขึ้นในแผงขวา
 // =====================================================================
-import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-44';
-import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-44';
-import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays, ATT_MONTHS, indicatorContinuations, continuationModel, IND_PER_SHEET } from '../pp-forms.js?v=2569.11.1-44';
-import { Renderer } from '../xl-render.js?v=2569.11.1-44';
-import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-44';
-import { ensureCss, printWithStatus } from './pp-book-view.js?v=2569.11.1-44';
-import { adjustDialog, pickSheetsDialog, AUTO_ADJ, MARGIN_PRESETS, SET_LIMITS, BASE_PT, mergeAdj, withPageNo } from '../page-adjust.js?v=2569.11.1-44';
-import { mountPageEditor } from '../page-editor.js?v=2569.11.1-44';
+import { esc, $, $$, toast, roomName, modal } from '../util.js?v=2569.11.1-45';
+import { buildBookData, bookChecks } from '../pp-book.js?v=2569.11.1-45';
+import { Forms, classModel, loadFormsBytes, pp5Set, pp5Layout, pp5Overlays, ATT_MONTHS, indicatorContinuations, continuationModel, IND_PER_SHEET } from '../pp-forms.js?v=2569.11.1-45';
+import { Renderer } from '../xl-render.js?v=2569.11.1-45';
+import { useThaiFont, setThaiFont, fontSelectHtml } from '../thai-fonts.js?v=2569.11.1-45';
+import { ensureCss, printWithStatus } from './pp-book-view.js?v=2569.11.1-45';
+import { adjustDialog, pickSheetsDialog, AUTO_ADJ, MARGIN_PRESETS, SET_LIMITS, BASE_PT, mergeAdj, withPageNo } from '../page-adjust.js?v=2569.11.1-45';
+import { mountPageEditor } from '../page-editor.js?v=2569.11.1-45';
 
 // ค่าปรับหน้าที่ผู้ใช้ตั้งไว้ (จำในเบราว์เซอร์ ใช้กับทุกห้อง/ภาคเรียน) · ชื่อแผ่น → { mt, mb, ml, mr, font, row, col, scale, hCenter }
 const ADJ_KEY = 'pp5-page-adjust';
