@@ -473,6 +473,15 @@ table.reg { border-collapse: collapse; font-size: .86rem; font-variant-numeric: 
 .a4 table.month td.l { padding: 0 3px; text-overflow: ellipsis; }
 .a4 .legend { margin-top: 6px; font-size: 13px; }
 .print-note { font-size: .85rem; }
+.a4.blank-list tbody td { height: var(--rh, 7mm); padding-top: 0; padding-bottom: 0; }
+.a4.blank-list th.blank { font-size: 12px; line-height: 1.15; white-space: normal; word-break: break-word; vertical-align: bottom; padding: 1px 2px; }
+.a4.blank-list td.nm { max-width: 70mm; overflow: hidden; text-overflow: ellipsis; }
+.a4.blank-list thead { display: table-header-group; }
+.a4.blank-list tr { break-inside: avoid; }
+.list-opts { display: flex; flex-direction: column; gap: 10px; }
+.list-opts .row { flex-wrap: wrap; align-items: flex-end; }
+.lo-chks { gap: 6px 16px; }
+.list-opts .row > label.lo-chk { display: inline-flex; flex-direction: row; color: var(--ink); align-items: center; gap: 6px; font-size: .9rem; cursor: pointer; }
 .a4 .info { margin: 2mm 0 3mm; }
 .a4 .info td { border: 0; border-bottom: 1px dotted #777; padding: 1mm 2mm 1mm 0; }
 .a4 .pp6-sec { margin-top: 3mm; display: flex; flex-direction: column; gap: 1mm; }
