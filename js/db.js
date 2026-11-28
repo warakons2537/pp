@@ -2,15 +2,19 @@
 //  ชั้นข้อมูล: ใช้ Supabase จริง หรือ "โหมดทดลอง" (เก็บในเบราว์เซอร์)
 //  หน้าจอทุกหน้าเรียกผ่าน API ชุดเดียวกัน จึงสลับได้โดยไม่ต้องแก้หน้าจอ
 // =====================================================================
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2569.11.1-45';
-import { createOffline, idbKv } from './offline.js?v=2569.11.1-45';
-import { seedDemo } from './demo-data.js?v=2569.11.1-45';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2569.11.1-46';
+import { createOffline, idbKv } from './offline.js?v=2569.11.1-46';
+import { seedDemo } from './demo-data.js?v=2569.11.1-46';
 
 const thaiError = (e) => {
   const m = String(e?.message || e);
   if (/row-level security|permission denied/i.test(m)) return new Error('ไม่มีสิทธิ์บันทึกข้อมูลส่วนนี้');
   if (/duplicate key/i.test(m)) return new Error('ข้อมูลซ้ำกับที่มีอยู่แล้ว');
   if (/Invalid login credentials/i.test(m)) return new Error('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+  if (/function public\.admin_set_password/i.test(m)) return new Error('ยังไม่ได้รันไฟล์ supabase/admin_password.sql (หรือ schema.sql ฉบับใหม่) ใน Supabase');
+  if (/New password should be different/i.test(m)) return new Error('รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสเดิม');
+  if (/Password should be at least/i.test(m)) return new Error('รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร');
+  if (/rate limit|security purposes/i.test(m)) return new Error('ขอส่งอีเมลถี่เกินไป กรุณารอสักครู่แล้วลองใหม่');
   if (/Email not confirmed/i.test(m)) return new Error('ยังไม่ได้ยืนยันอีเมล กรุณาเปิดลิงก์ในอีเมลก่อน');
   if (/Invalid path specified/i.test(m)) return new Error(`ที่อยู่ฐานข้อมูลไม่ถูกต้อง (แอปกำลังใช้ ${String(SUPABASE_URL).trim() || '(ว่าง)'}) ต้องเป็น https://xxxx.supabase.co เท่านั้น ถ้าแก้ config.js แล้ว ให้รอ 10 นาทีแล้วกด Ctrl+F5`);
   return e instanceof Error ? e : new Error(m);
@@ -26,7 +30,12 @@ function supabaseDb() {
   let base;
   try { base = new URL(SUPABASE_URL.trim()).origin; } catch { throw new Error('SUPABASE_URL ใน js/config.js ไม่ใช่ที่อยู่เว็บที่ถูกต้อง ต้องเป็นแบบ https://xxxx.supabase.co'); }
   if (/(^|\.)supabase\.com$/.test(new URL(base).hostname)) throw new Error('SUPABASE_URL ใน js/config.js เป็นลิงก์หน้า Dashboard ต้องใช้ Project URL แบบ https://xxxx.supabase.co (ดูที่ Project Settings → Data API)');
+  // เปิดจากลิงก์ "ลืมรหัสผ่าน" ในอีเมล: ต้องจำไว้ก่อน supabase-js อ่านแล้วล้างที่อยู่
+  const fromUrl = new URLSearchParams(location.hash.slice(1));
+  let recovery = fromUrl.get('type') === 'recovery';
+  let linkError = fromUrl.get('error_description');
   const client = window.supabase.createClient(base, SUPABASE_KEY.trim());
+  client.auth.onAuthStateChange((e) => { if (e === 'PASSWORD_RECOVERY') recovery = true; });
   const run = async (p) => { const { data, error } = await p; if (error) throw thaiError(error); return data; };
   const applyMatch = (q, match) => { for (const [k, v] of Object.entries(match)) q = q.eq(k, v); return q; };
 
@@ -40,6 +49,12 @@ function supabaseDb() {
       },
       async signOut() { await client.auth.signOut(); },
       onChange(cb) { client.auth.onAuthStateChange((_e, s) => cb(s)); },
+      async updatePassword(password) { await run(client.auth.updateUser({ password })); recovery = false; },
+      async resetPassword(email) {
+        return run(client.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname }));
+      },
+      // เข้ามาจากลิงก์ตั้งรหัสผ่านใหม่ (ใช้ได้ครั้งเดียวต่อการเปิดหน้า) · ลิงก์หมดอายุ/ใช้แล้ว → ข้อความแจ้ง
+      takeRecovery() { const r = { recovery, error: linkError ? linkError.replace(/\+/g, ' ') : null }; linkError = null; return r; },
     },
     async select(table, { cols = '*', eq = {}, in: inn = {}, gte = {}, lte = {}, order } = {}) {
       const out = [];
@@ -234,6 +249,9 @@ function demoDb() {
         try { sessionStorage.setItem(DEMO_KEY + '-user', JSON.stringify(sessionUser)); } catch { /* */ }
       },
       async signUp() { throw new Error('โหมดทดลองไม่มีการสมัครสมาชิก'); },
+      async updatePassword() { throw new Error('โหมดทดลองไม่มีรหัสผ่าน'); },
+      async resetPassword() { throw new Error('โหมดทดลองไม่มีรหัสผ่าน'); },
+      takeRecovery: () => ({ recovery: false, error: null }),
       async signOut() { sessionUser = null; try { sessionStorage.removeItem(DEMO_KEY + '-user'); } catch { /* */ } },
       onChange() {},
       demoUsers: () => clone(T('profiles')),
