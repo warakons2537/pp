@@ -45,6 +45,8 @@ export const SUPABASE_KEY = 'sb_publishable_xxxxxxxxxxxxxxxx';
 3. **Settings** → **Pages** → Source: **Deploy from a branch** → Branch: `main` / `(root)` → **Save**
 4. รอ 1–2 นาที จะได้ที่อยู่เว็บ เช่น `https://ชื่อผู้ใช้.github.io/school-admin/`
 5. กลับไปที่ Supabase → **Authentication** → **URL Configuration** → ใส่ที่อยู่เว็บนี้ในช่อง **Site URL**
+   และเพิ่มที่อยู่เว็บของทุกแอปในเครือในช่อง **Redirect URLs** (ใช้กับลิงก์ "ลืมรหัสผ่าน" ในอีเมล ถ้าไม่ใส่ ลิงก์จะพาไปหน้า Site URL แทน)
+6. รันไฟล์ `supabase/admin_password.sql` ใน SQL Editor (รวมอยู่ใน `schema.sql` แล้ว) เพื่อให้ผู้ดูแลระบบตั้งรหัสผ่านใหม่ให้ครูได้ที่ ตั้งค่าระบบ → ผู้ใช้
 
 > ถ้าอยากให้ Claude เป็นคนอัปโหลดขึ้น GitHub ให้ บอกได้เลย ผ่านการเชื่อมบัญชี GitHub
 

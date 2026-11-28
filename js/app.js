@@ -1,30 +1,31 @@
-import { db } from './db.js?v=2569.11.1-45';
-import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.11.1-45';
-import { icon } from './icons.js?v=2569.11.1-45';
-import { prefetchOffline } from './prefetch.js?v=2569.11.1-45';
-import { initPwa } from './pwa.js?v=2569.11.1-45';
-import { initDateFields } from './datefield.js?v=2569.11.1-45';
-import { trackWrites, saveState } from './savestate.js?v=2569.11.1-45';
-import { BRAND, VERSION } from './brand.js?v=2569.11.1-45';
-import { mountNav, labelHtml } from './navbar.js?v=2569.11.1-45';
-import { computeAlerts, computeBadges, badge, showAlerts } from './notify.js?v=2569.11.1-45';
-import { openSearch, initSearchKey } from './search.js?v=2569.11.1-45';
-import { openPrefs } from './prefs.js?v=2569.11.1-45';
-import * as home from './views/home.js?v=2569.11.1-45';
-import * as students from './views/students.js?v=2569.11.1-45';
-import * as daily from './views/daily.js?v=2569.11.1-45';
-import * as backdate from './views/backdate.js?v=2569.11.1-45';
-import * as period from './views/period.js?v=2569.11.1-45';
-import * as reports from './views/reports.js?v=2569.11.1-45';
-import * as setup from './views/setup.js?v=2569.11.1-45';
-import * as scores from './views/scores.js?v=2569.11.1-45';
-import * as meals from './views/meals.js?v=2569.11.1-45';
-import * as health from './views/health.js?v=2569.11.1-45';
-import * as traits from './views/traits.js?v=2569.11.1-45';
-import * as remedial from './views/remedial.js?v=2569.11.1-45';
-import { renderStudentCheck } from './views/student-check.js?v=2569.11.1-45';
-import { NAV, MENU_GROUPS, MENU_ORDER, allowedMenus } from './menus.js?v=2569.11.1-45';
-import * as print from './views/print.js?v=2569.11.1-45';
+import { db } from './db.js?v=2569.11.1-46';
+import { esc, $, $$, toast, indexBy, roomName, thaiDate, iso } from './util.js?v=2569.11.1-46';
+import { icon } from './icons.js?v=2569.11.1-46';
+import { prefetchOffline } from './prefetch.js?v=2569.11.1-46';
+import { initPwa } from './pwa.js?v=2569.11.1-46';
+import { initDateFields } from './datefield.js?v=2569.11.1-46';
+import { trackWrites, saveState } from './savestate.js?v=2569.11.1-46';
+import { BRAND, VERSION } from './brand.js?v=2569.11.1-46';
+import { mountNav, labelHtml } from './navbar.js?v=2569.11.1-46';
+import { computeAlerts, computeBadges, badge, showAlerts } from './notify.js?v=2569.11.1-46';
+import { openSearch, initSearchKey } from './search.js?v=2569.11.1-46';
+import { openPrefs } from './prefs.js?v=2569.11.1-46';
+import { changeOwnPassword, finishRecovery, forgotPassword } from './password.js?v=2569.11.1-46';
+import * as home from './views/home.js?v=2569.11.1-46';
+import * as students from './views/students.js?v=2569.11.1-46';
+import * as daily from './views/daily.js?v=2569.11.1-46';
+import * as backdate from './views/backdate.js?v=2569.11.1-46';
+import * as period from './views/period.js?v=2569.11.1-46';
+import * as reports from './views/reports.js?v=2569.11.1-46';
+import * as setup from './views/setup.js?v=2569.11.1-46';
+import * as scores from './views/scores.js?v=2569.11.1-46';
+import * as meals from './views/meals.js?v=2569.11.1-46';
+import * as health from './views/health.js?v=2569.11.1-46';
+import * as traits from './views/traits.js?v=2569.11.1-46';
+import * as remedial from './views/remedial.js?v=2569.11.1-46';
+import { renderStudentCheck } from './views/student-check.js?v=2569.11.1-46';
+import { NAV, MENU_GROUPS, MENU_ORDER, allowedMenus } from './menus.js?v=2569.11.1-46';
+import * as print from './views/print.js?v=2569.11.1-46';
 
 const VIEWS = { home, students, daily, backdate, meals, period, reports, setup, scores, health, traits, remedial, print };
 const root = document.getElementById('app');
@@ -124,11 +125,13 @@ function renderLogin() {
             <label>อีเมล<input type="email" id="l-email" name="email" autocomplete="username" required></label>
             <label>รหัสผ่าน<input type="password" id="l-pass" name="password" minlength="6" autocomplete="${mode === 'up' ? 'new-password' : 'current-password'}" required></label>
             <button class="btn btn-primary" type="submit" style="justify-content:center;padding-block:10px">${mode === 'in' ? 'เข้าสู่ระบบ' : 'สมัครใช้งาน'}</button>
+            ${mode === 'in' ? '<button type="button" class="btn btn-ghost btn-sm" id="l-forgot" style="justify-content:center">ลืมรหัสผ่าน?</button>' : ''}
             ${mode === 'up' ? '<p class="muted small" style="margin:0">สมัครแล้วต้องรอผู้ดูแลระบบอนุมัติก่อนจึงจะเห็นข้อมูล ผู้สมัครคนแรกของระบบจะเป็นผู้ดูแลระบบอัตโนมัติ</p>' : ''}
           </form>
           <a href="#student" class="btn btn-ghost" data-student style="justify-content:center">นักเรียน: ตรวจสอบผลการเรียน</a>
         </div></div></div>`;
     $$('[data-m]', root).forEach((b) => b.addEventListener('click', () => { mode = b.dataset.m; draw(); }));
+    $('#l-forgot')?.addEventListener('click', () => forgotPassword(db, $('#l-email').value));
     $('#f-login').addEventListener('submit', async (e) => {
       e.preventDefault();
       const f = Object.fromEntries(new FormData(e.target).entries());
@@ -211,6 +214,7 @@ function renderShell(ctx) {
           <span class="live tb-net" id="tb-net"></span>
           <div class="tb-user"><span class="avatar" aria-hidden="true">${esc((name.replace(/^(ครู|นาย|นางสาว|นาง)\s*/, '').replace(/^[เแโใไ]/, '')[0]) || '?')}</span>
             <span class="nm"><b title="${esc(name)}">${esc(name)}</b><small>${ctx.isAdmin ? 'ผู้ดูแลระบบ' : 'ครู'}</small></span>
+            ${db.mode === 'demo' ? '' : `<button class="btn btn-sm" id="btn-pw" title="เปลี่ยนรหัสผ่าน" aria-label="เปลี่ยนรหัสผ่าน">${icon('lock')}</button>`}
             <button class="btn btn-sm" id="logout" title="ออกจากระบบ" aria-label="ออกจากระบบ">${icon('logout')}</button></div>
         </header>
         <div class="main-pad">${db.mode === 'demo' ? `<div class="demo-bar no-print"><span><b>โหมดทดลอง</b> ข้อมูลตัวอย่าง (ชื่อสมมติ) เก็บในเบราว์เซอร์นี้เท่านั้น</span>
@@ -220,6 +224,7 @@ function renderShell(ctx) {
   navCtl = mountNav($('#bnav-root'), { labels: NAV, version: VERSION, ext: BRAND.siblings,
     ok: MENU_ORDER.filter((v) => ctx.menus.has(v)) });
   $('#logout').addEventListener('click', logout);
+  $('#btn-pw')?.addEventListener('click', () => changeOwnPassword(db));
   $('#btn-search').addEventListener('click', () => openSearch(ctx, { logout }));
   $('#btn-prefs').addEventListener('click', openPrefs);
   $('#demo-reset')?.addEventListener('click', async () => { db.resetDemo(); await db.auth.signOut(); boot(); });
@@ -321,6 +326,10 @@ async function boot() {
   if (hashHandler) window.removeEventListener('hashchange', hashHandler);
   structureOffs.forEach((f) => { try { f(); } catch { /* */ } }); structureOffs = [];
   const s = await db.auth.session();
+  const rec = db.auth.takeRecovery();
+  if (rec.error) toast(`ลิงก์ตั้งรหัสผ่านใช้ไม่ได้ (${rec.error}) กรุณากด "ลืมรหัสผ่าน?" เพื่อขอลิงก์ใหม่`, 'err');
+  if (/access_token|error_description/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
+  if (s && rec.recovery) await finishRecovery(db);
   if (!s && location.hash === '#student') return renderStudentCheck(root, db, () => { location.hash = ''; boot(); });
   if (!s) return renderLogin();
   let ctx;
